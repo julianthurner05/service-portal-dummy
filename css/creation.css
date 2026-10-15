@@ -1,0 +1,406 @@
+/* ================================================================
+   SPOT CREATION – Ansicht + Creation-History-Karten
+   ================================================================ */
+.creation-view {
+  width: 100%;
+  max-width: clamp(620px, 40vw, 680px);   /* wächst auf breiten Screens nur leicht mit */
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  animation: view-in var(--dur-fast) var(--ease);
+}
+
+/* "Spots go to" bleibt oben; der Eingabeblock zentriert sich im Rest.
+   Seine min-height wird per JS auf die geöffnete Höhe gesetzt, dadurch
+   bleibt die Oberkante stehen, wenn Second Language zuklappt. */
+.creation-block {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Empfänger: eingebettete, nicht editierbare Zeile ---- */
+.recipient-line {
+  align-self: center;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-55);
+  white-space: nowrap;
+}
+
+.recipient-line__label { color: var(--text-25); margin-right: 4px; }
+.recipient-line__sep { color: var(--text-25); }
+.recipient-line__email { color: var(--text-40); }
+
+/* ---- Titelfeld (Underline) ---- */
+.title-field {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 2px;
+  border-bottom: var(--hairline);
+}
+
+.title-field__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-label);
+}
+
+.title-field__input { flex: 1; font-size: 17px; }
+
+/* ---- Sprachblöcke ---- */
+.lang-block { margin-top: 44px; padding: 0 2px; }
+
+.lang-block__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-label);
+  margin-bottom: 12px;
+}
+
+.lang-block__textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: none;
+  font-size: 19px;               /* Sprechtext als Hauptsache */
+  letter-spacing: var(--ls-body);
+  line-height: 1.7;
+  overflow: hidden;
+}
+
+
+/* Fußzeile: Wortzahl & Sprechdauer links, Create rechts */
+.composer__footer {
+  margin-top: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.composer__stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.composer__stats strong { font-weight: 400; color: var(--text-66); }
+
+.creation-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+
+.creation-block .title-field { margin-top: 10px; }
+
+/* ---- Second-Language-Toggle ---- */
+.lang-toggle {
+  margin: 46px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--text-40);
+  transition: color var(--transition);
+}
+
+.lang-toggle:hover { color: var(--text-60); }
+
+.lang-toggle__line {
+  flex: 1;
+  height: var(--hair-w);
+  background: rgba(255, 255, 255, var(--hair-a));
+}
+
+.lang-toggle__icon { width: 14px; height: 14px; stroke-width: 1.6; }
+
+.lang-toggle__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+}
+
+.lang-collapse .lang-block { margin-top: 42px; }
+
+/* ================================================================
+   CREATION-KARTEN
+   ================================================================ */
+.card {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  display: flex;
+  flex-direction: column;
+  transition: background var(--transition), opacity var(--transition), box-shadow var(--transition);
+}
+
+.card--new-anim { animation: card-in var(--t-reveal) var(--ease); }
+
+@keyframes card-reveal {
+  from { opacity: 0.35; transform: scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding-right: 34px;
+  min-height: 24px;
+}
+
+.card__date {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+/* Zustands-Chips */
+.badge--new {
+  background: var(--nav-active);
+  border-color: transparent;
+  color: var(--text-inverse);
+}
+
+.badge--pending { color: var(--text-66); }
+
+.badge__dots::after {
+  content: "";
+  animation: dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+}
+
+/* Titelzeile */
+.card__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 16px 0 12px;
+  min-height: 2.9em;
+}
+
+.card__title {
+  font-size: var(--fs-card-title);
+  letter-spacing: var(--ls-card-title);
+  font-weight: 400;
+  line-height: 1.45;
+  max-width: 310px;
+  padding-right: 8px;
+}
+
+.card__deleted-note {
+  display: none;
+  font-size: var(--fs-small);
+  color: var(--text-40);
+  white-space: nowrap;
+}
+
+/* ---- Zustände ---- */
+
+/* Generieren: kein Kärtchen, nur schmale Zeile – kleiner Titel + Ladebalken.
+   Stapelt sich sauber, wenn mehrere gleichzeitig laufen. */
+.card--pending {
+  background: none;
+  padding: 6px 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.card--pending .card__top,
+.card--pending .card__player,
+.card--pending .card__menu-wrap { display: none; }
+
+.card--pending .card__title-row {
+  min-height: 0;
+  margin: 0;
+  flex: 0 1 auto;
+  max-width: 62%;
+}
+
+.card--pending .card__title {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-60);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0;
+}
+
+.card__pending {
+  display: none;
+  position: relative;
+  height: 1px;
+  background: var(--white-14);
+  overflow: hidden;
+}
+
+.card--pending .card__pending { display: block; flex: 1; }
+
+.card__pending-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34%;
+  background: var(--text-80);
+  animation: pending-slide 1.6s var(--ease) infinite;
+}
+
+@keyframes pending-slide {
+  from { left: -34%; }
+  to   { left: 100%; }
+}
+
+/* Neu: leicht invertiert – helle Karte, dunkle Schrift (eine Minute lang);
+   Wechsel Generating → fertig blendet kurz und weich ein */
+.card--new {
+  animation: card-reveal var(--t-fade) var(--ease);
+  background: var(--card-new-bg);
+  --track-played: var(--ink);
+  --track-rest: var(--ink-25);
+  --thumb: var(--ink);
+}
+
+.card--new .card__title,
+.card--new .card__time,
+.card--new .play-btn,
+.card--new .kebab { color: var(--text-inverse); }
+
+.card--new .card__date { color: var(--ink-50); }
+.card--new .kebab:hover { background: var(--ink-6); }
+
+.card--new .badge {
+  color: var(--ink-70);
+  background: var(--ink-6);
+  border-color: var(--ink-25);
+}
+
+.card--new .badge--new {
+  background: var(--text-inverse);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+/* Minimenü auf der hellen Karte ebenfalls hell */
+.card--new .kebab.is-open { background: var(--ink-6); }
+
+.card--new .context-menu {
+  background: var(--off-white);
+  box-shadow: 0 8px 22px var(--ink-25);
+}
+
+.card--new .context-menu__item { color: var(--ink-50); }
+.card--new .context-menu__item:hover { background: var(--ink-6); color: var(--text-inverse); }
+.card--new .context-menu__item + .context-menu__item { border-top-color: var(--ink-6); }
+
+/* Fehler & Gelöscht: ausgegraut, kompakt, fallen aus dem Fluss */
+.card--error,
+.card--deleted {
+  background: var(--card-ghost);
+  padding: var(--pad-card);
+}
+
+.card--error .card__top,
+.card--error .card__player,
+.card--error .card__menu-wrap,
+.card--deleted .card__top,
+.card--deleted .card__player,
+.card--deleted .card__menu-wrap { display: none; }
+
+.card--error .card__title-row,
+.card--deleted .card__title-row {
+  min-height: 0;
+  margin: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card--error .card__title,
+.card--deleted .card__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card--error .badge--failed,
+.card--deleted .card__deleted-note { margin-left: auto; flex-shrink: 0; }
+
+.card--error .card__title { color: var(--text-55); max-width: 60%; }
+
+.card--error .badge--failed {
+  color: color-mix(in srgb, var(--fehler-text) 80%, transparent);
+  border-color: color-mix(in srgb, var(--fehler) 45%, transparent);
+  background: none;
+}
+
+.card--deleted .card__title { color: var(--text-40); max-width: 50%; }
+.card--deleted .card__deleted-note { display: inline; color: var(--text-25); }
+
+/* ---- Kebab-Position ---- */
+.card__menu-wrap {
+  position: absolute;
+  top: 9px;
+  right: 8px;
+}
+
+/* ---- Player-Zeile ---- */
+.card__player {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.card__time {
+  font-size: var(--fs-small);
+  letter-spacing: normal;
+  color: var(--text-100);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* Laptop-Höhen: Texteingabe kompakter (auf 14-Zoll war sie zu groß) */
+@media (max-height: 1010px) {
+  .lang-block { margin-top: 32px; }
+  .lang-block__textarea { font-size: 17px; min-height: 72px; line-height: 1.6; }
+  .recipient-line { margin-bottom: 28px; }
+  .creation-view .title-field__input { font-size: 16px; }
+}
+
+/* KI-Hinweis unter dem Composer */
+/* KI-Hinweis: sitzt als leichtes Feld ganz unten in der Ansicht
+   (.creation-block zentriert sich mit margin auto darüber) */
+.ai-note {
+  margin-top: 36px;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  background: var(--white-3);
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.6;
+  color: var(--text-40);
+}

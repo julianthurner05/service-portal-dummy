@@ -1,0 +1,126 @@
+/* ================================================================
+   LOGIN – liegt beim Start über der App
+   ================================================================ */
+.login {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at center, transparent 45%, var(--backdrop) 100%),
+    var(--dunkelblau);
+  transition: opacity var(--dur) var(--ease), visibility 0s linear var(--dur);
+}
+
+.login.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.login__inner {
+  width: 100%;
+  max-width: 550px;
+  min-height: 100vh;
+  padding: 56px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: view-in var(--dur) var(--ease);
+}
+
+.login__logo { width: 120px; opacity: 0.9; }
+
+.login__title {
+  margin-top: auto;
+  font-size: 40px;
+  letter-spacing: var(--ls-heading);
+  font-weight: 400;
+  text-align: center;
+}
+
+.login__sub {
+  margin-top: 14px;
+  font-size: var(--fs-base);
+  color: var(--text-55);
+  text-align: center;
+}
+
+.login__form {
+  width: 100%;
+  margin-top: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login__field {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  background: var(--mittelblau);
+  border: var(--hairline);
+  border-radius: var(--radius-lg);
+}
+
+.login__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-40);
+  min-width: 56px;
+}
+
+.login__field input { flex: 1; min-width: 0; }
+
+.login__submit {
+  margin-top: 8px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-radius: var(--radius-lg);
+  background: var(--nav-active);
+  color: var(--text-inverse);
+  font-size: var(--fs-base);
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.login__submit .icon { width: 18px; height: 18px; }
+
+.login__submit:hover {
+  background: #ffffff;
+  box-shadow: 0 0 28px var(--white-14);
+}
+
+.login__submit:active { transform: scale(0.995); }
+
+.login__forgot {
+  align-self: center;
+  margin-top: 6px;
+  font-size: var(--fs-menu);
+  color: var(--text-40);
+  transition: color var(--transition);
+}
+
+.login__forgot:hover { color: var(--text-80); }
+
+.login__footer {
+  margin-top: auto;
+  padding-top: 48px;
+  display: flex;
+  gap: 32px;
+}
+
+.login__footer a {
+  font-size: var(--fs-base);
+  color: var(--text-40);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.login__footer a:hover { color: var(--text-80); }

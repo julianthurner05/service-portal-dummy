@@ -1,0 +1,887 @@
+/* ================================================================
+   SCHEDULER – Ansicht + Scheduling-History-Karten
+   ================================================================ */
+.schedule-view {
+  /* Dauern kommen aus tokens.css (--dur-sched, --t-glide, --t-box, --t-fade,
+     --t-row, --t-leave, --t-box-close, --t-roll).
+     Auf- und Abbau des Editors – nichts wird geclippt:
+     Aufbau:  Audio-Leiste fährt nach oben (FLIP im JS, --t-glide), Rahmen
+              blendet ein (--t-box), Zeilen ab dessen Hälfte nacheinander
+     Abbau:   Zeilen aus (--t-leave), Rahmen ab 50 % davon, Leiste ab 85 %
+              des Rahmens zurück in die Mitte */
+  width: 100%;
+  max-width: 760px;
+  align-self: flex-start;
+  min-height: 100%;                /* füllt die Höhe, darf aber darüber hinaus wachsen */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Einheitliches Erscheinen/Verschwinden von Blöcken (Wochentage, Konflikt-
+   Hinweis): .reveal – reveal() in schedule.js lässt Höhe und oberen Abstand
+   des Inhalts gleiten, der Inhalt blendet (ab 80 % der Höhenanimation bzw.
+   vor dem Zuklappen). Kein overflow: hidden, alles darunter rückt weich mit. */
+.reveal { display: flex; flex-direction: column; }
+.reveal.is-hidden { display: none; }
+
+.schedule-view .segmented__thumb,
+.schedule-view .repeat-extra,
+.schedule-view #end-wrap,
+.schedule-view .sched-editor::before { transition-duration: var(--dur-sched); }
+
+.schedule-view .title-field { margin-top: 0; height: 46px; }
+
+/* ---- Editor: im Bearbeitungsmodus legt sich ein Farbschleier in der
+        Kategoriefarbe HINTER alle Einstellungen – ohne das Feld zu
+        verkleinern. Die Felder selbst bekommen einen leichten Schleier,
+        damit die Kontraste erhalten bleiben. ---- */
+.sched-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Zwei Spacer halten den Editor mittig, solange kein Audio gewählt ist.
+   Sie springen ohne Übergang – die sichtbare Bewegung der Audio-Leiste
+   macht das JS per FLIP (Position vorher/nachher messen, Transform). */
+.sched-spacer { flex: 1 1 0; }
+.schedule-view.has-audio > .sched-spacer:first-child { flex: 0 0 clamp(24px, 6vh, 64px); }
+.schedule-view.has-audio > .sched-spacer:last-child  { flex: 0 0 0; }
+.schedule-view.is-summary > .sched-spacer:first-child,
+.schedule-view.is-summary > .sched-spacer:last-child { flex: 1 1 0; }   /* Zusammenfassung: wieder mittig (schlägt die has-audio-Regel) */
+
+/* Titel, Einstellungen, Aktionen: ohne Audio gar nicht im Layout,
+   mit Audio sofort an ihrem Platz – nur die Sichtbarkeit wird animiert */
+.sched-editor:not(.has-audio) .sched-stage { display: none; }
+
+/* Zeilen, die nacheinander erscheinen: Titel, dann die Formulargruppen,
+   zuletzt der Button. --i = Position in der Reihenfolge */
+#sched-title-wrap .sched-stage__inner        { --i: 0; }
+.sched-form > :nth-child(1)                  { --i: 1; }
+.sched-form > :nth-child(2)                  { --i: 2; }
+.sched-form > :nth-child(3) .sched-form__group { --i: 3; }   /* Wochentage liegen im Reveal */
+.sched-form > :nth-child(4)                  { --i: 4; }
+.sched-form > :nth-child(5)                  { --i: 5; }
+.sched-form > :nth-child(6)                  { --i: 6; }
+#sched-actions-wrap .sched-stage__inner      { --i: 7; }
+
+/* Zeilen starten, wenn der Rahmen fast fertig gewachsen ist; der Titel
+   über der Leiste kommt schon mit dem Ende der Fahrt */
+#sched-title-wrap .sched-stage__inner,
+.sched-form > :not(.reveal),
+#weekdays-reveal .sched-form__group,
+#sched-actions-wrap .sched-stage__inner {
+  --start: calc(var(--t-glide) - 60ms + var(--t-box) * 0.5);   /* Zeilen starten, wenn der Rahmen halb da ist */
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity   var(--t-fade) var(--ease) calc(var(--start) + var(--i) * var(--t-row)),
+    transform var(--t-fade) var(--ease) calc(var(--start) + var(--i) * var(--t-row));
+}
+
+#sched-title-wrap .sched-stage__inner { --start: calc(var(--t-glide) - 120ms); }
+
+.sched-editor.is-in #sched-title-wrap .sched-stage__inner,
+.sched-editor.is-in .sched-form > :not(.reveal),
+.sched-editor.is-in #weekdays-reveal .sched-form__group,
+.sched-editor.is-in #sched-actions-wrap .sched-stage__inner { opacity: 1; transform: none; }
+
+/* Abbau: schnell, von unten nach oben, ohne Bewegung */
+.sched-editor.is-leaving #sched-title-wrap .sched-stage__inner,
+.sched-editor.is-leaving .sched-form > :not(.reveal),
+.sched-editor.is-leaving #weekdays-reveal .sched-form__group,
+.sched-editor.is-leaving #sched-actions-wrap .sched-stage__inner {
+  transform: none;
+  transition: opacity var(--t-leave) var(--ease) calc((7 - var(--i)) * 20ms);
+}
+
+.sched-editor::before {
+  content: "";
+  position: absolute;
+  inset: -20px -26px -26px;
+  border-radius: var(--radius-lg);
+  background: var(--edit-bg, transparent);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.sched-editor.is-editing::before { opacity: 1; }
+
+/* Editing-Modus: EIN Schema für alle Kategorien.
+   Der Editor färbt sich in der Kategorie (dunkel), alles darauf sind
+   Weiß-Abstufungen per Deckkraft. Aktive Elemente sind weiß, ihre
+   Schrift trägt die Editor-Hintergrundfarbe. */
+.sched-editor.is-editing {
+  --edit-bg:          color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+  --edit-field:       var(--white-6);
+  --edit-field-hover: var(--white-10);
+  --edit-on:          #ffffff;
+  --edit-on-ink:      var(--edit-bg);
+  --edit-pop:         color-mix(in srgb, #ffffff 7%, var(--edit-bg));
+}
+
+
+.sched-editor.is-editing .preview,
+.sched-editor.is-editing .field,
+.sched-editor.is-editing .segmented,
+.sched-editor.is-editing .day-chip,
+.sched-editor.is-editing .dropdown__toggle {
+  background: var(--edit-field);
+  color: var(--text-80);
+}
+
+.sched-editor.is-editing .field__btn:hover,
+.sched-editor.is-editing .dropdown__toggle:hover,
+.sched-editor.is-editing .dropdown.is-open .dropdown__toggle { background: var(--edit-field-hover); }
+
+.sched-editor.is-editing .segmented__thumb { background: var(--edit-on); }
+.sched-editor.is-editing .segmented__option { color: var(--text-55); }
+.sched-editor.is-editing .segmented__option:hover { color: var(--text-80); }
+.sched-editor.is-editing .segmented__option.is-active,
+.sched-editor.is-editing .segmented__option.is-active:hover { color: var(--edit-on-ink); }
+
+.sched-editor.is-editing .day-chip.is-active,
+.sched-editor.is-editing .day-chip.is-active:hover {
+  background: var(--edit-on);
+  color: var(--edit-on-ink);
+}
+
+.sched-editor.is-editing .dropdown__menu,
+.sched-editor.is-editing .datepicker { background: var(--edit-pop); }
+
+.sched-editor.is-editing .datepicker__day.is-selected,
+.sched-editor.is-editing .datepicker__day.is-selected:hover {
+  background: var(--edit-on);
+  color: var(--edit-on-ink);
+}
+
+.sched-editor.is-editing .primary-btn { color: var(--edit-on-ink); }
+
+.sched-editor.is-editing .sched-form {
+  border-color: var(--white-14);
+}
+
+.sched-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  margin-bottom: 4px;
+}
+
+.sched-editor__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-60);
+}
+
+.sched-editor__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-right: -8px;
+  border-radius: 8px;
+  color: var(--text-60);
+  transition: background var(--transition), color var(--transition);
+}
+
+.sched-editor__close:hover { background: var(--hover); color: var(--text-100); }
+.sched-editor__close .icon { width: 13px; height: 13px; }
+
+.sched-editor.is-editing .preview { margin-top: 12px; }
+.sched-editor.is-editing .preview__choose { color: var(--edit-on-ink); }
+
+/* ---- Audio-Vorschau ---- */
+.preview {
+  height: clamp(56px, 6vh, 66px);
+  display: flex;
+  align-items: center;
+  padding: 0 18px 0 24px;
+  background: var(--mittelblau);
+  border-radius: var(--radius-lg);
+}
+
+.preview__empty,
+.preview__player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.preview__empty { justify-content: space-between; }
+.preview--empty { padding: 0 12px 0 18px; }
+
+.preview__empty-text {
+  font-size: var(--fs-base);
+  color: var(--text-40);
+}
+
+.preview__choose {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--nav-active);
+  color: var(--text-inverse);
+  font-size: var(--fs-menu);
+  transition: background var(--transition), box-shadow var(--transition);
+}
+
+.preview__choose:hover { background: #ffffff; box-shadow: 0 0 22px var(--white-10); }
+.preview__choose .icon { width: 13px; height: 13px; }
+
+.preview .play-btn .icon { width: 22px; height: 22px; }
+
+.preview__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.preview__icon-btn + .preview__icon-btn { margin-left: -10px; }
+.preview__icon-btn:hover { background: var(--hover); color: var(--text-100); }
+.preview__icon-btn .icon { width: 14px; height: 14px; }
+.sched-editor.is-editing .preview__icon-btn:hover { background: var(--edit-field-hover); }
+
+.schedule-view #sched-title-wrap .title-field { margin-bottom: clamp(22px, 3vh, 34px); }
+
+/* Erfolgs-Zusammenfassung ersetzt das Formular für zehn Sekunden */
+.sched-editor.is-summary #sched-title-wrap,
+.sched-editor.is-summary .preview,
+.sched-editor.is-summary #sched-body,
+.sched-editor.is-summary #sched-actions-wrap { display: none; }
+
+.sched-summary {
+  position: relative;
+  padding: var(--pad-box);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--cat, transparent) var(--cat-tint), var(--cat-base));
+  overflow: hidden;
+  animation: view-in var(--dur) var(--ease);
+  transition: opacity 240ms var(--ease);
+}
+
+.sched-summary.is-leaving { opacity: 0; }
+
+.sched-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-55);
+}
+
+
+.sched-summary__title {
+  margin-top: 16px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.sched-summary__meta {
+  margin-top: 10px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.sched-summary__meta--config { margin-top: 4px; color: var(--text-55); }
+
+.sched-summary__days {
+  margin-top: 16px;
+  display: flex;
+  gap: 6px;
+}
+
+.sched-summary__actions {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sched-summary__hint {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.sched-summary__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--white-10);
+}
+
+.sched-summary__fill {
+  height: 100%;
+  width: 100%;
+  background: var(--text-55);
+  transform-origin: left;
+  animation: summary-countdown 10s linear forwards;
+}
+
+.sched-summary:hover .sched-summary__fill { animation-play-state: paused; }
+
+@keyframes summary-countdown { to { transform: scaleX(0); } }
+
+.preview__time {
+  font-size: var(--fs-small);
+  color: var(--text-100);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* ---- Formular ---- */
+.sched-form {
+  margin-top: clamp(16px, 2vh, 24px);
+  padding: calc(var(--pad-panel) - 4px) var(--pad-panel) calc(var(--pad-panel) + 4px);   /* optisch rundum gleich */
+  border: var(--hairline);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.sched-form__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-label);
+  margin-bottom: 10px;
+}
+
+.sched-form__group { margin-top: clamp(20px, 2.6vh, 30px); }
+.sched-form__group:first-child { margin-top: 0; }
+.reveal > .sched-form__group { margin-top: clamp(20px, 2.6vh, 30px); }   /* Wochentage-Gruppe ist :first-child im Reveal, braucht den Abstand trotzdem */
+
+.sched-form__row { display: flex; gap: 16px; }
+.sched-form__row > * { flex: 1; min-width: 0; }
+
+#end-wrap { transition: opacity var(--dur) var(--ease); }
+.sched-form.is-single #end-wrap { opacity: 0; pointer-events: none; }
+
+/* Segment-Schalter mit gleitendem Daumen */
+.segmented {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  background: var(--mittelblau);
+  border-radius: var(--radius-md);
+}
+
+.segmented__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: var(--nav-active);
+  border-radius: 8px;
+  transition: transform var(--dur) var(--ease);
+}
+
+.segmented.at-2 .segmented__thumb { transform: translateX(100%); }
+
+.segmented__option {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  height: 38px;
+  border-radius: 8px;
+  color: var(--text-60);
+  font-size: var(--fs-base);
+  transition: color var(--transition);
+}
+
+.segmented__option:hover { color: var(--text-80); }
+
+.segmented__option.is-active,
+.segmented__option.is-active:hover { color: var(--text-inverse); }
+
+/* Eingabefelder */
+.field {
+  position: relative;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--mittelblau);
+  border-radius: var(--radius-md);
+}
+
+.field input { width: 100%; }
+
+/* Datumsfelder */
+.field--date { padding: 0; }
+
+.field__btn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  transition: background var(--transition);
+}
+
+.field__btn:hover { background: var(--card-bg); }
+.field__btn .is-placeholder { color: var(--text-placeholder); }
+
+.field__aux {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 7px;
+  border-radius: 8px;
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.field__aux:hover { background: var(--hover); color: var(--text-100); }
+.field__aux .icon { width: 13px; height: 13px; }
+
+/* Datepicker */
+.datepicker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 264px;
+  padding: var(--pad-toast);
+  background: var(--menu-blau);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  z-index: 25;
+  animation: view-in 200ms var(--ease);
+}
+
+.datepicker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.datepicker__month {
+  font-size: var(--fs-menu);
+  color: var(--text-80);
+}
+
+.datepicker__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.datepicker__nav:hover { background: var(--hover); color: var(--text-100); }
+.datepicker__nav .icon { width: 12px; height: 12px; }
+
+.datepicker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 32px);
+  gap: 2px;
+  justify-content: center;
+}
+
+.datepicker__dow {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-badge);
+  letter-spacing: var(--ls-badge);
+  color: var(--text-40);
+}
+
+.datepicker__day {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: var(--fs-menu);
+  color: var(--text-66);
+  transition: background var(--transition), color var(--transition);
+}
+
+.datepicker__day:hover { background: var(--hover); color: var(--text-100); }
+.datepicker__day.is-muted { color: var(--text-25); }
+
+.datepicker__day.is-today::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.datepicker__day.is-selected,
+.datepicker__day.is-selected:hover {
+  background: var(--nav-active);
+  color: var(--text-inverse);
+}
+
+.datepicker__foot {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: var(--hair-w) solid rgba(255, 255, 255, var(--hair-a-menu));
+  display: flex;
+  justify-content: flex-end;
+}
+
+.datepicker__infinite {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: var(--fs-menu);
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.datepicker__infinite:hover { background: var(--hover); color: var(--text-100); }
+.datepicker__infinite .icon { width: 13px; height: 13px; }
+
+/* Wochentage: 46 breit, damit sie optisch quadratisch wirken */
+.day-chips {
+  display: grid;
+  grid-template-columns: repeat(7, 46px);
+  gap: 10px;
+  justify-content: start;
+}
+
+.day-chip {
+  width: 46px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--mittelblau);
+  color: var(--text-60);
+  font-size: var(--fs-base);
+  transition: background var(--transition), color var(--transition);
+}
+
+.day-chip:hover { color: var(--text-80); }
+
+.day-chip.is-active,
+.day-chip.is-active:hover {
+  background: var(--nav-active);
+  color: var(--text-inverse);
+}
+
+/* Wiederholungszeile */
+.repeat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.repeat-row__word {
+  font-size: var(--fs-label);
+  color: var(--text-40);
+  white-space: nowrap;
+}
+
+.repeat-row__spacer { flex: 1; }
+
+.repeat-extra { transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+
+.sched-form.is-once .repeat-extra {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+}
+
+.dropdown--time { flex: 0 0 112px; }
+.sched-form .dropdown__toggle { height: 40px; }
+.dropdown--full { width: 100%; }
+
+
+/* ================================================================
+   KONFLIKT-HINWEIS – ein Streifen unter der Zeitzeile.
+   Der WRAPPER trägt Hintergrund, Höhe und Abstand und animiert sie rein
+   per CSS (0 → 46px), völlig unabhängig vom Inhalt. Der Inhalt liegt
+   absolut darin (beeinflusst die Höhe nie) und blendet zeilenweise ein,
+   sobald der Wrapper zu ~80 % da ist; beim Schließen erst der Inhalt,
+   dann der Wrapper. Kein display: none, kein overflow: hidden, kein JS-Messen.
+   ================================================================ */
+.conflict-wrap {
+  --strip-h: 46px;
+  --strip-gap: clamp(20px, 2.6vh, 30px);   /* wie zwischen den Formulargruppen */
+  position: relative;
+  height: 0;
+  margin-top: 0;
+  opacity: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--fehler) 16%, var(--mittelblau));
+  pointer-events: none;
+  transition:
+    height     360ms var(--ease) 100ms,
+    margin-top 360ms var(--ease) 100ms,
+    opacity    160ms var(--ease) 300ms,
+    background var(--dur-sched) var(--ease);
+}
+
+.conflict-wrap.is-open {
+  height: var(--strip-h);
+  margin-top: var(--strip-gap);
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    height     360ms var(--ease),
+    margin-top 360ms var(--ease),
+    opacity    160ms var(--ease),
+    background var(--dur-sched) var(--ease);
+}
+
+.conflict-wrap.is-blocking { background: color-mix(in srgb, var(--fehler) 26%, var(--mittelblau)); }
+.conflict-wrap.is-ok       { background: color-mix(in srgb, var(--gruen) 18%, var(--mittelblau)); }
+
+.conflict-strip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 15px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+}
+
+.conflict-strip.has-button { padding-right: 10px; }
+
+/* Inhalt: nacheinander einblenden (--i per JS), Start bei ~80 % des Wrappers */
+.conflict-strip > * {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity   var(--t-fade) var(--ease) calc(290ms + var(--i, 0) * var(--t-row)),
+    transform var(--t-fade) var(--ease) calc(290ms + var(--i, 0) * var(--t-row));
+}
+
+.conflict-strip.is-in > * { opacity: 1; transform: none; }
+.conflict-strip:not(.is-in) > * { transition: opacity 150ms var(--ease); transform: none; }
+
+/* Inhaltswechsel bei offenem Streifen: geänderte Teile rollen dezent von unten nach */
+@keyframes strip-roll { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.conflict-strip.is-in > .is-rolling { animation: strip-roll var(--t-roll) var(--ease); }
+
+.conflict-strip__title { color: var(--text-80); white-space: nowrap; flex-shrink: 0; }
+
+.conflict-strip__times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;                /* nur Sicherheitsnetz gegen zu viele Chips, animiert nichts */
+}
+
+.conflict-strip__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  background: var(--white-6);
+  color: var(--text-55);
+  white-space: nowrap;
+}
+
+.conflict-strip__dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.conflict-strip__more { color: var(--text-40); white-space: nowrap; }
+
+/* Vorschlags-Button = .ghost-btn--sm --fill (base.css) */
+.conflict-strip__suggest { margin-left: auto; }
+
+.conflict-strip__note { color: var(--text-55); white-space: nowrap; flex-shrink: 0; }
+
+/* Inhalt: nacheinander einblenden (--i per JS); beim Crossfade alle zugleich */
+.conflict-strip > * {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity   var(--t-fade) var(--ease) calc(var(--c-start, 0ms) + var(--i, 0) * var(--t-row)),
+    transform var(--t-fade) var(--ease) calc(var(--c-start, 0ms) + var(--i, 0) * var(--t-row));
+}
+
+.conflict-strip.is-in > * { opacity: 1; transform: none; }
+
+.conflict-strip.is-leaving > * { opacity: 0; transform: none; transition: opacity 150ms var(--ease); }
+
+/* Aktionen */
+.schedule-actions {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+/* ================================================================
+   SCHEDULING-HISTORY-KARTEN – Kategorie färbt die Karte
+   ================================================================ */
+.sched-card {
+  position: relative;
+  background: color-mix(in srgb, var(--cat, transparent) var(--cat-tint), var(--cat-base));
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: opacity var(--transition);
+}
+
+.sched-card--new { animation: card-in 260ms var(--ease); }
+
+.sched-card.is-leaving {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 220ms var(--ease), transform 220ms var(--ease);
+}
+
+/* Bearbeiten: die Karte behält ihre Farbe – alle anderen treten zurück
+   und sind nicht anwählbar */
+.history__list.has-editing .sched-card:not(.is-editing) { opacity: 0.4; }
+.history__list.has-editing .sched-card:not(.is-editing) .sched-card__actions { opacity: 0.35; pointer-events: none; }
+
+.sched-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.sched-card__title {
+  font-size: var(--fs-card-title);
+  letter-spacing: var(--ls-card-title);
+  font-weight: 400;
+  line-height: 1.45;
+  max-width: 250px;
+}
+
+.sched-card__days {
+  display: grid;
+  grid-template-columns: repeat(4, 30px);
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mini-day {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-badge);
+  color: var(--text-40);
+  background: var(--white-3);
+}
+
+.mini-day.is-active {
+  background: var(--nav-active);
+  color: var(--text-inverse);
+}
+
+.sched-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 72px;
+}
+
+.sched-card__meta-dates {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.sched-card__status {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--white-6);
+  color: var(--text-55);
+}
+
+.sched-card--expired { opacity: 0.32; }
+
+.sched-card__meta-config {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+}
+
+/* Aktionen unten rechts: Bearbeiten & Löschen */
+.sched-card__actions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 2px;
+}
+
+.sched-card__action {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.sched-card__action:hover { background: var(--hover); color: var(--text-100); }
+.sched-card__action .icon { width: 13px; height: 13px; stroke-width: 1.8; }
+
+/* Vom Betreiber vordefiniert */
+.sched-card__lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.sched-card__lock .icon { width: 11px; height: 11px; }
+
+/* Harter Umschnitt (nach bestätigtem Discard): keinerlei Übergänge,
+   während writeForm die neuen Werte setzt */
+.schedule-view.is-instant *,
+.schedule-view.is-instant *::before,
+.schedule-view.is-instant *::after {
+  transition: none !important;
+  animation: none !important;
+}

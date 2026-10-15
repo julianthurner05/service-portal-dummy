@@ -1,0 +1,268 @@
+/* ================================================================
+   ACCOUNT – Profil, Sessions, Passwort, MFA, Benachrichtigungen
+   ================================================================ */
+.account-view {
+  width: 100%;
+  max-width: 960px;
+  align-self: flex-start;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: view-in var(--dur-fast) var(--ease);
+}
+
+/* ---- Banner (Foto als <img loading="eager">, --banner-image als Fallback) ---- */
+.account-banner {
+  position: relative;
+  height: 200px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--card-bg);
+  background-image: var(--banner-image), linear-gradient(115deg, var(--menu-blau) 0%, var(--card-bg) 45%, var(--menu-blau) 100%);
+  background-size: cover;
+  background-position: center;
+}
+
+.account-banner__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-banner__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--ink) 0%, var(--ink-25) 55%, var(--ink-6) 100%);
+}
+
+.account-banner__content {
+  position: absolute;
+  left: 30px;
+  bottom: 26px;
+}
+
+.account-banner__eyebrow {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-section);
+  color: var(--text-55);
+  margin-bottom: 6px;
+}
+
+.account-banner__title {
+  font-size: 24px;
+  letter-spacing: var(--ls-heading);
+  font-weight: 400;
+}
+
+/* ---- Karten-Raster ---- */
+.account-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.acc-card {
+  border: var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-panel);
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+/* MFA noch nicht aktiv: dezent hervorgehoben */
+/* MFA-Hervorhebung – Stand v1: Gelb immer über Deckkraft abgesenkt,
+   volle helle Farben wirken sonst dicker als die Haarlinien */
+.acc-card--attention {
+  border-color: color-mix(in srgb, var(--gelb-soft) 45%, transparent);
+}
+
+.acc-card--attention .acc-status {
+  color: var(--gelb-soft);
+  border-color: color-mix(in srgb, var(--gelb-soft) 45%, transparent);
+}
+
+
+.acc-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.acc-card__title {
+  font-size: var(--fs-base);
+  font-weight: 400;
+  margin-bottom: 14px;
+}
+
+.acc-card__head .acc-card__title { margin-bottom: 0; }
+
+.acc-text {
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  line-height: 1.55;
+  color: var(--text-55);
+}
+
+.acc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  border-top: var(--hair-w) solid rgba(255, 255, 255, var(--hair-a-menu));
+}
+
+.acc-row:first-of-type { border-top: none; }
+
+.acc-row__label {
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  color: var(--text-40);
+  white-space: nowrap;
+}
+
+.acc-row__value {
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  color: var(--text-80);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acc-status {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-badge);
+  letter-spacing: var(--ls-badge);
+  color: var(--text-55);
+  border: var(--hair-w) solid var(--white-14);
+}
+
+.acc-status.is-on {
+  color: var(--text-inverse);
+  background: var(--nav-active);
+  border-color: transparent;
+}
+
+.acc-card__actions {
+  margin-top: auto;                  /* sitzt am unteren Ende der Karte */
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+/* Ghost-Button (Log out, Disable) */
+
+/* Felder innerhalb der Karten: dunkler als die Karte, mit Hairline */
+.acc-card .mfa-code input,
+.acc-card .mfa-key__code {
+  background: var(--white-3);
+  border: var(--hairline);
+}
+
+.acc-card--wide { grid-column: 1 / -1; }
+
+/* ---- MFA ---- */
+.mfa-setup {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.mfa-qr {
+  flex-shrink: 0;
+  width: 112px;
+  height: 112px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--off-white);
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1px;
+}
+
+.mfa-qr span { background: var(--ink); border-radius: 1px; }
+.mfa-qr span.off { background: transparent; }
+
+.mfa-key { min-width: 0; }
+
+.mfa-key__code {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--text-80);
+}
+
+.mfa-code {
+  margin-top: 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.mfa-code input {
+  width: 42px;
+  height: 48px;
+  text-align: center;
+  font-size: 18px;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition);
+}
+
+.mfa-code input:focus { border-color: var(--text-40); }
+
+.mfa-backup {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 18px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-66);
+}
+
+/* ---- Switch (auch im Kalender: "Show titles") ---- */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--white-14);
+  transition: background var(--transition);
+}
+
+.switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-66);
+  transition: transform var(--dur-fast) var(--ease), background var(--transition);
+}
+
+.switch.is-on { background: var(--nav-active); }
+.switch.is-on .switch__knob { background: var(--text-inverse); transform: translateX(16px); }
+
+@media (max-width: 980px) {
+  .account-grid { grid-template-columns: 1fr; }
+}

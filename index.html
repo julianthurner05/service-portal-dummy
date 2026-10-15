@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpotTool – sounddna</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/creation.css">
+  <link rel="stylesheet" href="css/schedule.css">
+  <link rel="stylesheet" href="css/calendar.css">
+  <link rel="stylesheet" href="css/account.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+  <!-- ============ ICON-SPRITE (lucide) – wird per <use href="#i-…"> referenziert ============ -->
+  <svg class="sprite" aria-hidden="true">
+    <!-- Home-Icon: Original "Pfad 93" aus Figma (gefüllt) -->
+    <symbol id="i-home" viewBox="0 0 21.42 22.45"><path d="M1.66784 20.6149 L1.66784 10.9589 C1.66599 10.8202 1.69479 10.6829 1.75218 10.5567 C1.80958 10.4305 1.89414 10.3186 1.99984 10.2289 C3.92484 8.30386 8.17184 4.42186 10.4948 2.12886 C10.5203 2.0905 10.5548 2.05902 10.5954 2.03725 C10.636 2.01548 10.6813 2.00409 10.7273 2.00409 C10.7734 2.00409 10.8187 2.01548 10.8593 2.03725 C10.8998 2.05902 10.9344 2.0905 10.9598 2.12886 C13.2498 4.41886 17.4968 8.30086 19.4218 10.2289 C19.532 10.3301 19.6188 10.4541 19.6761 10.5922 C19.7335 10.7304 19.76 10.8794 19.7538 11.0289 L19.7538 20.6189 C19.7551 20.641 19.7518 20.6632 19.7439 20.6839 C19.736 20.7046 19.7238 20.7235 19.7081 20.7392 C19.6924 20.7548 19.6736 20.767 19.6529 20.7749 C19.6322 20.7828 19.61 20.7862 19.5878 20.7849 L15.0738 20.7849 C15.0517 20.7862 15.0295 20.7828 15.0088 20.7749 C14.9881 20.767 14.9692 20.7548 14.9535 20.7392 C14.9379 20.7235 14.9257 20.7046 14.9178 20.6839 C14.9099 20.6632 14.9065 20.641 14.9078 20.6189 L14.9078 16.7999 C14.9078 16.2483 14.7992 15.7022 14.5881 15.1926 C14.3771 14.683 14.0677 14.22 13.6777 13.83 C13.2877 13.44 12.8247 13.1306 12.3151 12.9196 C11.8055 12.7085 11.2594 12.5999 10.7078 12.5999 C10.1563 12.5999 9.61014 12.7085 9.10057 12.9196 C8.591 13.1306 8.128 13.44 7.73799 13.83 C7.34799 14.22 7.03862 14.683 6.82755 15.1926 C6.61648 15.7022 6.50784 16.2483 6.50784 16.7999 L6.50784 20.6159 C6.50915 20.638 6.50576 20.6602 6.49788 20.6809 C6.49 20.7016 6.47781 20.7205 6.46213 20.7362 C6.44645 20.7518 6.42762 20.764 6.40688 20.7719 C6.38615 20.7798 6.36398 20.7832 6.34184 20.7819 L1.83384 20.7819 C1.81161 20.7832 1.78935 20.7798 1.76854 20.7718 C1.74774 20.7639 1.72886 20.7516 1.71316 20.7358 C1.69745 20.72 1.68529 20.7011 1.67748 20.6802 C1.66967 20.6594 1.66638 20.6371 1.66784 20.6149 Z M1.66784 22.4399 L6.84484 22.4399 C7.02437 22.4619 7.20656 22.4427 7.37758 22.3838 C7.54859 22.3249 7.70395 22.2278 7.83185 22.0999 C7.95975 21.972 8.05683 21.8166 8.11574 21.6456 C8.17465 21.4746 8.19383 21.2924 8.17184 21.1129 L8.17184 16.7999 C8.13814 16.4462 8.17871 16.0894 8.29095 15.7523 C8.40319 15.4152 8.58463 15.1054 8.82363 14.8425 C9.06263 14.5796 9.35392 14.3696 9.67882 14.2259 C10.0037 14.0822 10.3551 14.008 10.7103 14.008 C11.0656 14.008 11.417 14.0822 11.7419 14.2259 C12.0668 14.3696 12.3581 14.5796 12.5971 14.8425 C12.8361 15.1054 13.0175 15.4152 13.1297 15.7523 C13.242 16.0894 13.2825 16.4462 13.2488 16.7999 L13.2488 21.1139 C13.2268 21.2934 13.246 21.4756 13.3049 21.6466 C13.3638 21.8176 13.4609 21.973 13.5888 22.1009 C13.7167 22.2288 13.8721 22.3259 14.0431 22.3848 C14.2141 22.4437 14.3963 22.4629 14.5758 22.4409 L20.0838 22.4409 C20.2633 22.4626 20.4454 22.4431 20.6162 22.384 C20.7871 22.3249 20.9422 22.2277 21.0699 22.0997 C21.1976 21.9717 21.2945 21.8163 21.3532 21.6454 C21.4119 21.4744 21.4309 21.2923 21.4088 21.1129 L21.4088 10.8259 C21.4238 10.5231 21.3725 10.2208 21.2585 9.93993 C21.1445 9.65908 20.9706 9.40651 20.7488 9.19986 L11.6558 0.472864 C11.5492 0.326388 11.4095 0.207197 11.2481 0.125017 C11.0866 0.0428379 10.908 0 10.7268 0 C10.5457 0 10.3671 0.0428379 10.2056 0.125017 C10.0442 0.207197 9.90445 0.326388 9.79784 0.472864 L0.708841 9.19986 C0.477912 9.40123 0.295131 9.65186 0.173978 9.93328 C0.0528257 10.2147 -0.00360756 10.5197 0.0088399 10.8259 L0.0088399 21.1129 C-0.013157 21.2924 0.00602867 21.4746 0.0649388 21.6456 C0.123849 21.8166 0.220936 21.972 0.348836 22.0999 C0.476736 22.2278 0.632086 22.3249 0.803102 22.3838 C0.974117 22.4427 1.1563 22.4619 1.33584 22.4399 L1.66784 22.4399 Z"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/></symbol>
+    <symbol id="i-gantt" viewBox="0 0 24 24"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M8 11h7"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+    <symbol id="i-kebab" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="i-reuse" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
+    <!-- Player (gefüllt) -->
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5" y="4" width="4.5" height="16" rx="1.5"/><rect x="14.5" y="4" width="4.5" height="16" rx="1.5"/></symbol>
+  </svg>
+
+  <!-- Mobile: Kopfleiste mit Menü-Button -->
+  <div class="mobile-bar">
+    <button class="mobile-bar__menu" id="mobile-menu" aria-label="Open menu">
+      <svg class="icon"><use href="#i-panel"/></svg>
+    </button>
+    <img class="mobile-bar__logo" src="assets/logo.svg" alt="sounddna">
+  </div>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <img class="sidebar__logo" src="assets/logo.svg" alt="sounddna">
+
+    <nav class="sidebar__nav">
+      <button class="nav-item" data-view="home">
+        <svg class="icon icon--filled"><use href="#i-home"/></svg>
+        <span>Home</span>
+      </button>
+
+      <p class="sidebar__section-label">Text-to-Store</p>
+
+      <button class="nav-item is-active" data-view="spot-creation">
+        <svg class="icon"><use href="#i-wave"/></svg>
+        <span>SpotTool</span>
+        <span class="nav-item__dot" title="Draft in progress"></span>
+      </button>
+
+      <button class="nav-item" data-view="schedule">
+        <svg class="icon"><use href="#i-gantt"/></svg>
+        <span>Scheduler</span>
+        <span class="nav-item__dot" title="Draft in progress"></span>
+      </button>
+
+      <button class="nav-item" data-view="calendar">
+        <svg class="icon"><use href="#i-calendar"/></svg>
+        <span>Calendar</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__bottom">
+      <button class="nav-item" data-view="account">
+        <svg class="icon"><use href="#i-user"/></svg>
+        <span>Account</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <!-- Home -->
+    <section class="home-view" data-screen="home" hidden>
+
+      <div class="home-hero">
+        <div>
+          <p class="home-hero__date" id="home-date"></p>
+          <h1 class="home-hero__title">Welcome back, Julian.</h1>
+        </div>
+        <div class="home-hero__actions">
+          <button class="ghost-btn" data-go="schedule">Plan schedule</button>
+          <button class="primary-btn primary-btn--small" data-go="spot-creation">
+            <svg class="icon"><use href="#i-wave"/></svg>
+            Create spot
+          </button>
+        </div>
+      </div>
+
+      <div class="home-stats" id="home-stats"></div>
+
+      <div class="home-grid">
+        <section class="home-card">
+          <div class="home-card__head">
+            <h2 class="home-card__title">Up next today</h2>
+            <span class="home-card__meta" id="home-today-count"></span>
+          </div>
+          <div class="home-next" id="home-next"></div>
+        </section>
+
+        <section class="home-card">
+          <div class="home-card__head">
+            <h2 class="home-card__title">This week</h2>
+            <span class="home-card__meta" id="home-week-total"></span>
+          </div>
+          <div class="home-chart" id="home-chart"></div>
+        </section>
+
+        <section class="home-card">
+          <div class="home-card__head">
+            <h2 class="home-card__title home-card__title--soft">Last generated spot</h2>
+            <button class="ghost-btn ghost-btn--sm" data-go="spot-creation">
+              All spots
+              <svg class="icon"><use href="#i-arrow-right"/></svg>
+            </button>
+          </div>
+          <div class="home-last" id="home-last"></div>
+        </section>
+
+        <section class="home-card">
+          <div class="home-card__head">
+            <h2 class="home-card__title">Store</h2>
+          </div>
+          <div class="acc-row"><span class="acc-row__label">Location</span><span class="acc-row__value">IKEA Vösendorf</span></div>
+          <div class="acc-row"><span class="acc-row__label">Opening hours</span><span class="acc-row__value" id="home-hours"></span></div>
+          <div class="acc-row"><span class="acc-row__label">Quiet hour</span><span class="acc-row__value" id="home-quiet"></span></div>
+          <div class="acc-row"><span class="acc-row__label">Spots go to</span><span class="acc-row__value">julian.thurner@sound-dna.com</span></div>
+        </section>
+
+        <section class="home-card home-card--wide home-slots">
+          <div class="home-slots__explain">
+            <p class="home-slots__big">30 min</p>
+            <div>
+              <h2 class="home-card__title">Your slot grid</h2>
+              <p class="acc-text">Every announcement occupies one 30-minute slot, and each slot holds exactly one spot. Closing announcements sit in fixed slots reserved by sounddna.</p>
+            </div>
+          </div>
+          <div class="home-slots__usage">
+            <div class="home-slots__row"><span class="acc-row__label">Slots per day</span><span class="acc-row__value" id="home-slots-day"></span></div>
+            <div class="home-slots__row"><span class="acc-row__label">Used this week</span><span class="acc-row__value" id="home-slots-used"></span></div>
+            <div class="home-slots__bar"><div class="home-slots__fill" id="home-slots-fill"></div></div>
+            <p class="home-slots__hint" id="home-slots-hint"></p>
+          </div>
+        </section>
+      </div>
+
+    </section>
+
+    <!-- Spot Creation -->
+    <section class="creation-view" data-screen="creation">
+
+      <p class="recipient-line">
+        <span class="recipient-line__label">Spots go to</span>
+        <span class="recipient-line__name">Julian Thurner</span>
+        <span class="recipient-line__sep">·</span>
+        <span class="recipient-line__email">julian.thurner@sound-dna.com</span>
+      </p>
+
+      <div class="creation-block" id="creation-block">
+
+      <div class="creation-toolbar">
+        <button class="ghost-btn ghost-btn--sm" id="composer-clear" type="button">
+          <svg class="icon"><use href="#i-x"/></svg>
+          Clear all
+        </button>
+      </div>
+
+      <div class="title-field">
+        <label class="title-field__label" for="spot-title">Title</label>
+        <input class="title-field__input" id="spot-title" type="text" placeholder="Enter your Title here..." autocomplete="off" value="IKEA Family Angebot RIAN Beistelltisch">
+      </div>
+
+      <div class="lang-block">
+        <p class="lang-block__label" id="first-lang-label">First Language</p>
+        <textarea class="lang-block__textarea" id="text-first" rows="1" spellcheck="false" placeholder="Write your announcement here..." aria-labelledby="first-lang-label">Liebe IKEA Kundin, lieber IKEA Kunde!
+Entdecke jede Woche ein neues Angebot für IKEA Family Mitglieder. RIAN, Beistelltisch um nur € 9,99 statt um € 29,99. Das und viele weitere Angebote findest du unter ikea.at/Vösendorf.
+Lebe Smart!</textarea>
+      </div>
+
+      <button class="lang-toggle" id="lang-toggle" aria-expanded="true" aria-controls="second-lang-area">
+        <span class="lang-toggle__line"></span>
+        <svg class="icon lang-toggle__icon" id="lang-toggle-icon"><use href="#i-minus"/></svg>
+        <span class="lang-toggle__label">Second Language</span>
+        <span class="lang-toggle__line"></span>
+      </button>
+
+      <div class="collapse lang-collapse is-open" id="second-lang-area">
+        <div class="collapse__inner">
+          <div class="lang-block">
+            <p class="lang-block__label" id="second-lang-label">Second Language</p>
+            <textarea class="lang-block__textarea" id="text-second" rows="1" spellcheck="false" placeholder="Write your announcement in the second language here..." aria-labelledby="second-lang-label">Dear IKEA customer!
+Discover a new offer for IKEA Family members every week. RIAN side table for only € 9.99 instead of € 29.99. Find this and many more offers at ikea.at/Vösendorf.
+Lebe Smart!</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer__footer">
+        <div class="composer__stats">
+          <span id="composer-words"></span>
+          <span id="composer-duration"></span>
+        </div>
+        <!-- EXTRA: Create-Button -->
+        <button class="primary-btn" id="create-btn">
+          <svg class="icon"><use href="#i-wave"/></svg>
+          <span>Create Spot</span>
+        </button>
+      </div>
+
+      </div>
+
+      <p class="ai-note">Spots are generated with AI voices. Mistakes can happen – always listen to the result and double-check names, prices and dates before scheduling.</p>
+
+    </section>
+
+    <!-- Schedule -->
+    <section class="schedule-view" data-screen="schedule" hidden>
+
+      <div class="sched-spacer" aria-hidden="true"></div>
+
+      <div class="sched-editor" id="sched-editor">
+
+        <div class="sched-editor__head" id="sched-editor-head" hidden>
+          <span class="sched-editor__label">Editing</span>
+          <button class="sched-editor__close" id="sched-editor-close" aria-label="Cancel editing" data-tip="Cancel" data-tip-pos="bottom">
+            <svg class="icon"><use href="#i-x"/></svg>
+          </button>
+        </div>
+
+        <div class="sched-stage" id="sched-title-wrap">
+        <div class="sched-stage__inner">
+        <div class="title-field">
+          <label class="title-field__label" for="sched-title">Scheduling Title</label>
+          <input class="title-field__input" id="sched-title" type="text" placeholder="Enter your title here..." autocomplete="off">
+        </div>
+        </div>
+        </div>
+
+        <div class="preview" id="preview">
+          <div class="preview__empty" id="preview-empty">
+            <span class="preview__empty-text">No announcement selected</span>
+            <button class="preview__choose" id="preview-choose" type="button">
+              Choose audio
+              <svg class="icon"><use href="#i-arrow-right"/></svg>
+            </button>
+          </div>
+          <div class="preview__player" id="preview-player" hidden>
+            <button class="play-btn" id="preview-play" aria-label="Play">
+              <svg class="icon icon--filled"><use href="#i-play"/></svg>
+            </button>
+            <div class="slider" id="preview-slider">
+              <div class="slider__track"></div>
+              <div class="slider__progress"></div>
+              <div class="slider__thumb"></div>
+            </div>
+            <span class="preview__time" id="preview-time">00:09</span>
+            <button class="preview__icon-btn" id="preview-replace" aria-label="Replace audio" data-tip="Replace audio">
+              <svg class="icon"><use href="#i-wave"/></svg>
+            </button>
+            <button class="preview__icon-btn" id="preview-clear" aria-label="Clear all" data-tip="Clear all">
+              <svg class="icon"><use href="#i-x"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="sched-stage" id="sched-body">
+        <div class="sched-stage__inner">
+
+        <div class="sched-form" id="sched-form">
+
+          <div class="sched-form__group">
+            <p class="sched-form__label">Schedule Type</p>
+            <div class="segmented" id="type-segment">
+              <span class="segmented__thumb"></span>
+              <button class="segmented__option" data-value="single">Single Day</button>
+              <button class="segmented__option is-active" data-value="weekly">Weekly</button>
+            </div>
+          </div>
+
+          <div class="sched-form__group">
+            <div class="sched-form__row">
+              <div>
+                <p class="sched-form__label">Start</p>
+                <div class="field field--date" id="start-field">
+                  <button class="field__btn" id="start-btn" type="button"><span id="start-value"></span></button>
+                </div>
+              </div>
+              <div id="end-wrap">
+                <p class="sched-form__label">End</p>
+                <div class="field field--date" id="end-field">
+                  <button class="field__btn" id="end-btn" type="button"><span id="end-value"></span></button>
+                  <button class="field__aux" id="end-aux" type="button" aria-label="Toggle infinite" data-tip="Infinite">
+                    <svg class="icon" id="end-aux-icon"></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="reveal" id="weekdays-reveal">
+              <div class="sched-form__group">
+                <p class="sched-form__label">Week Days</p>
+                <div class="day-chips" id="day-chips">
+                  <button class="day-chip" data-day="Mo">Mo</button>
+                  <button class="day-chip" data-day="Tu">Tu</button>
+                  <button class="day-chip" data-day="We">We</button>
+                  <button class="day-chip" data-day="Th">Th</button>
+                  <button class="day-chip" data-day="Fr">Fr</button>
+                  <button class="day-chip" data-day="Sa">Sa</button>
+                  <button class="day-chip" data-day="Su">Su</button>
+                </div>
+              </div>
+          </div>
+
+          <div class="sched-form__group">
+            <p class="sched-form__label">Time</p>
+            <div class="segmented" id="time-segment">
+              <span class="segmented__thumb"></span>
+              <button class="segmented__option" data-value="once">Once per Day</button>
+              <button class="segmented__option is-active" data-value="repeat">Repeat</button>
+            </div>
+          </div>
+
+          <div class="sched-form__group">
+            <div class="repeat-row">
+              <div class="dropdown dropdown--time" id="time-from"></div>
+              <span class="repeat-row__word repeat-extra">to</span>
+              <div class="dropdown dropdown--time repeat-extra" id="time-to"></div>
+              <span class="repeat-row__spacer"></span>
+              <span class="repeat-row__word repeat-extra">every</span>
+              <div class="dropdown dropdown--time repeat-extra" id="every-dropdown"></div>
+            </div>
+            <div class="conflict-wrap" id="conflict-wrap"><div class="conflict-strip" id="conflict-strip"></div></div>
+          </div>
+
+          <div class="sched-form__group">
+            <p class="sched-form__label">Category</p>
+            <div class="dropdown dropdown--full" id="category-dropdown"></div>
+          </div>
+
+        </div>
+
+        </div>
+        </div>
+
+        <div class="sched-summary" id="sched-summary" hidden></div>
+
+        <div class="sched-stage" id="sched-actions-wrap">
+        <div class="sched-stage__inner">
+
+        <div class="schedule-actions">
+          <button class="cancel-btn" id="cancel-edit" hidden>Cancel</button>
+          <button class="primary-btn" id="schedule-btn">
+            <span id="schedule-btn-label">Send to Schedule</span>
+            <svg class="icon"><use href="#i-arrow-up-right"/></svg>
+          </button>
+        </div>
+
+        </div>
+        </div>
+
+      </div>
+
+
+      <div class="sched-spacer" aria-hidden="true"></div>
+
+    </section>
+
+    <!-- Calendar -->
+    <section class="calendar-view" data-screen="calendar" hidden>
+      <div class="cal-head">
+        <h1 class="cal-head__title">Announcement Calendar</h1>
+        <div class="cal-week">
+          <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
+            <svg class="icon"><use href="#i-chevron-left"/></svg>
+          </button>
+          <span class="cal-week__label" id="cal-range"></span>
+          <button class="cal-week__nav" id="cal-next" aria-label="Next week" data-tip="Next week">
+            <svg class="icon"><use href="#i-chevron-right"/></svg>
+          </button>
+        </div>
+        <button class="cal-today" id="cal-today">Today</button>
+        <div class="cal-legend" id="cal-legend"></div>
+        <span class="cal-hint">Every slot represents 30 minutes.</span>
+        <label class="cal-toggle">
+          <span>Show titles</span>
+          <button class="switch" id="cal-titles" role="switch" aria-checked="false"><span class="switch__knob"></span></button>
+        </label>
+      </div>
+      <div class="cal-days" id="cal-days"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <p class="cal-empty" id="cal-empty" hidden></p>
+    </section>
+
+    <!-- Account -->
+    <section class="account-view" data-screen="account" hidden>
+
+      <!-- Das Foto lädt eager, damit es beim Öffnen der Ansicht schon da ist;
+           --banner-image in tokens.css ist der Fallback, falls es fehlschlägt -->
+      <div class="account-banner">
+        <img class="account-banner__img" src="https://commons.wikimedia.org/wiki/Special:FilePath/IKEA_%288020223012%29.jpg?width=1600" alt="" loading="eager" decoding="async" onerror="this.remove()">
+        <div class="account-banner__shade"></div>
+        <div class="account-banner__content">
+          <h1 class="account-banner__title">IKEA Vösendorf</h1>
+        </div>
+      </div>
+
+      <div class="account-grid">
+
+        <section class="acc-card">
+          <h2 class="acc-card__title">Profile</h2>
+          <div class="acc-row"><span class="acc-row__label">Name</span><span class="acc-row__value">Julian Thurner</span></div>
+          <div class="acc-row"><span class="acc-row__label">E-Mail</span><span class="acc-row__value">julian.thurner@sound-dna.com</span></div>
+          <div class="acc-row"><span class="acc-row__label">Last logged in</span><span class="acc-row__value" id="acc-last-login"></span></div>
+          <div class="acc-card__actions">
+            <button class="ghost-btn ghost-btn--danger" id="acc-logout">
+              <svg class="icon"><use href="#i-logout"/></svg>
+              Log out
+            </button>
+          </div>
+        </section>
+
+        <section class="acc-card">
+          <h2 class="acc-card__title">Password</h2>
+          <p class="acc-text">We will send a secure link to your e-mail address. The link is valid for 30 minutes.</p>
+          <div class="acc-card__actions">
+            <button class="primary-btn primary-btn--small" id="pw-request">Change password</button>
+          </div>
+        </section>
+
+        <section class="acc-card acc-card--wide acc-card--attention" id="mfa-card">
+          <div class="acc-card__head">
+            <h2 class="acc-card__title">Two-factor authentication</h2>
+            <span class="acc-status" id="mfa-status">Recommended</span>
+          </div>
+
+          <div id="mfa-off">
+            <p class="acc-text">Protect your account with a one-time code from an authenticator app.</p>
+            <div class="acc-card__actions">
+              <button class="primary-btn primary-btn--small" id="mfa-start">Set up</button>
+            </div>
+          </div>
+
+          <div id="mfa-step1" hidden>
+            <p class="acc-text">Scan the code with your authenticator app or enter the key manually.</p>
+            <div class="mfa-setup">
+              <div class="mfa-qr" id="mfa-qr" aria-hidden="true"></div>
+              <div class="mfa-key">
+                <p class="sched-form__label">Setup key</p>
+                <code class="mfa-key__code">SDNA K7QX 2M9P L4WT</code>
+              </div>
+            </div>
+            <div class="acc-card__actions">
+              <button class="cancel-btn" id="mfa-cancel">Cancel</button>
+              <button class="primary-btn primary-btn--small" id="mfa-next">Next</button>
+            </div>
+          </div>
+
+          <div id="mfa-step2" hidden>
+            <p class="acc-text">Enter the 6-digit code from your app to confirm.</p>
+            <div class="mfa-code" id="mfa-code">
+              <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+              <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+            </div>
+            <div class="acc-card__actions">
+              <button class="cancel-btn" id="mfa-back">Back</button>
+              <button class="primary-btn primary-btn--small" id="mfa-verify">Verify</button>
+            </div>
+          </div>
+
+          <div id="mfa-on" hidden>
+            <p class="acc-text">Two-factor authentication is active. Keep these backup codes somewhere safe:</p>
+            <div class="mfa-backup" id="mfa-backup"></div>
+            <div class="acc-card__actions">
+              <button class="ghost-btn ghost-btn--danger" id="mfa-disable">Disable</button>
+            </div>
+          </div>
+    </section>
+
+      </div>
+
+      <div class="legal-footer">
+        <button class="legal-link" data-legal="imprint">Imprint</button>
+        <button class="legal-link" data-legal="privacy">Privacy Policy</button>
+        <button class="legal-link" data-legal="licenses">Licenses</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ HISTORY ============ -->
+  <aside class="history">
+    <h1 class="history__heading" id="history-heading">Creation History</h1>
+
+    <div class="history__toolbar">
+      <div class="history__search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input type="text" id="history-search" placeholder="Search..." autocomplete="off">
+      </div>
+      <div class="dropdown dropdown--filter" id="status-filter" hidden></div>
+      <div class="dropdown dropdown--filter" id="category-filter" hidden></div>
+    </div>
+
+    <div class="history__list" id="history-list"></div>
+    <div class="history__list" id="schedule-list" hidden></div>
+    <p class="history__empty" id="history-empty" hidden></p>
+  </aside>
+
+  <!-- Login -->
+  <div class="login" id="login">
+    <div class="login__inner">
+      <img class="login__logo" src="assets/logo.svg" alt="sounddna">
+
+      <h1 class="login__title">Log into your account</h1>
+      <p class="login__sub">Use your e-mail address and password</p>
+
+      <div class="login__form">
+        <div class="login__field">
+          <span class="login__label">E-Mail</span>
+          <input type="email" id="login-email" placeholder="Enter e-mail" autocomplete="username" value="julian.thurner@sound-dna.com">
+        </div>
+        <div class="login__field">
+          <span class="login__label">Password</span>
+          <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password">
+        </div>
+        <button class="login__submit" id="login-submit">
+          <span>Log in</span>
+          <svg class="icon"><use href="#i-arrow-right"/></svg>
+        </button>
+        <button class="login__forgot" id="login-forgot">Forgot password?</button>
+      </div>
+
+      <div class="login__footer">
+        <button class="legal-link" data-legal="imprint">Imprint</button><button class="legal-link" data-legal="privacy">Privacy Policy</button><button class="legal-link" data-legal="licenses">Licenses</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spot-Auswahl (Audio für eine Schedule) -->
+  <!-- Impressum / Datenschutz / Lizenzen -->
+  <div class="lightbox" id="legal" hidden>
+    <div class="lightbox__panel lightbox__panel--doc" role="dialog" aria-modal="true">
+      <div class="lightbox__head">
+        <h2 class="lightbox__title" id="legal-title">Imprint</h2>
+        <button class="lightbox__close" id="legal-close" aria-label="Close" data-tip="Close" data-tip-pos="bottom">
+          <svg class="icon"><use href="#i-x"/></svg>
+        </button>
+      </div>
+      <div class="legal-body">
+
+        <article class="legal-doc" data-doc="imprint">
+          <p class="legal-note">Information according to § 5 ECG (Austria) / § 5 TMG (Germany).</p>
+          <h3>Company</h3>
+          <p>sound.dna music GmbH<br>Neubaugürtel 7–9/2/11<br>1150 Vienna<br>Austria</p>
+          <h3>Represented by</h3>
+          <p>[Managing Director]</p>
+          <h3>Contact</h3>
+          <p>Phone: [+43 …]<br>E-mail: [office@sound-dna.com]</p>
+          <h3>Commercial register</h3>
+          <p>Registered in the Austrian commercial register.<br>Court of registration: [Handelsgericht Wien]<br>Registration number: [FN XXXXXX x]</p>
+          <h3>VAT ID</h3>
+          <p>[ATU XXXXXXXX]</p>
+          <h3>Responsible for content</h3>
+          <p>[Name]</p>
+        </article>
+
+        <article class="legal-doc" data-doc="privacy" hidden>
+          <h3>1. Controller</h3>
+          <p>sound.dna music GmbH, Neubaugürtel 7–9/2/11, 1150 Vienna, Austria · [office@sound-dna.com] · [+43 …]</p>
+
+          <h3>2. What data we process</h3>
+          <h4>2.1 Registration &amp; login (Firebase Authentication)</h4>
+          <p>E-mail address, technical login data (tokens, last sign-in).<br>
+          Legal basis: Art. 6(1)(b) GDPR (performance of contract).<br>
+          Provider: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ireland. Transfers to the USA are based on Standard Contractual Clauses (SCC) pursuant to Art. 46 GDPR.<br>
+          Retention: until the account is deleted.</p>
+          <h4>2.2 Spot creation</h4>
+          <p>When a spot is created we process: name of the client, e-mail address, spot title, script text (announcement), creation timestamp.<br>
+          Legal basis: Art. 6(1)(b) GDPR (performance of contract) and Art. 6(1)(f) GDPR (legitimate interest – provision of the service).<br>
+          Storage: PostgreSQL database, [server location], Germany/EU.<br>
+          Retention: [X months/years].</p>
+          <h4>2.3 Generated audio files</h4>
+          <p>Generated MP3 files are stored on Hetzner Object Storage (S3), server location Germany (Nuremberg / Falkenstein). Retention: [X months]. Access only via signed, time-limited URLs.</p>
+          <h4>2.4 Text-to-speech processing (ElevenLabs)</h4>
+          <p>The script text you enter is transmitted to ElevenLabs Inc., USA, for automatic speech synthesis (TTS).<br>
+          Legal basis: Art. 6(1)(b) GDPR; transfers to the USA are based on Standard Contractual Clauses (SCC).<br>
+          ElevenLabs processes the text to generate the audio and deletes it in accordance with its privacy policy: elevenlabs.io/privacy</p>
+          <h4>2.5 Usage statistics / dashboard</h4>
+          <p>Number of created/confirmed spots (aggregated, anonymised). Legal basis: Art. 6(1)(f) GDPR (legitimate interest).</p>
+          <h4>2.6 Log data</h4>
+          <p>IP addresses and request logs (security logging). Retention: max. 30 days. Legal basis: Art. 6(1)(f) GDPR.</p>
+
+          <h3>3. Processors and recipients</h3>
+          <p>Google Ireland Ltd. (Firebase) – authentication – EU/USA – SCC<br>
+          ElevenLabs Inc. – text-to-speech – USA – SCC<br>
+          Hetzner Online GmbH – file storage (S3) – Germany<br>
+          [n8n hosting] – workflow automation – [EU?] – SCC where applicable</p>
+
+          <h3>4. Cookies &amp; local storage</h3>
+          <p>Only technically necessary storage is used: the Firebase Auth session token (local storage) to keep you signed in (Art. 6(1)(f) GDPR – no consent required). SpotTool uses no tracking cookies, no analytics tools and no social media tracking, so no cookie banner is required.</p>
+
+          <h3>5. Your rights</h3>
+          <p>You have the right to access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and objection (Art. 21 GDPR). Requests to: [privacy@sound-dna.com]</p>
+
+          <h3>6. Data security</h3>
+          <p>Encrypted transfer via HTTPS/TLS, Firebase JWT authentication for all API endpoints, rate limiting and brute-force protection, signed time-limited S3 URLs, API-key authentication for the admin area, PostgreSQL with restricted network access (Docker-internal).</p>
+
+          <h3>7. Data protection officer</h3>
+          <p>[If required: name and contact of the DPO. If not required: "Not legally required – please address requests to [e-mail]."]</p>
+
+          <h3>8. Supervisory authority</h3>
+          <p>Austria: Datenschutzbehörde (dsb.gv.at). Germany: the state authority responsible for your federal state.</p>
+
+          <h3>9. Changes to this policy</h3>
+          <p>Last updated: [date]</p>
+        </article>
+
+        <article class="legal-doc" data-doc="licenses" hidden>
+          <p>This project is built on the work of a great community. We thank all developers whose open-source libraries we are allowed to use for this tool.</p>
+          <div class="license-grid">
+            <div class="license-box"><span>Vue.js</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>Firebase (Google)</span><span class="license-box__type">Apache License 2.0</span></div>
+            <div class="license-box"><span>Lucide Icons</span><span class="license-box__type">ISC License</span></div>
+            <div class="license-box"><span>Vite</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>Bootstrap</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>FullCalendar</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>Express.js</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>Axios</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>Postgres.js</span><span class="license-box__type">MIT License</span></div>
+            <div class="license-box"><span>date-fns</span><span class="license-box__type">MIT License</span></div>
+          </div>
+
+          <p class="legal-note legal-note--spaced">Note: This software project is proprietary. The licences listed above refer exclusively to the third-party libraries and components used.</p>
+        </article>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox" id="spot-picker" hidden>
+    <div class="lightbox__panel" role="dialog" aria-modal="true">
+      <div class="lightbox__head">
+        <h2 class="lightbox__title">Choose audio</h2>
+        <button class="lightbox__close" id="spot-picker-close" aria-label="Close" data-tip="Close" data-tip-pos="bottom">
+          <svg class="icon"><use href="#i-x"/></svg>
+        </button>
+      </div>
+      <div class="lightbox__search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input type="text" id="spot-picker-search" placeholder="Search spots..." autocomplete="off">
+      </div>
+      <div class="lightbox__list" id="spot-picker-list"></div>
+    </div>
+  </div>
+
+  <!-- Bestätigungsdialog -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <p class="modal__title" id="modal-title"></p>
+      <p class="modal__text" id="modal-text"></p>
+      <div class="modal__actions">
+        <button class="cancel-btn" id="modal-cancel"></button>
+        <button class="primary-btn primary-btn--small" id="modal-confirm"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meldungen rechts oben -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- Template: Creation-Karte -->
+  <template id="card-template">
+    <article class="card">
+      <div class="card__top">
+        <span class="card__date"></span>
+        <span class="badge badge--pending" hidden>Generating<span class="badge__dots"></span></span>
+        <span class="badge badge--new" hidden>New</span>
+        <span class="badge badge--scheduled" hidden>
+          <svg class="icon"><use href="#i-gantt"/></svg>
+          Scheduled
+        </span>
+        <span class="badge badge--received" hidden>
+          <svg class="icon"><use href="#i-send"/></svg>
+          Received
+        </span>
+        <div class="card__menu-wrap">
+          <button class="kebab" aria-label="Options" data-tip="Options" aria-haspopup="menu">
+            <svg class="icon"><use href="#i-kebab"/></svg>
+          </button>
+          <div class="context-menu" role="menu" hidden>
+            <button class="context-menu__item" role="menuitem" data-action="receive">
+              <svg class="icon"><use href="#i-send"/></svg>
+              Receive
+            </button>
+            <button class="context-menu__item" role="menuitem" data-action="schedule">
+              <svg class="icon"><use href="#i-gantt"/></svg>
+              Schedule
+            </button>
+            <button class="context-menu__item" role="menuitem" data-action="reuse">
+              <svg class="icon"><use href="#i-reuse"/></svg>
+              Re-Use
+            </button>
+            <button class="context-menu__item" role="menuitem" data-action="delete">
+              <svg class="icon"><use href="#i-trash"/></svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card__title-row">
+        <h2 class="card__title"></h2>
+        <span class="badge badge--failed" hidden>Failed</span>
+        <span class="card__deleted-note">Announcement was deleted</span>
+      </div>
+
+      <div class="card__pending"><div class="card__pending-bar"></div></div>
+
+      <div class="card__player">
+        <button class="play-btn" aria-label="Play">
+          <svg class="icon icon--filled"><use href="#i-play"/></svg>
+        </button>
+        <div class="slider">
+          <div class="slider__track"></div>
+          <div class="slider__progress"></div>
+          <div class="slider__thumb"></div>
+        </div>
+        <span class="card__time"></span>
+      </div>
+    </article>
+  </template>
+
+  <script src="js/app.js"></script>
+  <script src="js/creation.js"></script>
+  <script src="js/schedule.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/account.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
