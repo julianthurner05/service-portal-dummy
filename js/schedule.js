@@ -1121,14 +1121,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !spotPicke
 
 /* ---------------------------------------------------------------
    Beispieldaten – IKEA Vösendorf, Durchsagenplan
-   31.08.–26.09.2026 (aus der Excel-Vorlage). `times` = feste
-   Uhrzeiten pro Tag, so wie der echte Plan aufgebaut ist.
+   (aus der Excel-Vorlage, Woche 21.–26.09.2026). Läuft ab 31.08.2026
+   unbegrenzt weiter, damit jede Woche denselben Plan zeigt.
+   `times` = feste Uhrzeiten pro Tag, so wie der echte Plan aufgebaut ist.
    --------------------------------------------------------------- */
 const MO_FR = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
 const MO_TH = ['Mo', 'Tu', 'We', 'Th'];
 const MO_SA = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille Stunde 16–18 → eigene Variante */
-const PLAN = { type: 'weekly', start: '31.08.2026', end: '26.09.2026', once: false, every: 30, duration: 9 };
+const PLAN = { type: 'weekly', start: '31.08.2026', end: null, once: false, every: 30, duration: 9 };
 const FIXED = { ...PLAN, category: 'closing', locked: true };
 
 /* Ein Spot pro 30-Minuten-Slot, nichts in der Stillen Stunde, nichts außerhalb
