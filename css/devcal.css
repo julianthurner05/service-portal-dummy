@@ -67,21 +67,24 @@
   color: var(--text-80);
 }
 
-.devcal-tray__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--slot-gap);
-}
-
-.devcal-tray__empty {
+.devcal-tray__hint {
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
   color: var(--text-40);
 }
 
-/* Tray-Slot: sieht aus wie im Kalender – nur der Titel */
+.devcal-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--slot-gap);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Paletten-Spot: sieht aus wie im Kalender – nur der Titel */
 .devcal-tray__item {
   position: relative;
+  flex: none;
   height: var(--slot-h);
   border-radius: 6px;
   background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));

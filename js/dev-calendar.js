@@ -3,21 +3,40 @@
    - beim ersten Besuch einer Woche wird der normale Plan eingefroren,
      danach hängen die Slots nicht mehr an ihren Schedules
    - Slots lassen sich einzeln per Drag & Drop auf freie Zellen ziehen
-   - rechts eine Ablage (Tray), in die Slots geparkt werden können
+   - rechts die Spot-Palette: jeder Spot einmal, beliebig oft in den
+     Kalender ziehbar (Kopie) – die Palette leert sich nie; ein Slot,
+     der auf der Palette abgelegt wird, verschwindet aus dem Raster
    ================================================================ */
 
-const dcalGrid      = document.getElementById('dcal-grid');
-const dcalRange     = document.getElementById('dcal-range');
-const dcalTray      = document.getElementById('dcal-tray');
-const dcalTrayList  = document.getElementById('dcal-tray-list');
-const dcalTrayEmpty = document.getElementById('dcal-tray-empty');
+const dcalGrid     = document.getElementById('dcal-grid');
+const dcalRange    = document.getElementById('dcal-range');
+const dcalTray     = document.getElementById('dcal-tray');
+const dcalTrayList = document.getElementById('dcal-tray-list');
 
 let dcalWeekStart = mondayOf(new Date());
 let dcalUid = 0;
 
 /* Woche (Montag als Label) → eingefrorene, unabhängige Slots */
 const dcalWeeks = new Map();            /* key → [{ id, title, category, day, slot }] */
-const dcalTrayItems = [];               /* geparkte Slots: { id, title, category } */
+
+/* Spot-Palette: jeder Spot aus dem Plan genau einmal.
+   Wochentags-Varianten desselben Spots werden zusammengelegt. */
+let dcalPalette = null;                 /* [{ title, category }] */
+
+const dcalBaseTitle = t => t.replace(/\s*\((Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)\)$/, '');
+
+function dcalPaletteItems() {
+  if (dcalPalette) return dcalPalette;
+  const seen = new Set();
+  dcalPalette = [];
+  [...scheduleList.querySelectorAll('.sched-card')].forEach(card => {
+    const title = dcalBaseTitle(card._opts.title);
+    if (seen.has(title)) return;
+    seen.add(title);
+    dcalPalette.push({ title, category: card._opts.category });
+  });
+  return dcalPalette;
+}
 
 function dcalWeekItems(monday) {
   const key = fmtDate(monday);
@@ -31,7 +50,7 @@ function dcalWeekItems(monday) {
       const cell = `${di}:${slot}`;
       if (taken.has(cell)) return;
       taken.add(cell);
-      items.push({ id: ++dcalUid, title: card._opts.title, category: card._opts.category, day: di, slot });
+      items.push({ id: ++dcalUid, title: dcalBaseTitle(card._opts.title), category: card._opts.category, day: di, slot });
     }));
   });
   dcalWeeks.set(key, items);
@@ -85,17 +104,18 @@ function renderDevCalendar() {
 }
 
 function renderDevTray() {
-  dcalTrayEmpty.hidden = dcalTrayItems.length > 0;
-  dcalTrayList.innerHTML = dcalTrayItems.map(it => `
-    <div class="devcal-tray__item" draggable="true" data-id="${it.id}" style="${catStyle(it.category)}">
+  if (dcalTrayList.childElementCount) return;         /* Palette ist statisch */
+  dcalTrayList.innerHTML = dcalPaletteItems().map((it, i) => `
+    <div class="devcal-tray__item" draggable="true" data-palette="${i}" style="${catStyle(it.category)}">
       <span class="devcal-slot__label">${escapeHtml(it.title)}</span>
     </div>`).join('');
 }
 
 /* ---------------------------------------------------------------
-   Drag & Drop – Grid ↔ Grid und Grid ↔ Tray
+   Drag & Drop – Palette → Grid (Kopie), Grid → Grid (Verschieben),
+   Grid → Palette (Entfernen)
    --------------------------------------------------------------- */
-let dcalDrag = null;                    /* { id, from: 'grid' | 'tray' } */
+let dcalDrag = null;                    /* { from: 'grid', id } | { from: 'palette', index } */
 
 const dcalDropCell = e => {
   const cell = e.target.closest('.devcal-cell');
@@ -110,17 +130,18 @@ function dcalClearDropMarks() {
 document.addEventListener('dragstart', e => {
   const el = e.target.closest('.devcal-slot, .devcal-tray__item');
   if (!el) return;
-  dcalDrag = { id: +el.dataset.id, from: el.classList.contains('devcal-slot') ? 'grid' : 'tray' };
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', el.dataset.id);
-  requestAnimationFrame(() => el.classList.add('is-dragging'));
+  dcalDrag = el.classList.contains('devcal-slot')
+    ? { from: 'grid', id: +el.dataset.id }
+    : { from: 'palette', index: +el.dataset.palette };
+  e.dataTransfer.effectAllowed = dcalDrag.from === 'palette' ? 'copy' : 'move';
+  e.dataTransfer.setData('text/plain', el.textContent.trim());
+  if (dcalDrag.from === 'grid') requestAnimationFrame(() => el.classList.add('is-dragging'));
 });
 
 document.addEventListener('dragend', () => {
   dcalDrag = null;
   dcalClearDropMarks();
   dcalGrid.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
-  dcalTrayList.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
 });
 
 /* freie Zellen nehmen Slots an */
@@ -128,7 +149,7 @@ dcalGrid.addEventListener('dragover', e => {
   const cell = dcalDropCell(e);
   if (!cell || !dcalDrag) return;
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
+  e.dataTransfer.dropEffect = dcalDrag.from === 'palette' ? 'copy' : 'move';
   dcalClearDropMarks();
   cell.classList.add('is-drop');
 });
@@ -145,19 +166,17 @@ dcalGrid.addEventListener('drop', e => {
     const it = items.find(i => i.id === dcalDrag.id);
     if (it) { it.day = day; it.slot = slot; }
   } else {
-    const idx = dcalTrayItems.findIndex(i => i.id === dcalDrag.id);
-    if (idx > -1) {
-      const it = dcalTrayItems.splice(idx, 1)[0];
-      items.push({ ...it, day, slot });
-    }
+    const spot = dcalPaletteItems()[dcalDrag.index];
+    if (spot) items.push({ id: ++dcalUid, title: spot.title, category: spot.category, day, slot });
   }
   dcalDrag = null;
   renderDevCalendar();
 });
 
-/* die Ablage nimmt Slots aus dem Grid an */
+/* die Palette nimmt Slots aus dem Grid an – der Slot wird entfernt,
+   die Palette selbst bleibt unverändert */
 dcalTray.addEventListener('dragover', e => {
-  if (!dcalDrag || dcalDrag.from === 'tray') return;
+  if (!dcalDrag || dcalDrag.from !== 'grid') return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   dcalTray.classList.add('is-drop');
@@ -168,15 +187,13 @@ dcalTray.addEventListener('dragleave', e => {
 });
 
 dcalTray.addEventListener('drop', e => {
-  if (!dcalDrag || dcalDrag.from === 'tray') return;
+  if (!dcalDrag || dcalDrag.from !== 'grid') return;
   e.preventDefault();
   const items = dcalWeekItems(dcalWeekStart);
   const idx = items.findIndex(i => i.id === dcalDrag.id);
-  if (idx > -1) {
-    const { id, title, category } = items.splice(idx, 1)[0];
-    dcalTrayItems.push({ id, title, category });
-  }
+  if (idx > -1) items.splice(idx, 1);
   dcalDrag = null;
+  dcalClearDropMarks();
   renderDevCalendar();
 });
 
