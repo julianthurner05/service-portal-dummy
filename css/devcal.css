@@ -23,6 +23,30 @@
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
 }
 
+/* Kreuz: einzelnen Slot löschen – erscheint beim Hover */
+.devcal-slot__x {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  color: var(--text-55);
+  opacity: 0;
+  pointer-events: none;            /* unsichtbar ⇒ nicht klickbar, sonst löschen Streuklicks */
+  transition: opacity var(--transition), background var(--transition), color var(--transition);
+}
+
+.devcal-slot:hover .devcal-slot__x { opacity: 1; pointer-events: auto; }
+.devcal-slot__x:hover { background: var(--white-14); color: #ffffff; }
+.devcal-slot__x .icon { width: 9px; height: 9px; stroke-width: 2; }
+
+.devcal-slot:hover .devcal-slot__label { right: 20px; }
+
 .devcal-slot__label {
   position: absolute;
   inset: 0;
@@ -36,9 +60,6 @@
   text-overflow: ellipsis;
   pointer-events: none;
 }
-
-/* Quiet Hour: bleibt sichtbar markiert, nimmt aber Slots an */
-.devcal-cell--quiet .cal-slot__inner { background: transparent; box-shadow: inset 0 0 0 1px var(--white-3); }
 
 /* Drop-Ziel */
 .devcal-cell.is-drop .cal-slot__inner {

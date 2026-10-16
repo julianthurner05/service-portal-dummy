@@ -86,12 +86,22 @@ function renderDevCalendar() {
         html += `<div class="cal-slot cal-slot--spot devcal-slot" draggable="true" data-id="${it.id}" style="${catStyle(it.category)}">
             <div class="cal-slot__inner"></div>
             <span class="devcal-slot__label">${escapeHtml(it.title)}</span>
+            <button class="devcal-slot__x" data-x="${it.id}" aria-label="Remove slot" data-tip="Remove" type="button">${icon('x')}</button>
           </div>`;
         continue;
       }
+
+      /* Stille Stunde: gesperrter Block wie im normalen Kalender – kein Drop-Ziel */
+      if (isQuiet(di, slotTime(s))) {
+        let n = 1;
+        while (s + n < CAL_SLOTS && isQuiet(di, slotTime(s + n)) && !items.find(i => i.day === di && i.slot === s + n)) n++;
+        html += `<div class="cal-quiet" data-rows="${n}" style="height: calc(${n} * var(--slot-h) + ${n - 1} * var(--slot-gap))">Quiet Hour</div>`;
+        s += n - 1;
+        continue;
+      }
+
       const closed = !isOpen(di, slotTime(s));
-      const quiet = isQuiet(di, slotTime(s));
-      html += `<div class="cal-slot devcal-cell${closed ? ' cal-slot--closed' : ''}${quiet ? ' devcal-cell--quiet' : ''}" data-day="${di}" data-slot="${s}">
+      html += `<div class="cal-slot devcal-cell${closed ? ' cal-slot--closed' : ''}" data-day="${di}" data-slot="${s}">
           <div class="cal-slot__inner"></div>
         </div>`;
     }
@@ -194,6 +204,19 @@ dcalTray.addEventListener('drop', e => {
   if (idx > -1) items.splice(idx, 1);
   dcalDrag = null;
   dcalClearDropMarks();
+  renderDevCalendar();
+});
+
+/* ---------------------------------------------------------------
+   Kreuz am Slot: einzelnen Slot aus dem Raster löschen
+   --------------------------------------------------------------- */
+dcalGrid.addEventListener('click', e => {
+  const btn = e.target.closest('.devcal-slot__x');
+  if (!btn) return;
+  e.stopPropagation();
+  const items = dcalWeekItems(dcalWeekStart);
+  const idx = items.findIndex(i => i.id === +btn.dataset.x);
+  if (idx > -1) items.splice(idx, 1);
   renderDevCalendar();
 });
 
