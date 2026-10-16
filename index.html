@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/creation.css">
   <link rel="stylesheet" href="css/schedule.css">
   <link rel="stylesheet" href="css/calendar.css">
+  <link rel="stylesheet" href="css/devcal.css">
   <link rel="stylesheet" href="css/account.css">
   <link rel="stylesheet" href="css/home.css">
   <link rel="stylesheet" href="css/login.css">
@@ -89,6 +90,11 @@
       <button class="nav-item" data-view="calendar">
         <svg class="icon"><use href="#i-calendar"/></svg>
         <span>Calendar</span>
+      </button>
+
+      <button class="nav-item" data-view="dev-calendar">
+        <svg class="icon"><use href="#i-panel"/></svg>
+        <span>Dev-Calendar</span>
       </button>
     </nav>
 
@@ -423,6 +429,32 @@ Lebe Smart!</textarea>
       <div class="cal-days" id="cal-days"></div>
       <div class="cal-grid" id="cal-grid"></div>
       <p class="cal-empty" id="cal-empty" hidden></p>
+    </section>
+
+    <!-- Dev Calendar -->
+    <section class="calendar-view devcal-view" data-screen="dev-calendar" hidden>
+      <div class="cal-head">
+        <h1 class="cal-head__title">Dev Calendar</h1>
+        <div class="cal-week">
+          <button class="cal-week__nav" id="dcal-prev" aria-label="Previous week" data-tip="Previous week">
+            <svg class="icon"><use href="#i-chevron-left"/></svg>
+          </button>
+          <span class="cal-week__label" id="dcal-range"></span>
+          <button class="cal-week__nav" id="dcal-next" aria-label="Next week" data-tip="Next week">
+            <svg class="icon"><use href="#i-chevron-right"/></svg>
+          </button>
+        </div>
+        <button class="cal-today" id="dcal-today">Today</button>
+        <span class="cal-hint devcal-hint">Every slot lives on its own – drag it to a free slot or into the tray.</span>
+      </div>
+      <div class="devcal-layout">
+        <div class="cal-grid devcal-grid" id="dcal-grid"></div>
+        <aside class="devcal-tray" id="dcal-tray">
+          <p class="devcal-tray__title">Slot tray</p>
+          <div class="devcal-tray__list" id="dcal-tray-list"></div>
+          <p class="devcal-tray__empty" id="dcal-tray-empty">Drop slots here</p>
+        </aside>
+      </div>
     </section>
 
     <!-- Account -->
@@ -767,6 +799,7 @@ Lebe Smart!</textarea>
   <script src="js/creation.js"></script>
   <script src="js/schedule.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/dev-calendar.js"></script>
   <script src="js/account.js"></script>
   <script src="js/home.js"></script>
   <script src="js/login.js"></script>

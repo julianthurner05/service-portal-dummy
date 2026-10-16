@@ -6,6 +6,7 @@ const navItems       = document.querySelectorAll('.nav-item');
 const creationView   = document.querySelector('[data-screen="creation"]');
 const scheduleView   = document.querySelector('[data-screen="schedule"]');
 const calendarView   = document.querySelector('[data-screen="calendar"]');
+const devcalView     = document.querySelector('[data-screen="dev-calendar"]');
 const homeView       = document.querySelector('[data-screen="home"]');
 const accountView    = document.querySelector('[data-screen="account"]');
 const historyList    = document.getElementById('history-list');
@@ -267,14 +268,17 @@ function showView(view) {
   const isCreation = view === 'spot-creation';
   const isSchedule = view === 'schedule';
   const isCalendar = view === 'calendar';
+  const isDevCal   = view === 'dev-calendar';
   const isHome     = view === 'home';
 
   creationView.hidden = !isCreation;
   scheduleView.hidden = !isSchedule;
   calendarView.hidden = !isCalendar;
+  devcalView.hidden = !isDevCal;
   accountView.hidden = view !== 'account';
   homeView.hidden = !isHome;
   if (isCalendar) renderCalendar();
+  if (isDevCal) renderDevCalendar();
   if (isHome) renderHome();
   document.body.classList.toggle('no-history', !isCreation && !isSchedule);
   document.body.classList.toggle('view-schedule', isSchedule);

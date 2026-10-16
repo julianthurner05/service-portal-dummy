@@ -1,0 +1,108 @@
+/* ================================================================
+   DEV CALENDAR – Wochenraster mit freien Slots + Ablage (Tray)
+   ================================================================ */
+.devcal-hint { margin-left: auto; }
+
+.devcal-layout {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.devcal-layout .cal-grid {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- Slots: Titel immer sichtbar, kein Gruppen-Hover ---- */
+.devcal-slot { cursor: grab; }
+.devcal-slot:active { cursor: grabbing; }
+.devcal-slot.is-dragging { opacity: 0.35; }
+
+.devcal-slot:hover .cal-slot__inner {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+.devcal-slot__label {
+  position: absolute;
+  inset: 0;
+  padding: 0 7px;
+  font-size: 10.5px;
+  line-height: var(--slot-h);
+  letter-spacing: var(--ls-small);
+  color: var(--text-80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Quiet Hour: bleibt sichtbar markiert, nimmt aber Slots an */
+.devcal-cell--quiet .cal-slot__inner { background: transparent; box-shadow: inset 0 0 0 1px var(--white-3); }
+
+/* Drop-Ziel */
+.devcal-cell.is-drop .cal-slot__inner {
+  background: var(--white-14);
+  box-shadow: inset 0 0 0 1px var(--white-25);
+}
+
+/* ---- Ablage rechts ---- */
+.devcal-tray {
+  width: 230px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--pad-box);
+  background: var(--mittelblau);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow var(--transition);
+}
+
+.devcal-tray.is-drop { box-shadow: inset 0 0 0 1px var(--white-25); }
+
+.devcal-tray__title {
+  font-size: var(--fs-base);
+  color: var(--text-80);
+}
+
+.devcal-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--slot-gap);
+}
+
+.devcal-tray__empty {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+/* Tray-Slot: sieht aus wie im Kalender – nur der Titel */
+.devcal-tray__item {
+  position: relative;
+  height: var(--slot-h);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+  cursor: grab;
+  transition: background var(--dur) var(--ease);
+}
+
+.devcal-tray__item:active { cursor: grabbing; }
+.devcal-tray__item.is-dragging { opacity: 0.35; }
+
+.devcal-tray__item:hover {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+@media (max-width: 980px) {
+  /* der Dev-Kalender bleibt ein Desktop-Werkzeug: volle Woche, scrollbar */
+  .devcal-layout { flex-direction: column; }
+  .devcal-layout .cal-grid {
+    grid-template-columns: 50px repeat(7, minmax(110px, 1fr));
+    overflow-x: auto;
+  }
+  .devcal-grid .cal-col__head { display: flex; }
+  .devcal-tray { width: 100%; }
+}
