@@ -10,19 +10,42 @@
   --lit-h: 42px;                 /* Höhe, auf die ein Slot beim Hover aufklappt */
   --density-dur: 380ms;
   width: 100%;
-  margin: auto 0;
+  margin: 0 0 auto;              /* oben verankert: der Kopf bleibt stehen, der Kalender wächst nur nach unten */
   display: flex;
   flex-direction: column;
   animation: view-in 260ms var(--ease);
 }
 
-/* Wechsel Collapsed ↔ Expanded: nur die Zeilen-Elemente selbst gleiten
-   (Höhe bzw. Abstand) – kein animiertes, vererbtes CSS-Property, das jeden
-   Frame alle Kindelemente neu berechnen ließe */
-.calendar-view:not(.devcal-view) .cal-slot,
-.calendar-view:not(.devcal-view) .cal-time,
-.calendar-view:not(.devcal-view) .cal-quiet { transition: height var(--density-dur) var(--ease); }
-.calendar-view:not(.devcal-view) .cal-col__body { transition: gap var(--density-dur) var(--ease); }
+/* Wechsel Collapsed ↔ Expanded (morphDensity in calendar.js): das Layout
+   springt sofort, sichtbar gleiten die Zeilen per transform. Die Fläche des
+   Rasters liegt dafür in einem eigenen Element, dessen Höhe mitläuft. */
+#cal-grid {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+
+.cal-grid__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  z-index: -1;
+  background: var(--mittelblau);
+  border-radius: var(--radius-lg);
+}
+
+/* während des Gleitens: keine Hover, keine gestauchten Texte, keine
+   Spaltenlinien, die über die mitwachsende Fläche hinausragen */
+.cal-grid.is-morphing { pointer-events: none; }
+.cal-grid.is-morphing .cal-slot__title { opacity: 0; transition: none; }
+.cal-grid.is-morphing .cal-quiet { color: transparent; }
+.cal-grid.is-morphing .cal-col { border-left-color: transparent; }
+#cal-grid .cal-slot,
+#cal-grid .cal-quiet { transform-origin: top; }
+#cal-grid .cal-col { transition: border-color var(--dur-fast) var(--ease); }
+#cal-grid .cal-quiet { transition: color var(--dur-fast) var(--ease); }
 
 /* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
    der Viewport und scrollt mit der Seite */
@@ -312,8 +335,8 @@
    der Stift erscheint erst beim Hover */
 [data-density="expanded"] .cal-slot__title {
   opacity: 1;
-  overflow: hidden;                         /* während des Aufklappens nichts herausragen lassen */
-  transition: opacity var(--dur) var(--ease) 220ms;
+  overflow: hidden;
+  transition: opacity var(--dur-fast) var(--ease);
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: 1fr;
   align-items: center;
@@ -336,8 +359,9 @@
 [data-density="expanded"] .cal-slot.is-lit .cal-slot__edit { opacity: 1; }
 [data-density="expanded"] .cal-slot.is-lit .cal-slot__text { color: #ffffff; }
 
-/* Umschalter Collapsed / Expanded – Pill mit zwei Blautönen: dunkle Bahn,
-   hellerer Knopf; jedes Icon steht fest in seiner Hälfte, nur der Knopf gleitet */
+/* Umschalter Collapsed / Expanded – Pill aus zwei UI-Blautönen: Bahn in
+   Mittelblau, Knopf in Menüblau; jedes Icon steht fest in seiner Hälfte,
+   nur der Knopf gleitet */
 .density-toggle {
   position: relative;
   flex: none;
@@ -359,7 +383,7 @@
   width: calc(50% - 3px);
   height: calc(100% - 6px);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--blau) 55%, var(--menu-blau));
+  background: var(--menu-blau);
   transition: transform var(--dur) var(--ease);
 }
 

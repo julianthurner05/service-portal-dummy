@@ -199,7 +199,7 @@ function renderCalendar() {
     html += '</div></div>';
   });
 
-  calGrid.innerHTML = html;
+  calGrid.innerHTML = '<div class="cal-grid__bg"></div>' + html;
   litUid = null;
   renderLegend();
   renderNowLine();
@@ -309,20 +309,81 @@ calGrid.addEventListener('click', e => {
 document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) closeCalPop(); });
 
 /* ---- Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel) ----
-   Nur CSS-Variablen ändern sich (gleitend, siehe calendar.css) – die
-   Jetzt-Linie hängt an Pixelpositionen und kommt erst nach dem Gleiten zurück */
-let densityTimer = null;
+   FLIP: das Layout springt sofort in den Zielzustand, sichtbar gleitet es
+   nur per transform – jede Zeile startet an ihrer alten Position und Höhe.
+   Keyframes enthalten nur transform (transform-origin steht fest im CSS),
+   damit der Browser sie auf dem Compositor abspielt; Höhen-Transitions über
+   ~450 Zeilen hätten jeden Frame ein Layout erzwungen (in Safari ruckelig).
+   Die Fläche des Rasters (.cal-grid__bg) wird per clip-path auf- bzw.
+   zugedeckt – ohne Layout, mit exakten runden Ecken. */
+let densityAnims = [];
+
+function morphDensity(value) {
+  setLit(null);
+  closeCalPop();
+  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
+
+  const rows = [...calGrid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
+  const bg = calGrid.querySelector('.cal-grid__bg');
+  const top0 = calGrid.getBoundingClientRect().top;
+  const first = rows.map(el => el.getBoundingClientRect());
+
+  densityAnims.forEach(a => a.cancel());
+  densityAnims = [];
+  bg.style.height = '';
+  const bgFirst = bg.getBoundingClientRect().height;
+  calendarView.dataset.density = value;
+
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { renderNowLine(); return; }
+
+  const top1 = calGrid.getBoundingClientRect().top;
+  const last = rows.map(el => el.getBoundingClientRect());
+  const bgLast = bg.getBoundingClientRect().height;
+  const css = getComputedStyle(calendarView);
+  const timing = {
+    duration: parseFloat(css.getPropertyValue('--density-dur')) || 380,
+    easing: css.getPropertyValue('--ease').trim() || 'ease',
+  };
+
+  calGrid.classList.add('is-morphing');
+  rows.forEach((el, i) => {
+    const a = first[i], b = last[i];
+    let from;
+    if (el.classList.contains('cal-time')) {
+      /* Zeit-Labels nur verschieben (mittig), nie stauchen */
+      const dy = (a.top - top0 + a.height / 2) - (b.top - top1 + b.height / 2);
+      if (Math.abs(dy) < 0.5) return;
+      from = `translateY(${dy}px)`;
+    } else {
+      const dy = (a.top - top0) - (b.top - top1);
+      const sy = b.height ? a.height / b.height : 1;
+      from = `translateY(${dy}px) scaleY(${sy})`;
+    }
+    densityAnims.push(el.animate([{ transform: from }, { transform: 'none' }], timing));
+  });
+
+  /* Fläche für die Dauer auf die größere der beiden Höhen stellen und den
+     Überstand unten wegclippen */
+  const bgMax = Math.max(bgFirst, bgLast);
+  const radius = getComputedStyle(bg).borderTopLeftRadius;
+  const clip = h => `inset(0px 0px ${bgMax - h}px 0px round ${radius})`;
+  bg.style.height = `${bgMax}px`;
+  const bgAnim = bg.animate([{ clipPath: clip(bgFirst) }, { clipPath: clip(bgLast) }], timing);
+  densityAnims.push(bgAnim);
+
+  bgAnim.finished.then(() => {
+    bg.style.height = '';
+    calGrid.classList.remove('is-morphing');
+    renderNowLine();
+  }, () => {});                                   /* abgebrochen: der nächste Wechsel übernimmt */
+}
+
 const densityToggle = document.getElementById('cal-density');
 densityToggle.addEventListener('click', () => {
   const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
   densityToggle.setAttribute('aria-checked', String(expanded));
   densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
-  calendarView.dataset.density = expanded ? 'expanded' : 'collapsed';
-  setLit(null);
-  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
-  clearTimeout(densityTimer);
-  const dur = parseFloat(getComputedStyle(calendarView).getPropertyValue('--density-dur')) || 480;
-  densityTimer = setTimeout(renderNowLine, dur + 40);
+  morphDensity(expanded ? 'expanded' : 'collapsed');
 });
 
 /* ---- Wochennavigation ---- */
