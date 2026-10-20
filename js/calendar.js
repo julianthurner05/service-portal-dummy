@@ -19,7 +19,9 @@ let mobileDay = dayIdx(new Date());     /* Tagesansicht am Handy */
 
 const CAL_HOUR_START = 8;
 const CAL_HOUR_END   = 22;                         /* exklusiv */
-const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 2;
+const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 60 / SLOT_MIN;
+const SLOTS_PER_HOUR = 60 / SLOT_MIN;
+document.documentElement.style.setProperty('--cal-slots', CAL_SLOTS);
 const DAY_NAMES      = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MONTH_SHORT    = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -46,8 +48,19 @@ function storeHoursLabel() {
 
 let calWeekStart = mondayOf(new Date());
 
-const slotIndex = t => Math.floor((minutesOf(t) - CAL_HOUR_START * 60) / 30);
-const slotTime  = s => hhmm(CAL_HOUR_START * 60 + s * 30);
+const slotIndex = t => Math.floor((minutesOf(t) - CAL_HOUR_START * 60) / SLOT_MIN);
+const slotTime  = s => hhmm(CAL_HOUR_START * 60 + s * SLOT_MIN);
+
+/* Zeitspalte: volle Stunde kräftig, halbe Stunde nur im ausgeklappten Modus */
+function timeColumn() {
+  let html = '<div class="cal-col cal-col--time"><div class="cal-col__head"></div><div class="cal-col__body">';
+  for (let s = 0; s < CAL_SLOTS; s++) {
+    const hour = s % SLOTS_PER_HOUR === 0;
+    const half = !hour && s % (SLOTS_PER_HOUR / 2) === 0;
+    html += `<div class="cal-time${half ? ' cal-time--half' : ''}">${hour || half ? slotTime(s) : ''}</div>`;
+  }
+  return html + '</div></div>';
+}
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const weekDates = monday => [...Array(7)].map((_, i) => { const d = new Date(monday); d.setDate(d.getDate() + i); return d; });
 
@@ -124,12 +137,7 @@ function renderCalendar() {
     return slots;
   });
 
-  /* Zeitspalte */
-  let html = '<div class="cal-col cal-col--time"><div class="cal-col__head"></div><div class="cal-col__body">';
-  for (let s = 0; s < CAL_SLOTS; s++) {
-    html += `<div class="cal-time">${s % 2 === 0 ? slotTime(s) : ''}</div>`;
-  }
-  html += '</div></div>';
+  let html = timeColumn();
 
   /* Tagesleiste (Handy) */
   const mobile = isMobile();
@@ -177,7 +185,6 @@ function renderCalendar() {
       const title = sorted.length > 1 ? `${o.title} +${sorted.length - 1}` : o.title;
       html += `<div class="cal-slot cal-slot--spot cal-hit" data-uid="${first.card._uid}" style="${catStyle(o.category)}z-index:${z}">
           <div class="cal-slot__inner">
-            <span class="cal-slot__label">${escapeHtml(title)}</span>
             <div class="cal-slot__title">
               <span class="cal-slot__time">${first.time}</span>
               ${o.locked
@@ -204,7 +211,7 @@ function renderNowLine() {
   const col = calGrid.querySelector('.cal-col--today');
   if (!col) return;
   const now = new Date();
-  const s = (now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60) / 30;
+  const s = (now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60) / SLOT_MIN;
   if (s < 0 || s >= CAL_SLOTS) return;
   const body = col.querySelector('.cal-col__body');
   /* Slot-Elemente decken die Reihen ab (Quiet-Blöcke mehrere) – Position aus dem DOM */
@@ -301,13 +308,12 @@ calGrid.addEventListener('click', e => {
 
 document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) closeCalPop(); });
 
-/* ---- Titel dauerhaft anzeigen (reduziert ↔ beschriftet) ---- */
-const calTitles = document.getElementById('cal-titles');
-calTitles.addEventListener('click', () => {
-  const on = !calTitles.classList.contains('is-on');
-  calTitles.classList.toggle('is-on', on);
-  calTitles.setAttribute('aria-checked', String(on));
-  calGrid.classList.toggle('show-titles', on);
+/* ---- Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel) ----
+   Nur CSS-Variablen ändern sich, deshalb danach bloß die Jetzt-Linie neu setzen */
+wireSegment(document.getElementById('cal-density'), value => {
+  calendarView.dataset.density = value;
+  setLit(null);
+  renderNowLine();
 });
 
 /* ---- Wochennavigation ---- */

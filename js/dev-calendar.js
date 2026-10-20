@@ -68,11 +68,7 @@ function renderDevCalendar() {
   const items = dcalWeekItems(dcalWeekStart);
   const today = new Date();
 
-  let html = '<div class="cal-col cal-col--time"><div class="cal-col__head"></div><div class="cal-col__body">';
-  for (let s = 0; s < CAL_SLOTS; s++) {
-    html += `<div class="cal-time">${s % 2 === 0 ? slotTime(s) : ''}</div>`;
-  }
-  html += '</div></div>';
+  let html = timeColumn();
 
   days.forEach((date, di) => {
     const isToday = sameDay(date, today);

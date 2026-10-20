@@ -400,6 +400,9 @@ function formatTime(sec) {
   return `${pad2(Math.floor(sec / 60))}:${pad2(Math.floor(sec % 60))}`;
 }
 
+/* Länge eines Slots im Raster (Kalender, Konfliktprüfung, Zeit-Dropdowns) */
+const SLOT_MIN = 15;
+
 /* Minuten seit Mitternacht ↔ "HH:MM" */
 const hhmm = mins => `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
 const minutesOf = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };

@@ -158,16 +158,14 @@ renderDates();
    Dropdowns: Zeit, Kategorie, Filter
    --------------------------------------------------------------- */
 const timeOptions = [];
-for (let h = 6; h <= 22; h++) {
-  for (const m of [0, 30]) {
-    const label = hhmm(h * 60 + m);
-    timeOptions.push({ value: label, label });
-  }
+for (let m = 6 * 60; m <= 22 * 60; m += SLOT_MIN) {
+  const label = hhmm(m);
+  timeOptions.push({ value: label, label });
 }
 
-/* Intervall im Slot-Raster: 30-Minuten-Schritte als Dropdown */
+/* Intervall im Slot-Raster: Schritte in Slot-Länge als Dropdown */
 const everyOptions = [];
-for (let m = 30; m <= 240; m += 30) everyOptions.push({ value: String(m), label: `${m} min` });
+for (let m = SLOT_MIN; m <= 240; m += SLOT_MIN) everyOptions.push({ value: String(m), label: `${m} min` });
 
 const timeFrom = buildDropdown(document.getElementById('time-from'), { options: timeOptions, value: '11:00', onChange: () => scheduleChanged() });
 const everyDrop = buildDropdown(document.getElementById('every-dropdown'), { options: everyOptions, value: '30', onChange: () => scheduleChanged() });
@@ -688,9 +686,9 @@ cancelEditBtn.addEventListener('click', cancelEditing);
 schedEditorClose.addEventListener('click', cancelEditing);
 
 /* ---------------------------------------------------------------
-   Slot-Konflikte: pro 30-Minuten-Slot und Tag nur ein Spot
+   Slot-Konflikte: pro Slot (SLOT_MIN Minuten) und Tag nur ein Spot
    Regeln:
-   - pro 30-Minuten-Slot und Tag nur ein Spot (Closing-Slots sind reserviert:
+   - pro Slot und Tag nur ein Spot (Closing-Slots sind reserviert:
      nur Closing darf sich einen Slot mit Closing teilen)
    - keine Durchsagen in Quiet Hours
    - keine Durchsagen außerhalb der Öffnungszeiten (auch außerhalb des
@@ -740,19 +738,19 @@ const inRange = c => minutesOf(firstTimeOf(c)) >= CAL_HOUR_START * 60 && minutes
 const fits = c => inRange(c) && !findConflicts(c, editingCard).length;
 
 /* Liefert { cand, label } oder null.
-   1) Startzeit halbstundenweise verschieben – später, dann früher
+   1) Startzeit slotweise verschieben – später, dann früher
    2) bei Repeat: Intervall vergrößern (ggf. mit kleiner Verschiebung) */
 function suggestFreeSlot(o) {
-  for (let n = 1; n <= 28; n++) {
+  for (let n = 1; n <= CAL_SLOTS; n++) {
     for (const dir of [1, -1]) {
-      const cand = shiftTimes(o, dir * n * 30);
+      const cand = shiftTimes(o, dir * n * SLOT_MIN);
       if (fits(cand)) return { cand, label: `Move to next free slot · ${firstTimeOf(cand)}` };
     }
   }
   if (!o.once && !o.times) {
-    for (let every = o.every + 30; every <= 240; every += 30) {
-      for (let n = 0; n <= 6; n++) {
-        const cand = { ...shiftTimes(o, n * 30), every };
+    for (let every = o.every + SLOT_MIN; every <= 240; every += SLOT_MIN) {
+      for (let n = 0; n <= 12; n++) {
+        const cand = { ...shiftTimes(o, n * SLOT_MIN), every };
         if (!inRange(cand)) break;
         if (fits(cand)) return { cand, label: `Move to free slots · every ${every} min from ${cand.from}` };
       }
@@ -1132,7 +1130,7 @@ const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille 
 const PLAN = { type: 'weekly', start: '31.08.2026', end: null, once: false, every: 30, duration: 9 };
 const FIXED = { ...PLAN, category: 'closing', locked: true };
 
-/* Ein Spot pro 30-Minuten-Slot, nichts in der Stillen Stunde, nichts außerhalb
+/* Ein Spot pro Slot, nichts in der Stillen Stunde, nichts außerhalb
    der Öffnungszeit (Schlussdurchsagen dürfen bis zur Schließzeit) – die Daten
    halten sich an dieselben Regeln, die der Scheduler prüft. */
 const demoSchedules = [

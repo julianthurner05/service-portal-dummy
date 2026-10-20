@@ -168,10 +168,10 @@
 
         <section class="home-card home-card--wide home-slots">
           <div class="home-slots__explain">
-            <p class="home-slots__big">30 min</p>
+            <p class="home-slots__big">15 min</p>
             <div>
               <h2 class="home-card__title">Your slot grid</h2>
-              <p class="acc-text">Every announcement occupies one 30-minute slot, and each slot holds exactly one spot. Closing announcements sit in fixed slots reserved by sounddna.</p>
+              <p class="acc-text">Every announcement occupies one 15-minute slot, and each slot holds exactly one spot. Closing announcements sit in fixed slots reserved by sounddna.</p>
             </div>
           </div>
           <div class="home-slots__usage">
@@ -406,7 +406,7 @@ Lebe Smart!</textarea>
     </section>
 
     <!-- Calendar -->
-    <section class="calendar-view" data-screen="calendar" hidden>
+    <section class="calendar-view" data-screen="calendar" data-density="collapsed" hidden>
       <div class="cal-head">
         <h1 class="cal-head__title">Announcement Calendar</h1>
         <div class="cal-week">
@@ -420,11 +420,12 @@ Lebe Smart!</textarea>
         </div>
         <button class="cal-today" id="cal-today">Today</button>
         <div class="cal-legend" id="cal-legend"></div>
-        <span class="cal-hint">Every slot represents 30 minutes.</span>
-        <label class="cal-toggle">
-          <span>Show titles</span>
-          <button class="switch" id="cal-titles" role="switch" aria-checked="false"><span class="switch__knob"></span></button>
-        </label>
+        <span class="cal-hint">Every slot represents 15 minutes.</span>
+        <div class="segmented segmented--sm" id="cal-density">
+          <span class="segmented__thumb"></span>
+          <button class="segmented__option is-active" data-value="collapsed">Collapsed</button>
+          <button class="segmented__option" data-value="expanded">Expanded</button>
+        </div>
       </div>
       <div class="cal-days" id="cal-days"></div>
       <div class="cal-grid" id="cal-grid"></div>

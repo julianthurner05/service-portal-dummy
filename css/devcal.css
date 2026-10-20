@@ -1,6 +1,14 @@
 /* ================================================================
    DEV CALENDAR – Wochenraster mit freien Slots + Ablage (Tray)
    ================================================================ */
+/* 15-Minuten-Raster: Slots fix so hoch, dass der Titel lesbar bleibt –
+   der Kalender scrollt mit der Seite */
+.devcal-view {
+  --slot-gap: 4px;
+  --slot-h: 22px;
+  --slot-radius: 6px;
+}
+
 .devcal-hint { margin-left: auto; }
 
 .devcal-layout {
@@ -18,6 +26,10 @@
 .devcal-slot { cursor: grab; }
 .devcal-slot:active { cursor: grabbing; }
 .devcal-slot.is-dragging { opacity: 0.35; }
+
+.devcal-view .cal-slot--spot .cal-slot__inner {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+}
 
 .devcal-slot:hover .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));

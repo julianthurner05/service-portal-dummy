@@ -2,14 +2,25 @@
    CALENDAR – Wochenansicht aller aktiven Schedules
    ================================================================ */
 .calendar-view {
-  --slot-gap: 7px;
-  /* Slots wachsen mit der Fensterhöhe mit: 28 Slots füllen den Platz unterhalb des Kopfes */
-  --slot-h: clamp(17px, calc((100vh - 250px) / 28 - var(--slot-gap)), 32px);
+  /* Collapsed: alle Slots (--cal-slots, aus calendar.js) als dünne Farblinien
+     im Platz unterhalb des Kopfes */
+  --slot-gap: 3px;
+  --slot-h: clamp(4px, calc((100vh - 250px) / var(--cal-slots, 56) - var(--slot-gap)), 9px);
+  --slot-radius: 3px;
+  --lit-h: 42px;                 /* Höhe, auf die ein Slot beim Hover aufklappt */
   width: 100%;
   margin: auto 0;
   display: flex;
   flex-direction: column;
   animation: view-in 260ms var(--ease);
+}
+
+/* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
+   der Viewport und scrollt mit der Seite */
+.calendar-view[data-density="expanded"] {
+  --slot-gap: 4px;
+  --slot-h: 28px;
+  --slot-radius: 6px;
 }
 
 /* ---- Kopf ---- */
@@ -24,6 +35,7 @@
   font-size: var(--fs-heading);
   letter-spacing: var(--ls-heading);
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .cal-week {
@@ -148,13 +160,19 @@
   font-size: 11px;
   letter-spacing: var(--ls-small);
   color: var(--text-40);
+  white-space: nowrap;
 }
+
+/* halbe Stunden nur im Expanded-Modus beschriftet */
+.cal-time--half { visibility: hidden; color: var(--text-25); font-size: 10px; }
+[data-density="expanded"] .cal-time--half,
+.devcal-view .cal-time--half { visibility: visible; }
 
 /* Slots */
 /* Stapelung: reine Staffelung von unten nach oben (inline z-index, unterster
-   Slot 1, oberster 28). Ein nach unten aufklappender Slot liegt dadurch
-   immer über seinem Nachbarn – ohne Ebenenwechsel beim Hover. Nur das
-   Popover auf einem leeren Slot hebt seinen Slot auf 100. */
+   Slot 1, oberster = Slotanzahl). Ein nach unten aufklappender Slot liegt
+   dadurch immer über seinem Nachbarn – ohne Ebenenwechsel beim Hover. Nur
+   das Popover auf einem leeren Slot hebt seinen Slot auf 100. */
 .cal-slot {
   position: relative;
   height: var(--slot-h);
@@ -164,17 +182,19 @@
 
 .cal-slot[data-slot]:not(.cal-slot--closed) { cursor: pointer; }
 
-/* Hit-Test läuft über die fixen Slot-Boxen, nicht über die animierte Fläche */
+/* Hit-Test läuft über die fixen Slot-Boxen, nicht über die animierte Fläche –
+   nur ein aufgeklappter Slot fängt die Maus, damit sein Stift erreichbar bleibt */
 .cal-slot__inner {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border-radius: 6px;
+  border-radius: var(--slot-radius);
   background: var(--white-3);
   will-change: bottom;
   transition:
     background var(--dur) var(--ease),
     bottom var(--dur) var(--ease),
+    border-radius var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease);
 }
 
@@ -183,22 +203,38 @@
 /* außerhalb der Öffnungszeit: fast unsichtbar */
 .cal-slot--closed .cal-slot__inner { background: transparent; }
 
+/* Collapsed: kräftige Farblinie · Expanded: getönte Fläche mit Titel */
 .cal-slot--spot .cal-slot__inner {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+[data-density="expanded"] .cal-slot--spot .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
 }
 
-/* Aufklappen nur nach unten, weich – Zuklappen ebenso weich, aber kürzer */
+/* Hover: alle Slots desselben Spots leuchten auf – weich an, kürzer aus */
 .cal-slot.is-lit .cal-slot__inner {
-  bottom: calc(-1 * (var(--slot-h) + var(--slot-gap)));
+  pointer-events: auto;
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
   box-shadow: 0 6px 18px rgba(12, 14, 41, 0.45);
   transition:
     background var(--dur-slow) var(--ease),
     bottom var(--dur-slow) var(--ease),
+    border-radius var(--dur-slow) var(--ease),
     box-shadow var(--dur-slow) var(--ease);
 }
 
-/* Inhalt: Uhrzeit links oben, Titel links unten, Stift rechts oben */
+/* Collapsed: die Linie klappt nach unten zu einer Karte mit Zeit & Titel auf */
+[data-density="collapsed"] .cal-slot.is-lit .cal-slot__inner {
+  bottom: calc(var(--slot-h) - var(--lit-h));
+  border-radius: 6px;
+}
+
+[data-density="expanded"] .cal-slot.is-lit .cal-slot__inner {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+/* Inhalt (Collapsed, aufgeklappt): Uhrzeit links oben, Titel links unten, Stift rechts oben */
 .cal-slot__title {
   position: absolute;
   inset: 0;
@@ -246,8 +282,10 @@
   align-self: start;
 }
 
+/* nur am aufgeleuchteten Slot klickbar – sonst ragt der unsichtbare Stift
+   über die Nachbar-Slots und fängt Streuklicks */
 .cal-slot__edit {
-  pointer-events: auto;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,38 +296,45 @@
   transition: background var(--transition), color var(--transition);
 }
 
+.cal-slot.is-lit .cal-slot__edit { pointer-events: auto; }
 .cal-slot__edit:hover { background: var(--white-14); color: #ffffff; }
 .cal-slot__edit .icon { width: 11px; height: 11px; stroke-width: 1.9; }
 
 .cal-slot__lock { width: 11px; height: 11px; margin: 1px 2px 0 0; color: var(--text-55); }
 
-/* Titel-Modus: Titel dauerhaft (dunkel) im Slot, beim Hover übernimmt das aufgeklappte Feld */
-.cal-slot__label {
-  position: absolute;
-  inset: 0;
-  display: none;
-  padding: 0 7px;
-  font-size: 10.5px;
-  line-height: var(--slot-h);              /* zentriert – als Block, damit die Ellipse greift */
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;                 /* lange Titel enden mit …, nicht abgeschnitten */
-  transition: opacity 120ms var(--ease);   /* Hover-Schrift: bewusst schnell – Stand v1 */
+/* Expanded: Titel · Stift in einer Zeile, immer sichtbar – die Uhrzeit
+   steht schon in der Zeitspalte, der Titel bekommt die volle Breite;
+   der Stift erscheint erst beim Hover */
+[data-density="expanded"] .cal-slot__title {
+  opacity: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 3px 0 8px;
 }
 
-.cal-grid.show-titles .cal-slot__label { display: block; }
-.cal-grid.show-titles .cal-slot.is-lit .cal-slot__label { opacity: 0; }
+[data-density="expanded"] .cal-slot__time { display: none; }
 
-.cal-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-  cursor: pointer;
+[data-density="expanded"] .cal-slot__text,
+[data-density="expanded"] .cal-slot__edit,
+[data-density="expanded"] .cal-slot__lock { grid-row: 1; align-self: center; }
+
+[data-density="expanded"] .cal-slot__text { grid-column: 1; color: var(--text-80); transition: color var(--dur) var(--ease); }
+[data-density="expanded"] .cal-slot__edit,
+[data-density="expanded"] .cal-slot__lock { grid-column: 2; }
+[data-density="expanded"] .cal-slot__lock { margin: 0 6px 0 0; }
+
+[data-density="expanded"] .cal-slot__edit { opacity: 0; transition: opacity var(--dur) var(--ease), background var(--transition), color var(--transition); }
+[data-density="expanded"] .cal-slot.is-lit .cal-slot__edit { opacity: 1; }
+[data-density="expanded"] .cal-slot.is-lit .cal-slot__text { color: #ffffff; }
+
+/* Umschalter Collapsed / Expanded */
+.segmented--sm { flex: none; }
+.segmented--sm .segmented__option {
+  flex: 0 0 96px;
+  height: 32px;
+  font-size: var(--fs-menu);
 }
 
 
@@ -379,13 +424,17 @@
 .cal-pop__when { font-size: var(--fs-small); letter-spacing: var(--ls-small); color: var(--text-55); }
 
 
+@media (max-width: 1600px) {
+  .calendar-view:not(.devcal-view) .cal-hint { display: none; }
+}
+
 @media (max-width: 1240px) {
   .cal-legend { display: none; }
 }
 
 @media (max-width: 980px) {
   .cal-head { flex-wrap: wrap; gap: 12px; }
-  .cal-hint, .cal-toggle { display: none; }
+  .cal-hint { display: none; }
   .cal-days { display: flex; }
   .cal-grid { grid-template-columns: 50px minmax(0, 1fr); padding-right: 12px; }
   .cal-col__head { display: none; }
