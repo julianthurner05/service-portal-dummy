@@ -312,8 +312,12 @@ document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) clo
    Nur CSS-Variablen ändern sich (gleitend, siehe calendar.css) – die
    Jetzt-Linie hängt an Pixelpositionen und kommt erst nach dem Gleiten zurück */
 let densityTimer = null;
-wireSegment(document.getElementById('cal-density'), value => {
-  calendarView.dataset.density = value;
+const densityToggle = document.getElementById('cal-density');
+densityToggle.addEventListener('click', () => {
+  const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
+  densityToggle.setAttribute('aria-checked', String(expanded));
+  densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
+  calendarView.dataset.density = expanded ? 'expanded' : 'collapsed';
   setLit(null);
   calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
   clearTimeout(densityTimer);

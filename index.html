@@ -423,15 +423,11 @@ Lebe Smart!</textarea>
         <button class="cal-today" id="cal-today">Today</button>
         <div class="cal-legend" id="cal-legend"></div>
         <span class="cal-hint">Every slot represents 15 minutes.</span>
-        <div class="segmented segmented--sm" id="cal-density">
-          <span class="segmented__thumb"></span>
-          <button class="segmented__option is-active" data-value="collapsed" aria-label="Collapsed" data-tip="Collapsed" data-tip-pos="bottom">
-            <svg class="icon"><use href="#i-chevrons-down-up"/></svg>
-          </button>
-          <button class="segmented__option" data-value="expanded" aria-label="Expanded" data-tip="Expanded" data-tip-pos="bottom">
-            <svg class="icon"><use href="#i-chevrons-up-down"/></svg>
-          </button>
-        </div>
+        <button class="density-toggle" id="cal-density" type="button" role="switch" aria-checked="false" aria-label="Expanded view" data-tip="Expand" data-tip-pos="bottom">
+          <span class="density-toggle__knob"></span>
+          <svg class="icon density-toggle__icon density-toggle__icon--collapsed"><use href="#i-chevrons-down-up"/></svg>
+          <svg class="icon density-toggle__icon density-toggle__icon--expanded"><use href="#i-chevrons-up-down"/></svg>
+        </button>
       </div>
       <div class="cal-days" id="cal-days"></div>
       <div class="cal-grid" id="cal-grid"></div>

@@ -1,11 +1,6 @@
 /* ================================================================
    CALENDAR – Wochenansicht aller aktiven Schedules
    ================================================================ */
-/* Als Längen registriert, damit der Wechsel Collapsed ↔ Expanded gleiten kann */
-@property --slot-h      { syntax: '<length>'; inherits: true; initial-value: 6px; }
-@property --slot-gap    { syntax: '<length>'; inherits: true; initial-value: 5px; }
-@property --slot-radius { syntax: '<length>'; inherits: true; initial-value: 3px; }
-
 .calendar-view {
   /* Collapsed: alle Slots (--cal-slots, aus calendar.js) als dünne Farblinien
      im Platz unterhalb des Kopfes */
@@ -13,17 +8,21 @@
   --slot-h: clamp(4px, calc((100vh - 250px) / var(--cal-slots, 56) - var(--slot-gap)), 9px);
   --slot-radius: 3px;
   --lit-h: 42px;                 /* Höhe, auf die ein Slot beim Hover aufklappt */
-  --density-dur: 480ms;
+  --density-dur: 380ms;
   width: 100%;
   margin: auto 0;
   display: flex;
   flex-direction: column;
   animation: view-in 260ms var(--ease);
-  transition:
-    --slot-h var(--density-dur) var(--ease),
-    --slot-gap var(--density-dur) var(--ease),
-    --slot-radius var(--density-dur) var(--ease);
 }
+
+/* Wechsel Collapsed ↔ Expanded: nur die Zeilen-Elemente selbst gleiten
+   (Höhe bzw. Abstand) – kein animiertes, vererbtes CSS-Property, das jeden
+   Frame alle Kindelemente neu berechnen ließe */
+.calendar-view:not(.devcal-view) .cal-slot,
+.calendar-view:not(.devcal-view) .cal-time,
+.calendar-view:not(.devcal-view) .cal-quiet { transition: height var(--density-dur) var(--ease); }
+.calendar-view:not(.devcal-view) .cal-col__body { transition: gap var(--density-dur) var(--ease); }
 
 /* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
    der Viewport und scrollt mit der Seite */
@@ -209,7 +208,6 @@
   transition:
     background var(--dur) var(--ease),
     bottom var(--dur) var(--ease),
-    border-radius var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease);
 }
 
@@ -338,16 +336,47 @@
 [data-density="expanded"] .cal-slot.is-lit .cal-slot__edit { opacity: 1; }
 [data-density="expanded"] .cal-slot.is-lit .cal-slot__text { color: #ffffff; }
 
-/* Umschalter Collapsed / Expanded */
-.segmented--sm { flex: none; }
-.segmented--sm .segmented__option {
-  flex: 0 0 40px;
-  height: 32px;
-  display: flex;
+/* Umschalter Collapsed / Expanded – Pill mit zwei Blautönen: dunkle Bahn,
+   hellerer Knopf; jedes Icon steht fest in seiner Hälfte, nur der Knopf gleitet */
+.density-toggle {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  justify-content: center;
+  width: 76px;
+  height: 34px;
+  margin-left: 12px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--mittelblau);
 }
-.segmented--sm .segmented__option .icon { width: 15px; height: 15px; }
+
+.density-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blau) 55%, var(--menu-blau));
+  transition: transform var(--dur) var(--ease);
+}
+
+.density-toggle[aria-checked="true"] .density-toggle__knob { transform: translateX(100%); }
+
+.density-toggle__icon {
+  position: relative;                       /* über dem Knopf */
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-40);
+  transition: color var(--dur) var(--ease);
+}
+
+.density-toggle:hover .density-toggle__icon { color: var(--text-55); }
+.density-toggle[aria-checked="false"] .density-toggle__icon--collapsed,
+.density-toggle[aria-checked="true"] .density-toggle__icon--expanded { color: #ffffff; }
 
 
 /* Jetzt-Linie in der heutigen Spalte */

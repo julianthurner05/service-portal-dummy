@@ -33,21 +33,21 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 const CATEGORIES = [
-  { value: 'food',      label: 'Food',      color: 'var(--cat-food)' },
-  { value: 'marketing', label: 'Marketing', color: 'var(--cat-marketing)' },
-  { value: 'special',   label: 'Special',   color: 'var(--cat-special)' },
-  { value: 'closing',   label: 'Closing',   color: 'var(--cat-closing)' },
+  { value: 'closing',    label: 'Opening/Closing', color: 'var(--cat-closing)' },
+  { value: 'standard',   label: 'Standard',        color: 'var(--cat-standard)' },
+  { value: 'commercial', label: 'Commercial',      color: 'var(--cat-commercial)' },
+  { value: 'special',    label: 'Special',         color: 'var(--cat-special)' },
 ];
 const catOf    = id => CATEGORIES.find(c => c.value === id) || {};
 const catColor = id => catOf(id).color || 'transparent';
 const catLabel = id => catOf(id).label || '';
 
-/* Kategorie-Variablen (Food bekommt mehr Farbanteil) – als Style-String
+/* Kategorie-Variablen (Commercial/Gelb bekommt mehr Farbanteil) – als Style-String
    für Templates oder direkt auf ein Element geschrieben */
 const CAT_VARS = ['--cat', '--cat-tint', '--cat-tint-strong'];
 function catVars(id) {
   const v = { '--cat': catColor(id), '--cat-tint': '', '--cat-tint-strong': '' };
-  if (id === 'food') { v['--cat-tint'] = 'var(--cat-tint-food)'; v['--cat-tint-strong'] = 'var(--cat-tint-food-strong)'; }
+  if (id === 'commercial') { v['--cat-tint'] = 'var(--cat-tint-commercial)'; v['--cat-tint-strong'] = 'var(--cat-tint-commercial-strong)'; }
   return v;
 }
 const catStyle = id => Object.entries(catVars(id)).filter(([, v]) => v).map(([k, v]) => `${k}:${v};`).join('');
@@ -1134,31 +1134,31 @@ const FIXED = { ...PLAN, category: 'closing', locked: true };
    der Öffnungszeit (Schlussdurchsagen dürfen bis zur Schließzeit) – die Daten
    halten sich an dieselben Regeln, die der Scheduler prüft. */
 const demoSchedules = [
-  { ...PLAN, title: 'IKEA FOOD Frühstücksangebot',        category: 'food',      days: MO_SA, times: ['09:00', '09:45'] },
-  { ...PLAN, title: 'IKEA FAMILY Durchsage',              category: 'marketing', days: NO_WE, times: ['10:00', '13:00', '16:00', '19:00'] },
-  { ...PLAN, title: 'IKEA FAMILY Durchsage (Mittwoch)',   category: 'marketing', days: ['We'], times: ['10:00', '13:00', '19:00'] },
-  { ...PLAN, title: 'IKEA FAMILY Durchsage (Samstag)',    category: 'marketing', days: ['Sa'], times: ['10:00', '13:00', '16:00'] },
-  { ...PLAN, title: 'SCAN & PAY Durchsage',               category: 'marketing', days: NO_WE, times: ['10:30', '12:30', '15:30', '17:30'] },
-  { ...PLAN, title: 'SCAN & PAY Durchsage (Mittwoch)',    category: 'marketing', days: ['We'], times: ['10:30', '12:30'] },
-  { ...PLAN, title: 'SCAN & PAY Durchsage (Samstag)',     category: 'marketing', days: ['Sa'], times: ['11:30', '13:30', '15:30'] },
-  { ...PLAN, title: 'IKEA Geschenkkarte Durchsage',       category: 'marketing', days: MO_SA, times: ['11:00', '14:00'] },
-  { ...PLAN, title: 'Neuer Gesenkter Preis Durchsage',    category: 'marketing', days: NO_WE, times: ['11:30', '14:30', '16:30', '18:30'] },
-  { ...PLAN, title: 'Neuer Gesenkter Preis (Mittwoch)',   category: 'marketing', days: ['We'], times: ['11:30', '14:30', '18:30'] },
-  { ...PLAN, title: 'Neuer Gesenkter Preis (Samstag)',    category: 'marketing', days: ['Sa'], times: ['12:30', '14:30', '16:30'] },
-  { ...PLAN, title: 'ZLS Durchsage',                      category: 'marketing', days: MO_FR, times: ['12:00', '15:00', '18:00'] },
-  { ...PLAN, title: 'ZLS Durchsage (Samstag)',            category: 'marketing', days: ['Sa'], times: ['12:00', '15:00'] },
-  { ...PLAN, title: 'SMÅLAND Kipa Durchsage',             category: 'special',   days: ['Fr'], times: ['13:30'] },
-  { ...PLAN, title: 'SMÅLAND Kipa Durchsage (Samstag)',   category: 'special',   days: ['Sa'], times: ['10:30'] },
-  { ...PLAN, title: 'Stille Stunde Durchsage',            category: 'special',   days: ['We'], times: ['15:45'] },
-  { ...PLAN, title: 'Café Bar Schlussdurchsage',          category: 'food',      days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
+  { ...PLAN, title: 'IKEA FOOD Frühstücksangebot',        category: 'commercial', days: MO_SA, times: ['09:00', '09:45'] },
+  { ...PLAN, title: 'IKEA FAMILY Durchsage',              category: 'standard',   days: NO_WE, times: ['10:00', '13:00', '16:00', '19:00'] },
+  { ...PLAN, title: 'IKEA FAMILY Durchsage (Mittwoch)',   category: 'standard',   days: ['We'], times: ['10:00', '13:00', '19:00'] },
+  { ...PLAN, title: 'IKEA FAMILY Durchsage (Samstag)',    category: 'standard',   days: ['Sa'], times: ['10:00', '13:00', '16:00'] },
+  { ...PLAN, title: 'SCAN & PAY Durchsage',               category: 'standard',   days: NO_WE, times: ['10:30', '12:30', '15:30', '17:30'] },
+  { ...PLAN, title: 'SCAN & PAY Durchsage (Mittwoch)',    category: 'standard',   days: ['We'], times: ['10:30', '12:30'] },
+  { ...PLAN, title: 'SCAN & PAY Durchsage (Samstag)',     category: 'standard',   days: ['Sa'], times: ['11:30', '13:30', '15:30'] },
+  { ...PLAN, title: 'IKEA Geschenkkarte Durchsage',       category: 'standard',   days: MO_SA, times: ['11:00', '14:00'] },
+  { ...PLAN, title: 'Neuer Gesenkter Preis Durchsage',    category: 'commercial', days: NO_WE, times: ['11:30', '14:30', '16:30', '18:30'] },
+  { ...PLAN, title: 'Neuer Gesenkter Preis (Mittwoch)',   category: 'commercial', days: ['We'], times: ['11:30', '14:30', '18:30'] },
+  { ...PLAN, title: 'Neuer Gesenkter Preis (Samstag)',    category: 'commercial', days: ['Sa'], times: ['12:30', '14:30', '16:30'] },
+  { ...PLAN, title: 'ZLS Durchsage',                      category: 'standard',   days: MO_FR, times: ['12:00', '15:00', '18:00'] },
+  { ...PLAN, title: 'ZLS Durchsage (Samstag)',            category: 'standard',   days: ['Sa'], times: ['12:00', '15:00'] },
+  { ...PLAN, title: 'SMÅLAND Kipa Durchsage',             category: 'special',    days: ['Fr'], times: ['13:30'] },
+  { ...PLAN, title: 'SMÅLAND Kipa Durchsage (Samstag)',   category: 'special',    days: ['Sa'], times: ['10:30'] },
+  { ...PLAN, title: 'Stille Stunde Durchsage',            category: 'special',    days: ['We'], times: ['15:45'] },
+  { ...FIXED, title: 'Café Bar Schlussdurchsage',          days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
   { ...FIXED, title: '1. Schlussdurchsage',                days: MO_TH, times: ['19:30'] },
   { ...FIXED, title: '2. Schlussdurchsage',                days: MO_TH, times: ['19:45'] },
   { ...FIXED, title: '3. Schlussdurchsage',                days: MO_TH, times: ['19:55'] },
   { ...FIXED, title: '4. Schlussdurchsage',                days: MO_TH, times: ['20:00'] },
   { ...FIXED, title: 'Schlussdurchsagen 1–4 (Freitag)',    days: ['Fr'], times: ['20:30', '20:45', '20:55', '21:00'] },
   { ...FIXED, title: 'Schlussdurchsagen 1–4 (Samstag)',    days: ['Sa'], times: ['17:30', '17:45', '17:55', '18:00'] },
-  { ...PLAN, title: 'IKEA Family Punkte Aktion Juli',     category: 'marketing', start: '01.07.2026', end: '31.07.2026', days: MO_SA, times: ['10:00', '15:00'] },
-  { ...PLAN, title: 'Weihnachtsöffnungszeiten Hinweis',   category: 'special',   start: '01.12.2026', end: '23.12.2026', days: MO_SA, times: ['11:00', '17:00'] },
+  { ...PLAN, title: 'IKEA Family Punkte Aktion Juli',     category: 'commercial', start: '01.07.2026', end: '31.07.2026', days: MO_SA, times: ['10:00', '15:00'] },
+  { ...PLAN, title: 'Weihnachtsöffnungszeiten Hinweis',   category: 'special',    start: '01.12.2026', end: '23.12.2026', days: MO_SA, times: ['11:00', '17:00'] },
 ];
 
 demoSchedules.forEach(s => scheduleList.appendChild(createSchedCard({ ...s, spot: s.spot || s.title })));
