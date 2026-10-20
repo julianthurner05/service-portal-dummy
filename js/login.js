@@ -2,6 +2,10 @@
    LOGIN – Overlay beim Start, kehrt nach Log out zurück
    ================================================================ */
 
+/* Vorübergehend aus, damit beim Testen kein Login dazwischenkommt –
+   auf true setzen, um den Start-Login wieder einzuschalten (Log out zeigt ihn immer) */
+const LOGIN_ENABLED = false;
+
 const loginEl       = document.getElementById('login');
 const loginEmail    = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
@@ -35,4 +39,12 @@ document.getElementById('login-forgot').addEventListener('click', () => {
 document.querySelectorAll('.login__footer a').forEach(a =>
   a.addEventListener('click', e => e.preventDefault()));
 
-setTimeout(() => loginPassword.focus(), 300);
+if (LOGIN_ENABLED) {
+  setTimeout(() => loginPassword.focus(), 300);
+} else {
+  /* ohne Ausblend-Animation weg, damit beim Laden nichts aufblitzt */
+  loginEl.style.transition = 'none';
+  hideLogin();
+  loginEl.offsetHeight;
+  loginEl.style.transition = '';
+}
