@@ -1,18 +1,28 @@
 /* ================================================================
    CALENDAR – Wochenansicht aller aktiven Schedules
    ================================================================ */
+/* Als Längen registriert, damit der Wechsel Collapsed ↔ Expanded gleiten kann */
+@property --slot-h      { syntax: '<length>'; inherits: true; initial-value: 6px; }
+@property --slot-gap    { syntax: '<length>'; inherits: true; initial-value: 5px; }
+@property --slot-radius { syntax: '<length>'; inherits: true; initial-value: 3px; }
+
 .calendar-view {
   /* Collapsed: alle Slots (--cal-slots, aus calendar.js) als dünne Farblinien
      im Platz unterhalb des Kopfes */
-  --slot-gap: 3px;
+  --slot-gap: 5px;
   --slot-h: clamp(4px, calc((100vh - 250px) / var(--cal-slots, 56) - var(--slot-gap)), 9px);
   --slot-radius: 3px;
   --lit-h: 42px;                 /* Höhe, auf die ein Slot beim Hover aufklappt */
+  --density-dur: 480ms;
   width: 100%;
   margin: auto 0;
   display: flex;
   flex-direction: column;
   animation: view-in 260ms var(--ease);
+  transition:
+    --slot-h var(--density-dur) var(--ease),
+    --slot-gap var(--density-dur) var(--ease),
+    --slot-radius var(--density-dur) var(--ease);
 }
 
 /* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
@@ -164,9 +174,14 @@
 }
 
 /* halbe Stunden nur im Expanded-Modus beschriftet */
-.cal-time--half { visibility: hidden; color: var(--text-25); font-size: 10px; }
+.cal-time--half {
+  opacity: 0;
+  color: var(--text-25);
+  font-size: 10px;
+  transition: opacity var(--dur) var(--ease);
+}
 [data-density="expanded"] .cal-time--half,
-.devcal-view .cal-time--half { visibility: visible; }
+.devcal-view .cal-time--half { opacity: 1; transition-delay: 200ms; }
 
 /* Slots */
 /* Stapelung: reine Staffelung von unten nach oben (inline z-index, unterster
@@ -203,12 +218,8 @@
 /* außerhalb der Öffnungszeit: fast unsichtbar */
 .cal-slot--closed .cal-slot__inner { background: transparent; }
 
-/* Collapsed: kräftige Farblinie · Expanded: getönte Fläche mit Titel */
+/* gedämpfte Kategoriefarbe – in beiden Dichten gleich, kräftig nur beim Hover */
 .cal-slot--spot .cal-slot__inner {
-  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
-}
-
-[data-density="expanded"] .cal-slot--spot .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
 }
 
@@ -228,10 +239,6 @@
 [data-density="collapsed"] .cal-slot.is-lit .cal-slot__inner {
   bottom: calc(var(--slot-h) - var(--lit-h));
   border-radius: 6px;
-}
-
-[data-density="expanded"] .cal-slot.is-lit .cal-slot__inner {
-  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
 }
 
 /* Inhalt (Collapsed, aufgeklappt): Uhrzeit links oben, Titel links unten, Stift rechts oben */
@@ -307,6 +314,8 @@
    der Stift erscheint erst beim Hover */
 [data-density="expanded"] .cal-slot__title {
   opacity: 1;
+  overflow: hidden;                         /* während des Aufklappens nichts herausragen lassen */
+  transition: opacity var(--dur) var(--ease) 220ms;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: 1fr;
   align-items: center;
@@ -332,10 +341,13 @@
 /* Umschalter Collapsed / Expanded */
 .segmented--sm { flex: none; }
 .segmented--sm .segmented__option {
-  flex: 0 0 96px;
+  flex: 0 0 40px;
   height: 32px;
-  font-size: var(--fs-menu);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.segmented--sm .segmented__option .icon { width: 15px; height: 15px; }
 
 
 /* Jetzt-Linie in der heutigen Spalte */

@@ -39,6 +39,8 @@
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevrons-down-up" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></symbol>
+    <symbol id="i-chevrons-up-down" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
     <symbol id="i-kebab" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
@@ -423,8 +425,12 @@ Lebe Smart!</textarea>
         <span class="cal-hint">Every slot represents 15 minutes.</span>
         <div class="segmented segmented--sm" id="cal-density">
           <span class="segmented__thumb"></span>
-          <button class="segmented__option is-active" data-value="collapsed">Collapsed</button>
-          <button class="segmented__option" data-value="expanded">Expanded</button>
+          <button class="segmented__option is-active" data-value="collapsed" aria-label="Collapsed" data-tip="Collapsed" data-tip-pos="bottom">
+            <svg class="icon"><use href="#i-chevrons-down-up"/></svg>
+          </button>
+          <button class="segmented__option" data-value="expanded" aria-label="Expanded" data-tip="Expanded" data-tip-pos="bottom">
+            <svg class="icon"><use href="#i-chevrons-up-down"/></svg>
+          </button>
         </div>
       </div>
       <div class="cal-days" id="cal-days"></div>

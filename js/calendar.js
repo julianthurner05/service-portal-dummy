@@ -309,11 +309,16 @@ calGrid.addEventListener('click', e => {
 document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) closeCalPop(); });
 
 /* ---- Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel) ----
-   Nur CSS-Variablen ändern sich, deshalb danach bloß die Jetzt-Linie neu setzen */
+   Nur CSS-Variablen ändern sich (gleitend, siehe calendar.css) – die
+   Jetzt-Linie hängt an Pixelpositionen und kommt erst nach dem Gleiten zurück */
+let densityTimer = null;
 wireSegment(document.getElementById('cal-density'), value => {
   calendarView.dataset.density = value;
   setLit(null);
-  renderNowLine();
+  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
+  clearTimeout(densityTimer);
+  const dur = parseFloat(getComputedStyle(calendarView).getPropertyValue('--density-dur')) || 480;
+  densityTimer = setTimeout(renderNowLine, dur + 40);
 });
 
 /* ---- Wochennavigation ---- */
