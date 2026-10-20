@@ -199,7 +199,7 @@ function renderCalendar() {
     html += '</div></div>';
   });
 
-  calGrid.innerHTML = '<div class="cal-grid__bg"></div>' + html;
+  calGrid.innerHTML = html;
   litUid = null;
   renderLegend();
   renderNowLine();
@@ -314,8 +314,8 @@ document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) clo
    Keyframes enthalten nur transform (transform-origin steht fest im CSS),
    damit der Browser sie auf dem Compositor abspielt; Höhen-Transitions über
    ~450 Zeilen hätten jeden Frame ein Layout erzwungen (in Safari ruckelig).
-   Die Fläche des Rasters (.cal-grid__bg) wird per clip-path auf- bzw.
-   zugedeckt – ohne Layout, mit exakten runden Ecken. */
+   Das Raster selbst – Fläche und Spaltenlinien – wird per clip-path auf-
+   bzw. zugedeckt: ohne Layout, mit exakten runden Ecken. */
 let densityAnims = [];
 
 function morphDensity(value) {
@@ -324,21 +324,20 @@ function morphDensity(value) {
   calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
 
   const rows = [...calGrid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
-  const bg = calGrid.querySelector('.cal-grid__bg');
   const top0 = calGrid.getBoundingClientRect().top;
   const first = rows.map(el => el.getBoundingClientRect());
 
   densityAnims.forEach(a => a.cancel());
   densityAnims = [];
-  bg.style.height = '';
-  const bgFirst = bg.getBoundingClientRect().height;
+  calGrid.style.minHeight = '';
+  const gridFirst = calGrid.getBoundingClientRect().height;
   calendarView.dataset.density = value;
 
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { renderNowLine(); return; }
 
   const top1 = calGrid.getBoundingClientRect().top;
   const last = rows.map(el => el.getBoundingClientRect());
-  const bgLast = bg.getBoundingClientRect().height;
+  const gridLast = calGrid.getBoundingClientRect().height;
   const css = getComputedStyle(calendarView);
   const timing = {
     duration: parseFloat(css.getPropertyValue('--density-dur')) || 380,
@@ -349,8 +348,8 @@ function morphDensity(value) {
   rows.forEach((el, i) => {
     const a = first[i], b = last[i];
     let from;
-    if (el.classList.contains('cal-time')) {
-      /* Zeit-Labels nur verschieben (mittig), nie stauchen */
+    if (el.classList.contains('cal-time') || el.classList.contains('cal-quiet')) {
+      /* reine Text-Zeilen (Uhrzeit, „Quiet Hour“) nur verschieben (mittig), nie stauchen */
       const dy = (a.top - top0 + a.height / 2) - (b.top - top1 + b.height / 2);
       if (Math.abs(dy) < 0.5) return;
       from = `translateY(${dy}px)`;
@@ -362,17 +361,17 @@ function morphDensity(value) {
     densityAnims.push(el.animate([{ transform: from }, { transform: 'none' }], timing));
   });
 
-  /* Fläche für die Dauer auf die größere der beiden Höhen stellen und den
-     Überstand unten wegclippen */
-  const bgMax = Math.max(bgFirst, bgLast);
-  const radius = getComputedStyle(bg).borderTopLeftRadius;
-  const clip = h => `inset(0px 0px ${bgMax - h}px 0px round ${radius})`;
-  bg.style.height = `${bgMax}px`;
-  const bgAnim = bg.animate([{ clipPath: clip(bgFirst) }, { clipPath: clip(bgLast) }], timing);
-  densityAnims.push(bgAnim);
+  /* Raster für die Dauer mindestens so hoch wie das größere der beiden
+     Zustände halten (beim Zuklappen) und den Überstand unten wegclippen */
+  const gridMax = Math.max(gridFirst, gridLast);
+  const radius = getComputedStyle(calGrid).borderTopLeftRadius;
+  const clip = h => `inset(0px 0px ${gridMax - h}px 0px round ${radius})`;
+  calGrid.style.minHeight = `${gridMax}px`;
+  const gridAnim = calGrid.animate([{ clipPath: clip(gridFirst) }, { clipPath: clip(gridLast) }], timing);
+  densityAnims.push(gridAnim);
 
-  bgAnim.finished.then(() => {
-    bg.style.height = '';
+  gridAnim.finished.then(() => {
+    calGrid.style.minHeight = '';
     calGrid.classList.remove('is-morphing');
     renderNowLine();
   }, () => {});                                   /* abgebrochen: der nächste Wechsel übernimmt */

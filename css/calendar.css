@@ -17,35 +17,12 @@
 }
 
 /* Wechsel Collapsed ↔ Expanded (morphDensity in calendar.js): das Layout
-   springt sofort, sichtbar gleiten die Zeilen per transform. Die Fläche des
-   Rasters liegt dafür in einem eigenen Element, dessen Höhe mitläuft. */
-#cal-grid {
-  position: relative;
-  isolation: isolate;
-  background: none;
-}
-
-.cal-grid__bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  z-index: -1;
-  background: var(--mittelblau);
-  border-radius: var(--radius-lg);
-}
-
-/* während des Gleitens: keine Hover, keine gestauchten Texte, keine
-   Spaltenlinien, die über die mitwachsende Fläche hinausragen */
+   springt sofort, sichtbar gleiten die Zeilen per transform, und das ganze
+   Raster – Fläche samt Spaltenlinien – wird per clip-path auf- bzw. zugedeckt.
+   Währenddessen keine Hover und keine (sonst gestauchten) Slot-Titel. */
+#cal-grid .cal-slot { transform-origin: top; }
 .cal-grid.is-morphing { pointer-events: none; }
 .cal-grid.is-morphing .cal-slot__title { opacity: 0; transition: none; }
-.cal-grid.is-morphing .cal-quiet { color: transparent; }
-.cal-grid.is-morphing .cal-col { border-left-color: transparent; }
-#cal-grid .cal-slot,
-#cal-grid .cal-quiet { transform-origin: top; }
-#cal-grid .cal-col { transition: border-color var(--dur-fast) var(--ease); }
-#cal-grid .cal-quiet { transition: color var(--dur-fast) var(--ease); }
 
 /* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
    der Viewport und scrollt mit der Seite */
