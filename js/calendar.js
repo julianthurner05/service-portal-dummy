@@ -317,6 +317,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) clo
    Das Raster selbst – Fläche und Spaltenlinien – wird per clip-path auf-
    bzw. zugedeckt: ohne Layout, mit exakten runden Ecken. */
 let densityAnims = [];
+let titleTimer = null;
 
 function morphDensity(value) {
   setLit(null);
@@ -340,11 +341,13 @@ function morphDensity(value) {
   const gridLast = calGrid.getBoundingClientRect().height;
   const css = getComputedStyle(calendarView);
   const timing = {
-    duration: parseFloat(css.getPropertyValue('--density-dur')) || 380,
+    duration: parseFloat(css.getPropertyValue('--density-dur')) || 560,
     easing: css.getPropertyValue('--ease').trim() || 'ease',
   };
 
-  calGrid.classList.add('is-morphing');
+  calGrid.classList.add('is-morphing', 'is-hiding-titles');
+  clearTimeout(titleTimer);
+  titleTimer = setTimeout(() => calGrid.classList.remove('is-hiding-titles'), timing.duration * 0.6);
   rows.forEach((el, i) => {
     const a = first[i], b = last[i];
     let from;
