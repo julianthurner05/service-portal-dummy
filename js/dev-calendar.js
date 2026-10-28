@@ -133,14 +133,35 @@ function dcalClearDropMarks() {
   dcalTray.classList.remove('is-drop');
 }
 
+/* Eigenes Drag-Bild: eine saubere Titel-Pille statt des Browser-Schnappschusses.
+   Der Schnappschuss umfasst auch den Überstand des unsichtbaren ✕-Tooltips und
+   nahm so den Anfang des Nachbar-Slots mit; im Collapsed-Modus wäre er zudem
+   nur eine dünne Linie. */
+function dcalSetDragImage(e, el, spot) {
+  const r = el.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'devcal-ghost';
+  ghost.style.cssText = `${catStyle(spot.category)}width:${Math.round(r.width)}px;`;
+  ghost.textContent = spot.title;
+  document.body.appendChild(ghost);
+  const x = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+  const y = Math.min(Math.max(e.clientY - r.top, 0), ghost.offsetHeight);
+  e.dataTransfer.setDragImage(ghost, x, y);
+  setTimeout(() => ghost.remove(), 0);
+}
+
 document.addEventListener('dragstart', e => {
   const el = e.target.closest('.devcal-slot, .devcal-tray__item');
   if (!el) return;
   dcalDrag = el.classList.contains('devcal-slot')
     ? { from: 'grid', id: +el.dataset.id }
     : { from: 'palette', index: +el.dataset.palette };
+  const spot = dcalDrag.from === 'grid'
+    ? dcalWeekItems(dcalWeekStart).find(i => i.id === dcalDrag.id)
+    : dcalPaletteItems()[dcalDrag.index];
   e.dataTransfer.effectAllowed = dcalDrag.from === 'palette' ? 'copy' : 'move';
-  e.dataTransfer.setData('text/plain', el.textContent.trim());
+  e.dataTransfer.setData('text/plain', spot ? spot.title : '');
+  if (spot) dcalSetDragImage(e, el, spot);
   if (dcalDrag.from === 'grid') requestAnimationFrame(() => el.classList.add('is-dragging'));
 });
 
@@ -215,6 +236,11 @@ dcalGrid.addEventListener('click', e => {
   if (idx > -1) items.splice(idx, 1);
   renderDevCalendar();
 });
+
+/* ---------------------------------------------------------------
+   Dichte: derselbe Collapsed/Expanded-Wechsel wie im normalen Kalender
+   --------------------------------------------------------------- */
+wireDensityToggle(document.getElementById('dcal-density'), value => morphGrid(devcalView, dcalGrid, value));
 
 /* ---------------------------------------------------------------
    Wochennavigation

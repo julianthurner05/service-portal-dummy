@@ -435,7 +435,7 @@ Lebe Smart!</textarea>
     </section>
 
     <!-- Dev Calendar -->
-    <section class="calendar-view devcal-view" data-screen="dev-calendar" hidden>
+    <section class="calendar-view devcal-view" data-screen="dev-calendar" data-density="collapsed" hidden>
       <div class="cal-head">
         <h1 class="cal-head__title">Dev Calendar</h1>
         <div class="cal-week">
@@ -449,6 +449,11 @@ Lebe Smart!</textarea>
         </div>
         <button class="cal-today" id="dcal-today">Today</button>
         <span class="cal-hint devcal-hint">Every slot lives on its own – drag it to a free slot or into the tray.</span>
+        <button class="density-toggle" id="dcal-density" type="button" role="switch" aria-checked="false" aria-label="Expanded view" data-tip="Expand" data-tip-pos="bottom">
+          <span class="density-toggle__knob"></span>
+          <svg class="icon density-toggle__icon density-toggle__icon--collapsed"><use href="#i-chevrons-down-up"/></svg>
+          <svg class="icon density-toggle__icon density-toggle__icon--expanded"><use href="#i-chevrons-up-down"/></svg>
+        </button>
       </div>
       <div class="devcal-layout">
         <div class="cal-grid devcal-grid" id="dcal-grid"></div>

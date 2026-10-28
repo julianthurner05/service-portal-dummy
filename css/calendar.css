@@ -22,7 +22,7 @@
    springt sofort, sichtbar gleiten die Zeilen per transform, und das ganze
    Raster – Fläche samt Spaltenlinien – wird per clip-path auf- bzw. zugedeckt.
    Währenddessen keine Hover und keine (sonst gestauchten) Slot-Titel. */
-#cal-grid .cal-slot { transform-origin: top; }
+.cal-grid .cal-slot { transform-origin: top; }
 .cal-grid.is-morphing { pointer-events: none; }
 /* Titel blenden zu Beginn kurz aus und erst gegen Ende des Gleitens
    (wenn die Slots fast ihre volle Höhe haben) wieder weich ein */
@@ -183,8 +183,7 @@
   font-size: 10px;
   transition: opacity var(--dur) var(--ease);
 }
-[data-density="expanded"] .cal-time--half,
-.devcal-view .cal-time--half {
+[data-density="expanded"] .cal-time--half {
   opacity: 1;
   transition: opacity var(--title-fade) var(--ease-out) calc(var(--density-dur) * 0.55);
 }

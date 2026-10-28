@@ -1,14 +1,9 @@
 /* ================================================================
    DEV CALENDAR – Wochenraster mit freien Slots + Ablage (Tray)
    ================================================================ */
-/* 15-Minuten-Raster: Slots fix so hoch, dass der Titel lesbar bleibt –
-   der Kalender scrollt mit der Seite */
-.devcal-view {
-  --slot-gap: 4px;
-  --slot-h: 22px;
-  --slot-radius: 6px;
-}
-
+/* Dichte wie im normalen Kalender: Collapsed (Farblinien) und Expanded
+   (28px mit Titel) – die Größen kommen aus .calendar-view in calendar.css,
+   der Wechsel gleitet über morphGrid() */
 .devcal-hint { margin-left: auto; }
 
 .devcal-layout {
@@ -22,23 +17,74 @@
   min-width: 0;
 }
 
-/* ---- Slots: Titel immer sichtbar, kein Gruppen-Hover ---- */
+/* ---- Slots: jeder für sich, kein Gruppen-Hover ---- */
 .devcal-slot { cursor: grab; }
 .devcal-slot:active { cursor: grabbing; }
 .devcal-slot.is-dragging { opacity: 0.35; }
-
-.devcal-view .cal-slot--spot .cal-slot__inner {
-  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
-}
+.devcal-slot:hover { z-index: 5; }
 
 .devcal-slot:hover .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
 }
 
+/* Collapsed: nur der berührte Slot klappt nach unten zur Karte mit Titel
+   und ✕ auf; die Karte fängt die Maus, damit das ✕ erreichbar bleibt */
+[data-density="collapsed"] .devcal-slot:hover .cal-slot__inner {
+  bottom: calc(var(--slot-h) - var(--lit-h));
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(12, 14, 41, 0.45);
+  pointer-events: auto;
+}
+
+/* beim Ziehen zuklappen – sonst verdeckt die Karte die Zellen darunter */
+[data-density="collapsed"] .devcal-slot.is-dragging .cal-slot__inner {
+  bottom: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.devcal-slot__label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--slot-h);
+  padding: 0 7px;
+  font-size: 10.5px;
+  line-height: var(--slot-h);
+  letter-spacing: var(--ls-small);
+  color: var(--text-80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: opacity var(--title-fade) var(--ease-out);
+}
+
+.devcal-slot:hover .devcal-slot__label { right: 20px; color: #ffffff; }
+
+[data-density="collapsed"] .devcal-slot .devcal-slot__label {
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+[data-density="collapsed"] .devcal-slot:hover .devcal-slot__label {
+  opacity: 1;
+  height: var(--lit-h);
+  line-height: var(--lit-h);
+  font-size: var(--fs-small);
+  transition: opacity var(--dur) var(--ease) 60ms;
+}
+
+[data-density="collapsed"] .devcal-slot.is-dragging .devcal-slot__label { opacity: 0; }
+
+/* Titel beim Dichtewechsel wie im normalen Kalender aus- und weich einblenden */
+.cal-grid.is-hiding-titles .devcal-slot__label { opacity: 0; transition: opacity 160ms var(--ease); }
+
 /* Kreuz: einzelnen Slot löschen – erscheint beim Hover */
 .devcal-slot__x {
   position: absolute;
-  top: 50%;
+  top: calc(var(--slot-h) / 2);
   right: 2px;
   transform: translateY(-50%);
   display: flex;
@@ -53,30 +99,45 @@
   transition: opacity var(--transition), background var(--transition), color var(--transition);
 }
 
+[data-density="collapsed"] .devcal-slot:hover .devcal-slot__x { top: calc(var(--lit-h) / 2); }
 .devcal-slot:hover .devcal-slot__x { opacity: 1; pointer-events: auto; }
+.devcal-slot.is-dragging .devcal-slot__x { opacity: 0; pointer-events: none; }
 .devcal-slot__x:hover { background: var(--white-14); color: #ffffff; }
 .devcal-slot__x .icon { width: 9px; height: 9px; stroke-width: 2; }
 
-.devcal-slot:hover .devcal-slot__label { right: 20px; }
-
-.devcal-slot__label {
+/* Drop-Ziel – die Trefferfläche reicht bis in die halbe Lücke, damit auch
+   die dünnen Linien im Collapsed-Modus gut zu treffen sind */
+.devcal-cell::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  padding: 0 7px;
-  font-size: 10.5px;
-  line-height: var(--slot-h);
+  left: 0;
+  right: 0;
+  top: calc(var(--slot-gap) / -2);
+  bottom: calc(var(--slot-gap) / -2);
+}
+
+.devcal-cell.is-drop .cal-slot__inner {
+  background: var(--white-14);
+  box-shadow: inset 0 0 0 1px var(--white-25);
+}
+
+/* Drag-Bild (dcalSetDragImage): saubere Titel-Pille, außerhalb des Bildschirms gerendert */
+.devcal-ghost {
+  position: fixed;
+  top: -200px;
+  left: 0;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+  color: #ffffff;
+  font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
-  color: var(--text-80);
+  line-height: 28px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
-}
-
-/* Drop-Ziel */
-.devcal-cell.is-drop .cal-slot__inner {
-  background: var(--white-14);
-  box-shadow: inset 0 0 0 1px var(--white-25);
 }
 
 /* ---- Ablage rechts ---- */
@@ -109,16 +170,17 @@
 .devcal-tray__list {
   display: flex;
   flex-direction: column;
-  gap: var(--slot-gap);
+  gap: 4px;
   overflow-y: auto;
   min-height: 0;
 }
 
-/* Paletten-Spot: sieht aus wie im Kalender – nur der Titel */
+/* Paletten-Spot: sieht aus wie ein Expanded-Slot – nur der Titel; bleibt
+   in beiden Dichten gleich groß und lesbar */
 .devcal-tray__item {
   position: relative;
   flex: none;
-  height: var(--slot-h);
+  height: 28px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
   cursor: grab;
@@ -130,6 +192,13 @@
 
 .devcal-tray__item:hover {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+.devcal-tray__item .devcal-slot__label { height: 28px; line-height: 28px; }
+
+@media (max-width: 1600px) {
+  .devcal-hint { display: none; }
+  .devcal-view .density-toggle { margin-left: auto; }
 }
 
 @media (max-width: 980px) {

@@ -315,39 +315,34 @@ document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) clo
    damit der Browser sie auf dem Compositor abspielt; Höhen-Transitions über
    ~450 Zeilen hätten jeden Frame ein Layout erzwungen (in Safari ruckelig).
    Das Raster selbst – Fläche und Spaltenlinien – wird per clip-path auf-
-   bzw. zugedeckt: ohne Layout, mit exakten runden Ecken. */
-let densityAnims = [];
-let titleTimer = null;
-
-function morphDensity(value) {
-  setLit(null);
-  closeCalPop();
-  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
-
-  const rows = [...calGrid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
-  const top0 = calGrid.getBoundingClientRect().top;
+   bzw. zugedeckt: ohne Layout, mit exakten runden Ecken.
+   Gilt für beide Kalender (normal und Dev): view trägt data-density,
+   grid ist das Raster. Laufende Animationen hängen am Raster selbst. */
+function morphGrid(view, grid, value, onDone = null) {
+  const rows = [...grid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
+  const top0 = grid.getBoundingClientRect().top;
   const first = rows.map(el => el.getBoundingClientRect());
 
-  densityAnims.forEach(a => a.cancel());
-  densityAnims = [];
-  calGrid.style.minHeight = '';
-  const gridFirst = calGrid.getBoundingClientRect().height;
-  calendarView.dataset.density = value;
+  (grid._morphAnims || []).forEach(a => a.cancel());
+  grid._morphAnims = [];
+  grid.style.minHeight = '';
+  const gridFirst = grid.getBoundingClientRect().height;
+  view.dataset.density = value;
 
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { renderNowLine(); return; }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { if (onDone) onDone(); return; }
 
-  const top1 = calGrid.getBoundingClientRect().top;
+  const top1 = grid.getBoundingClientRect().top;
   const last = rows.map(el => el.getBoundingClientRect());
-  const gridLast = calGrid.getBoundingClientRect().height;
-  const css = getComputedStyle(calendarView);
+  const gridLast = grid.getBoundingClientRect().height;
+  const css = getComputedStyle(view);
   const timing = {
     duration: parseFloat(css.getPropertyValue('--density-dur')) || 560,
     easing: css.getPropertyValue('--ease').trim() || 'ease',
   };
 
-  calGrid.classList.add('is-morphing', 'is-hiding-titles');
-  clearTimeout(titleTimer);
-  titleTimer = setTimeout(() => calGrid.classList.remove('is-hiding-titles'), timing.duration * 0.6);
+  grid.classList.add('is-morphing', 'is-hiding-titles');
+  clearTimeout(grid._titleTimer);
+  grid._titleTimer = setTimeout(() => grid.classList.remove('is-hiding-titles'), timing.duration * 0.6);
   rows.forEach((el, i) => {
     const a = first[i], b = last[i];
     let from;
@@ -361,32 +356,43 @@ function morphDensity(value) {
       const sy = b.height ? a.height / b.height : 1;
       from = `translateY(${dy}px) scaleY(${sy})`;
     }
-    densityAnims.push(el.animate([{ transform: from }, { transform: 'none' }], timing));
+    grid._morphAnims.push(el.animate([{ transform: from }, { transform: 'none' }], timing));
   });
 
   /* Raster für die Dauer mindestens so hoch wie das größere der beiden
      Zustände halten (beim Zuklappen) und den Überstand unten wegclippen */
   const gridMax = Math.max(gridFirst, gridLast);
-  const radius = getComputedStyle(calGrid).borderTopLeftRadius;
+  const radius = getComputedStyle(grid).borderTopLeftRadius;
   const clip = h => `inset(0px 0px ${gridMax - h}px 0px round ${radius})`;
-  calGrid.style.minHeight = `${gridMax}px`;
-  const gridAnim = calGrid.animate([{ clipPath: clip(gridFirst) }, { clipPath: clip(gridLast) }], timing);
-  densityAnims.push(gridAnim);
+  grid.style.minHeight = `${gridMax}px`;
+  const gridAnim = grid.animate([{ clipPath: clip(gridFirst) }, { clipPath: clip(gridLast) }], timing);
+  grid._morphAnims.push(gridAnim);
 
   gridAnim.finished.then(() => {
-    calGrid.style.minHeight = '';
-    calGrid.classList.remove('is-morphing');
-    renderNowLine();
+    grid.style.minHeight = '';
+    grid.classList.remove('is-morphing');
+    if (onDone) onDone();
   }, () => {});                                   /* abgebrochen: der nächste Wechsel übernimmt */
 }
 
-const densityToggle = document.getElementById('cal-density');
-densityToggle.addEventListener('click', () => {
-  const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
-  densityToggle.setAttribute('aria-checked', String(expanded));
-  densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
-  morphDensity(expanded ? 'expanded' : 'collapsed');
-});
+function morphDensity(value) {
+  setLit(null);
+  closeCalPop();
+  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
+  morphGrid(calendarView, calGrid, value, renderNowLine);
+}
+
+/* Pill-Umschalter: aria-checked = Expanded */
+function wireDensityToggle(btn, onChange) {
+  btn.addEventListener('click', () => {
+    const expanded = btn.getAttribute('aria-checked') !== 'true';
+    btn.setAttribute('aria-checked', String(expanded));
+    btn.dataset.tip = expanded ? 'Collapse' : 'Expand';
+    onChange(expanded ? 'expanded' : 'collapsed');
+  });
+}
+
+wireDensityToggle(document.getElementById('cal-density'), morphDensity);
 
 /* ---- Wochennavigation ---- */
 const calPrev = document.getElementById('cal-prev');
