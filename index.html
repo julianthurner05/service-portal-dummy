@@ -265,9 +265,13 @@ Lebe Smart!</textarea>
       <div class="cal-layout">
         <div class="cal-grid" id="cal-grid"></div>
         <aside class="cal-tray" id="cal-tray">
-          <p class="cal-tray__title">Spots</p>
-          <p class="cal-tray__hint">Drag a spot into a free slot – as often as you like – or click a slot to pick one. Drop a slot here to remove it.</p>
+          <p class="cal-tray__title">Ready for Schedule</p>
+          <div class="cal-tray__search">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <input type="text" id="cal-tray-search" placeholder="Search..." autocomplete="off">
+          </div>
           <div class="cal-tray__list" id="cal-tray-list"></div>
+          <p class="cal-tray__empty" id="cal-tray-empty" hidden></p>
         </aside>
       </div>
     </section>
@@ -535,6 +539,10 @@ Lebe Smart!</textarea>
         <span class="card__date"></span>
         <span class="badge badge--pending" hidden>Generating<span class="badge__dots"></span></span>
         <span class="badge badge--new" hidden>New</span>
+        <span class="badge badge--ready" hidden>
+          <svg class="icon"><use href="#i-check"/></svg>
+          Ready
+        </span>
         <span class="badge badge--scheduled" hidden>
           <svg class="icon"><use href="#i-gantt"/></svg>
           Scheduled
@@ -552,9 +560,9 @@ Lebe Smart!</textarea>
               <svg class="icon"><use href="#i-send"/></svg>
               Receive
             </button>
-            <button class="context-menu__item" role="menuitem" data-action="schedule">
-              <svg class="icon"><use href="#i-gantt"/></svg>
-              Schedule
+            <button class="context-menu__item" role="menuitem" data-action="ready">
+              <svg class="icon"><use href="#i-calendar"/></svg>
+              <span class="context-menu__label">Ready for Schedule</span>
             </button>
             <button class="context-menu__item" role="menuitem" data-action="reuse">
               <svg class="icon"><use href="#i-reuse"/></svg>

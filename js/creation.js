@@ -1,7 +1,7 @@
 /* ================================================================
    SPOT CREATION – Formular, Karten, Zustände, Suche
-   Fertige Spots wandern in die Spot-Bibliothek (plan.js) und stehen
-   damit in der Palette des Calendar; „Schedule“ springt dorthin.
+   „Ready for Schedule“ setzt einen fertigen Spot auf die gleichnamige
+   Liste im Calendar (plan.js); von dort wird er eingeplant.
    ================================================================ */
 
 const cardTemplate   = document.getElementById('card-template');
@@ -113,6 +113,7 @@ function setCardState(card, state) {
   if (state === 'deleted') {
     card.querySelector('.badge--scheduled').hidden = true;
     card.querySelector('.badge--received').hidden = true;
+    card.querySelector('.badge--ready').hidden = true;
   }
 }
 
@@ -156,6 +157,8 @@ function wireCardMenu(card) {
     const willOpen = menu.hidden;
     closeAllMenus();
     if (willOpen) {
+      menu.querySelector('[data-action="ready"] .context-menu__label').textContent =
+        isSpotReady(card._state.title) ? 'Remove from Ready for Schedule' : 'Ready for Schedule';
       menu.hidden = false;
       kebab.classList.add('is-open');
     }
@@ -170,13 +173,8 @@ function wireCardMenu(card) {
       case 'receive':
         card.querySelector('.badge--received').hidden = false;
         break;
-      case 'schedule':
-        if (['pending', 'error', 'deleted'].includes(card._state.status)) {
-          showToast('error', card._state.status === 'pending' ? 'The spot is still being generated.' : 'This spot can’t be scheduled.');
-          break;
-        }
-        registerCardSpot(card);
-        openInCalendar(card._state.title);
+      case 'ready':
+        toggleCardReady(card);
         break;
       case 'reuse':
         titleInput.value = card._state.title;
@@ -189,6 +187,7 @@ function wireCardMenu(card) {
       case 'delete': {
         setCardState(card, 'deleted');
         const removed = retireSpot(card._state.title);
+        syncReadyBadges();
         if (removed) showToast('success', `Removed from ${removed} calendar slot${removed === 1 ? '' : 's'}.`);
         break;
       }
@@ -200,9 +199,28 @@ function wireCardMenu(card) {
 /* ---------------------------------------------------------------
    Verbindung zum Calendar
    --------------------------------------------------------------- */
-/* fertiger Spot → Spot-Bibliothek; neue stehen in der Palette oben */
-function registerCardSpot(card, front = true) {
-  return addSpot({ title: card._state.title, category: card._state.category, duration: card._state.duration, source: 'spottool', front });
+/* Spot auf die Liste „Ready for Schedule“ setzen bzw. wieder herunternehmen */
+function toggleCardReady(card) {
+  if (['pending', 'error', 'deleted'].includes(card._state.status)) {
+    showToast('error', card._state.status === 'pending' ? 'The spot is still being generated.' : 'This spot can’t be scheduled.');
+    return;
+  }
+  const { title, category, duration } = card._state;
+  if (category === 'closing') {
+    showToast('error', 'Opening and closing announcements are scheduled by sounddna.');
+    return;
+  }
+  const ready = !isSpotReady(title);
+  setSpotReady({ title, category, duration, source: 'spottool', front: true }, ready);
+  syncReadyBadges();
+  showToast('success', ready ? `“${title}” is ready for schedule.` : `“${title}” removed from Ready for Schedule.`);
+}
+
+/* Ready-Badge an allen Karten nach der Liste ausrichten */
+function syncReadyBadges() {
+  historyList.querySelectorAll('.card').forEach(card => {
+    card.querySelector('.badge--ready').hidden = card._state.status === 'deleted' || !isSpotReady(card._state.title);
+  });
 }
 
 /* im Calendar eingeplant → Badge an allen Karten dieses Spots */
@@ -248,7 +266,6 @@ createBtn.addEventListener('click', () => {
   setTimeout(() => {
     if (card._state.status !== 'pending') return;
     setCardState(card, 'new');
-    registerCardSpot(card);
     showToast('success', 'Spot generated successfully.');
 
     /* New-State nach einer Minute wieder zurücknehmen */
@@ -315,9 +332,3 @@ demoSpots.forEach(spot => {
     })
   );
 });
-
-/* fertige Demo-Spots in die Bibliothek – von alt nach neu, damit der
-   neueste oben in der Palette steht */
-[...historyList.querySelectorAll('.card')].reverse()
-  .filter(card => !card._state.status)
-  .forEach(card => registerCardSpot(card));

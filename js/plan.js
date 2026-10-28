@@ -1,9 +1,11 @@
 /* ================================================================
    PLAN – die eine Quelle für den Durchsagenplan
    - Kategorien, Store-Regeln (Öffnungszeiten, Quiet Hours), Slot-Raster
-   - Spot-Bibliothek: Spots aus dem Plan + fertige Spots aus dem SpotTool
+   - Spot-Bibliothek: Spots aus dem Plan + Spots aus dem SpotTool; was
+     „ready“ ist, steht in der Liste „Ready for Schedule“ im Calendar
    - Wochen im Calendar: jede Woche wird beim ersten Öffnen aus dem
-     Basisplan befüllt, danach lebt jeder Slot für sich
+     Basisplan und den Wiederholungen (Serien) befüllt, danach lebt jeder
+     Slot für sich
    - fixe Slots (Opening/Closing) vergibt sounddna – sie kommen jede Woche
      aus dem Basisplan und sind nicht verschieb- oder löschbar
    SpotTool, Calendar und Home lesen und schreiben nur hierüber.
@@ -88,26 +90,41 @@ const emitPlanChange = kind => planListeners.forEach(fn => fn(kind));
    Spot-Bibliothek
    --------------------------------------------------------------- */
 let spotUid = 0;
-const spots = [];                     /* { id, title, category, duration, source: 'plan' | 'spottool', retired } */
+const spots = [];                     /* { id, title, category, duration, source: 'plan' | 'spottool', ready, retired } */
 
 const findSpot = title => spots.find(s => s.title === title) || null;
 const spotById = id => spots.find(s => s.id === id) || null;
 
-/* front: neue SpotTool-Spots stehen in der Palette oben */
-function addSpot({ title, category = 'standard', duration = 9, source = 'plan', front = false }) {
+/* front: neue SpotTool-Spots stehen in der Liste oben */
+function addSpot({ title, category = 'standard', duration = 9, source = 'plan', ready = true, front = false }) {
   let s = findSpot(title);
   if (s) {
     if (s.retired) { s.retired = false; emitPlanChange('spots'); }
     return s;
   }
-  s = { id: ++spotUid, title, category, duration, source, retired: false };
+  s = { id: ++spotUid, title, category, duration, source, ready, retired: false };
   if (front) spots.unshift(s); else spots.push(s);
   emitPlanChange('spots');
   return s;
 }
 
-/* Opening/Closing vergibt sounddna – nicht in der Palette */
-const paletteSpots = () => spots.filter(s => !s.retired && s.category !== 'closing');
+/* „Ready for Schedule“: der Spot steht in der Liste im Calendar.
+   Aus der Liste nehmen lässt eingeplante Slots stehen. */
+function setSpotReady(meta, ready) {
+  const s = addSpot({ ...meta, ready });
+  if (s.ready !== ready) {
+    s.ready = ready;
+    /* neu in die Liste → nach oben */
+    if (ready) { spots.splice(spots.indexOf(s), 1); spots.unshift(s); }
+    emitPlanChange('spots');
+  }
+  return s;
+}
+
+const isSpotReady = title => { const s = findSpot(title); return !!s && s.ready && !s.retired; };
+
+/* Opening/Closing vergibt sounddna – nie in der Liste */
+const paletteSpots = () => spots.filter(s => s.ready && !s.retired && s.category !== 'closing');
 
 /* Spot gelöscht: aus der Palette nehmen und aus dieser und allen kommenden
    Wochen entfernen. Liefert die Zahl der entfernten Slots. */
@@ -115,6 +132,8 @@ function retireSpot(title) {
   const s = findSpot(title);
   if (!s || s.retired) return 0;
   s.retired = true;
+  s.ready = false;
+  for (let i = userSeries.length - 1; i >= 0; i--) if (userSeries[i].spotId === s.id) userSeries.splice(i, 1);
   const thisWeek = mondayOf(new Date());
   let removed = 0;
   weeks.forEach((items, key) => {
@@ -246,8 +265,66 @@ function weekItems(monday) {
       items.push({ id: ++itemUid, spotId: spot.id, day: di, slot });
     });
   }));
+  /* danach die Wiederholungen aus dem Calendar – nur in freie Zellen */
+  weekDates(monday).forEach((date, di) => userSeries.forEach(r => {
+    if (!seriesOn(r, date, di)) return;
+    const cell = `${di}:${r.slot}`;
+    if (taken.has(cell) || cellBlocked(di, r.slot)) return;
+    taken.add(cell);
+    items.push({ id: ++itemUid, spotId: r.spotId, day: di, slot: r.slot, seriesId: r.id });
+  }));
   weeks.set(key, items);
   return items;
+}
+
+/* ---------------------------------------------------------------
+   Wiederholungen (Serien) – im Calendar beim Ablegen eingestellt:
+   ein Spot zur selben Uhrzeit an gewählten Wochentagen, ab dem
+   Ablegedatum bis zu einem Enddatum oder ohne Ende
+   --------------------------------------------------------------- */
+let seriesUid = 0;
+const userSeries = [];                /* { id, spotId, days: ['Mo', …], slot, start: Date, end: Date | null } */
+
+const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function seriesOn(r, date, dayI) {
+  if (dayI >= CAL_DAYS || !r.days.includes(DAYS[dayI])) return false;
+  const d = dayStart(date);
+  return d >= r.start && (!r.end || d <= r.end);
+}
+
+/* Termine einer Serie (ohne Rücksicht auf belegte Zellen) – für die Vorschau;
+   ohne Ende: null */
+function seriesDates(r) {
+  if (!r.end) return null;
+  let n = 0;
+  for (const d = new Date(r.start); d <= r.end; d.setDate(d.getDate() + 1)) {
+    if (seriesOn(r, d, dayIdx(d))) n++;
+  }
+  return n;
+}
+
+/* Serie anlegen: gilt für alle Wochen, die später zum ersten Mal geöffnet
+   werden, und wird sofort in die schon geöffneten Wochen eingetragen.
+   Liefert { placed, skipped } für die schon geöffneten Wochen. */
+function addSeries({ spotId, days, slot, start, end = null }) {
+  const r = { id: ++seriesUid, spotId, days, slot, start: dayStart(start), end: end ? dayStart(end) : null };
+  userSeries.push(r);
+  let placed = 0, skipped = 0;
+  weeks.forEach((items, key) => {
+    const monday = parseDate(key);
+    weekDates(monday).forEach((date, di) => {
+      if (!seriesOn(r, date, di)) return;
+      if (cellFree(monday, di, slot)) {
+        items.push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
+        placed++;
+      } else {
+        skipped++;
+      }
+    });
+  });
+  emitPlanChange('week');
+  return { series: r, placed, skipped };
 }
 
 /* frei für einen Spot: offen, keine Quiet Hour, kein fixer und kein anderer Slot */

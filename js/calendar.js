@@ -3,9 +3,11 @@
    - Woche Mo–Sa im 15-Minuten-Raster, Daten aus plan.js
    - jeder Slot lebt für sich: per Drag & Drop verschieben, über das ✕
      oder durch Ablegen in der Palette entfernen
-   - rechts die Spot-Palette: jeder Spot einmal, beliebig oft einplanbar
-     (Plan-Spots + fertige Spots aus dem SpotTool)
-   - Klick auf eine freie Zelle → Spot auswählen (statt ziehen)
+   - rechts die Liste „Ready for Schedule“: jeder Spot einmal, beliebig oft
+     einplanbar (Plan-Spots + im SpotTool freigegebene Spots), mit Suche
+   - nach dem Ablegen aus der Liste: kleines Fenster für Wiederholungen
+     (Wochentage, Laufzeit bis zu Monaten oder ohne Ende)
+   - Hover: alle Slots desselben Spots leuchten auf
    - fixe Slots (Opening/Closing) vergibt sounddna: gesperrt, mit Schloss
    - Collapsed (Farblinien) ↔ Expanded (Slots mit Titel), gleitend
    ================================================================ */
@@ -15,6 +17,8 @@ const calRange     = document.getElementById('cal-range');
 const calLegend    = document.getElementById('cal-legend');
 const calTray      = document.getElementById('cal-tray');
 const calTrayList  = document.getElementById('cal-tray-list');
+const calTraySearch = document.getElementById('cal-tray-search');
+const calTrayEmpty = document.getElementById('cal-tray-empty');
 
 let calWeekStart = mondayOf(new Date());
 
@@ -43,7 +47,8 @@ function weekRangeLabel(days) {
 }
 
 function renderCalendar() {
-  closeCellPicker();
+  closeRepeat();
+  litSpot = null;
   const days = calWeekDays(calWeekStart);
   calRange.textContent = weekRangeLabel(days);
 
@@ -64,7 +69,7 @@ function renderCalendar() {
       if (f) {
         const label = f.length > 1 ? `${f[0].spot.title} +${f.length - 1}` : f[0].spot.title;
         const tip = `${f.map(x => `${x.time} ${x.spot.title}`).join(' · ')} – fixed by sounddna`;
-        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
+        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed" data-spot="${f[0].spot.id}" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(label)}</span>
             ${icon('lock', 'cal-item__lock')}
@@ -75,7 +80,7 @@ function renderCalendar() {
       const it = items.find(i => i.day === di && i.slot === s);
       if (it) {
         const spot = spotById(it.spotId);
-        html += `<div class="cal-slot cal-slot--spot cal-item" draggable="true" data-id="${it.id}" style="${catStyle(spot.category)}">
+        html += `<div class="cal-slot cal-slot--spot cal-item" draggable="true" data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
             <button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>
@@ -106,13 +111,46 @@ function renderCalendar() {
   renderNowLine();
 }
 
-/* ---- Palette ---- */
+/* ---- Liste „Ready for Schedule“ ---- */
 function renderTray() {
-  calTrayList.innerHTML = paletteSpots().map(s => `
+  const all = paletteSpots();
+  const q = calTraySearch.value.trim().toLowerCase();
+  const list = all.filter(s => s.title.toLowerCase().includes(q));
+  calTrayList.innerHTML = list.map(s => `
     <div class="cal-tray__item" draggable="true" data-spot="${s.id}" style="${catStyle(s.category)}">
       <span class="cal-item__label">${escapeHtml(s.title)}</span>
     </div>`).join('');
+  calTrayEmpty.hidden = list.length > 0;
+  calTrayEmpty.textContent = all.length
+    ? 'No spots match your search.'
+    : 'No spots yet – mark a spot in the SpotTool as Ready for Schedule.';
 }
+
+calTraySearch.addEventListener('input', renderTray);
+
+/* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
+   auf einen Eintrag der Liste ---- */
+let litSpot = null;
+
+function setLit(spotId) {
+  if (spotId === litSpot) return;
+  litSpot = spotId;
+  calGrid.querySelectorAll('.cal-item').forEach(el =>
+    el.classList.toggle('is-lit', spotId !== null && el.dataset.spot === spotId));
+}
+
+calGrid.addEventListener('mousemove', e => {
+  if (calDrag) return;
+  const item = e.target.closest('.cal-item');
+  setLit(item ? item.dataset.spot : null);
+});
+calGrid.addEventListener('mouseleave', () => setLit(null));
+calTrayList.addEventListener('mouseover', e => {
+  if (calDrag) return;
+  const item = e.target.closest('.cal-tray__item');
+  setLit(item ? item.dataset.spot : null);
+});
+calTrayList.addEventListener('mouseleave', () => setLit(null));
 
 /* ---- Jetzt-Linie in der heutigen Spalte ---- */
 function renderNowLine() {
@@ -179,7 +217,8 @@ function setDragImage(e, el, spot) {
 calendarView.addEventListener('dragstart', e => {
   const el = e.target.closest('.cal-item[draggable="true"], .cal-tray__item');
   if (!el) return;
-  closeCellPicker();
+  closeRepeat();
+  setLit(null);
   let spot;
   if (el.classList.contains('cal-item')) {
     calDrag = { from: 'grid', id: +el.dataset.id };
@@ -217,13 +256,16 @@ calGrid.addEventListener('drop', e => {
   e.preventDefault();
   const day = +cell.dataset.day;
   const slot = +cell.dataset.slot;
+  let placed = null;
   if (calDrag.from === 'grid') {
     moveItem(calWeekStart, calDrag.id, day, slot);
-  } else if (placeSpot(calWeekStart, calDrag.spotId, day, slot)) {
-    spotPlaced(spotById(calDrag.spotId));
+  } else {
+    placed = placeSpot(calWeekStart, calDrag.spotId, day, slot);
+    if (placed) spotPlaced(spotById(calDrag.spotId));
   }
   calDrag = null;
   renderCalendar();
+  if (placed) openRepeat(placed);
 });
 
 /* die Palette nimmt Slots aus dem Raster an – der Slot wird entfernt,
@@ -249,82 +291,164 @@ calTray.addEventListener('drop', e => {
 });
 
 /* ---------------------------------------------------------------
-   Klicks im Raster: ✕ entfernt einen Slot, freie Zelle → Spot wählen
+   ✕ entfernt einen einzelnen Slot
    --------------------------------------------------------------- */
-let cellPicker = null;
-
-function closeCellPicker() {
-  if (!cellPicker) return;
-  cellPicker.closest('.cal-slot')?.classList.remove('has-pop');
-  cellPicker.remove();
-  cellPicker = null;
-}
-
-function openCellPicker(cell) {
-  closeCellPicker();
-  const day = +cell.dataset.day;
-  const slot = +cell.dataset.slot;
-  const date = calWeekDays(calWeekStart)[day];
-  const list = paletteSpots();
-
-  cellPicker = document.createElement('div');
-  cellPicker.className = 'cal-pick';
-  if (day >= CAL_DAYS - 2) cellPicker.classList.add('cal-pick--left');
-  if (cell.getBoundingClientRect().bottom > window.innerHeight - 320) cellPicker.classList.add('cal-pick--up');
-  cellPicker.innerHTML = `
-    <p class="cal-pick__when">${DAY_NAMES[day].slice(0, 3)} ${date.getDate()} · ${slotTime(slot)}</p>
-    <div class="cal-pick__list">
-      ${list.map(s => `
-        <button class="cal-pick__spot" data-spot="${s.id}" type="button">
-          <span class="cal-pick__dot" style="background:${catColor(s.category)}"></span>
-          <span class="cal-pick__title">${escapeHtml(s.title)}</span>
-        </button>`).join('')}
-    </div>`;
-  cellPicker.addEventListener('click', e => {
-    e.stopPropagation();
-    const btn = e.target.closest('.cal-pick__spot');
-    if (!btn) return;
-    const spot = spotById(+btn.dataset.spot);
-    if (placeSpot(calWeekStart, spot.id, day, slot)) spotPlaced(spot);
-    renderCalendar();
-  });
-  cell.classList.add('has-pop');
-  cell.appendChild(cellPicker);
-}
-
 calGrid.addEventListener('click', e => {
-  if (e.target.closest('.cal-pick')) return;
   const x = e.target.closest('.cal-item__x');
-  if (x) {
-    e.stopPropagation();
-    removeItem(calWeekStart, +x.dataset.x);
-    renderCalendar();
-    return;
-  }
-  const cell = e.target.closest('.cal-cell');
-  if (!cell || cell.classList.contains('cal-slot--closed')) return;
+  if (!x) return;
   e.stopPropagation();
-  if (cell.classList.contains('has-pop')) { closeCellPicker(); return; }
-  openCellPicker(cell);
+  removeItem(calWeekStart, +x.dataset.x);
+  renderCalendar();
 });
 
-document.addEventListener('click', e => { if (!e.target.closest('.cal-pick')) closeCellPicker(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCellPicker(); });
-
 /* ---------------------------------------------------------------
-   Aus dem SpotTool: in den Calendar springen, Spot in der Palette zeigen.
-   Bewusst ohne Toast – der läge oben rechts genau über der Palette.
+   Wiederholen – kleines Fenster direkt nach dem Ablegen aus der Liste:
+   Once (nur dieser Slot) oder Weekly (Wochentage + Laufzeit). Weekly legt
+   eine Serie an (plan.js), die auch für spätere Wochen gilt.
    --------------------------------------------------------------- */
-function openInCalendar(title) {
-  showView('calendar');
-  const spot = findSpot(title);
-  const el = spot && calTrayList.querySelector(`[data-spot="${spot.id}"]`);
-  if (!el) return;
-  el.scrollIntoView({ block: 'nearest' });
-  el.classList.remove('is-flash');
-  void el.offsetWidth;                            /* Animation neu starten */
-  el.classList.add('is-flash');
+const addDays   = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+const RUNS = [
+  { value: '1w',   label: '1 week',   end: d => addDays(d, 6) },
+  { value: '1m',   label: '1 month',  end: d => addDays(addMonths(d, 1), -1) },
+  { value: '3m',   label: '3 months', end: d => addDays(addMonths(d, 3), -1) },
+  { value: '6m',   label: '6 months', end: d => addDays(addMonths(d, 6), -1) },
+  { value: 'none', label: 'No end',   end: () => null },
+];
+const longDate = d => `${DAY_NAMES[dayIdx(d)].slice(0, 3)} ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+
+function daysLabel(days) {
+  const idx = DAYS.slice(0, CAL_DAYS).map((d, i) => (days.includes(d) ? i : -1)).filter(i => i >= 0);
+  const run = idx.length > 2 && idx[idx.length - 1] - idx[0] === idx.length - 1;
+  return run ? `${DAYS[idx[0]]}–${DAYS[idx[idx.length - 1]]}` : idx.map(i => DAYS[i]).join(', ');
 }
+
+let repeatEl = null;
+let repeat = null;                    /* { item, spot, date, mode, days: Set, run } */
+
+function closeRepeat() {
+  if (!repeatEl) return;
+  repeatEl.remove();
+  repeatEl = null;
+  repeat = null;
+}
+
+function openRepeat(item) {
+  closeRepeat();
+  const spot = spotById(item.spotId);
+  const date = calWeekDays(calWeekStart)[item.day];
+  repeat = { item, spot, date, mode: 'once', days: new Set([DAYS[item.day]]), run: '1m' };
+  repeatEl = document.createElement('div');
+  repeatEl.className = 'cal-repeat';
+  repeatEl.setAttribute('role', 'dialog');
+  repeatEl.style.cssText = catStyle(spot.category);
+  repeatEl.addEventListener('click', onRepeatClick);
+  calendarView.appendChild(repeatEl);
+  renderRepeat();
+  placeRepeat();
+}
+
+function renderRepeat() {
+  const r = repeat;
+  const weekly = r.mode === 'weekly';
+  const time = slotTime(r.item.slot);
+  const run = RUNS.find(x => x.value === r.run);
+  const end = run.end(r.date);
+  const days = [...r.days];
+  let sum;
+  if (!weekly) {
+    sum = `Only on ${longDate(r.date)} at ${time}.`;
+  } else if (!days.length) {
+    sum = 'Pick at least one day.';
+  } else {
+    const n = end ? seriesDates({ days, start: r.date, end }) : null;
+    sum = `Every ${daysLabel(days)} at ${time}${end ? ` until ${longDate(end)} · ${n} announcement${n === 1 ? '' : 's'}` : ', with no end date'}.`;
+  }
+
+  repeatEl.innerHTML = `
+    <div class="cal-repeat__head">
+      <span class="cal-repeat__dot"></span>
+      <p class="cal-repeat__title">${escapeHtml(r.spot.title)}</p>
+    </div>
+    <p class="cal-repeat__when">${longDate(r.date)} · ${time}</p>
+
+    <div class="cal-seg">
+      <button class="cal-seg__opt${weekly ? '' : ' is-active'}" data-mode="once" type="button">Once</button>
+      <button class="cal-seg__opt${weekly ? ' is-active' : ''}" data-mode="weekly" type="button">Weekly</button>
+    </div>
+
+    ${weekly ? `
+      <p class="cal-repeat__label">On</p>
+      <div class="cal-chips">
+        ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
+      </div>
+      <p class="cal-repeat__label">Runs for</p>
+      <div class="cal-chips">
+        ${RUNS.map(x => `<button class="cal-chip${x.value === r.run ? ' is-active' : ''}" data-run="${x.value}" type="button">${x.label}</button>`).join('')}
+      </div>` : ''}
+
+    <p class="cal-repeat__sum">${sum}</p>
+
+    <div class="cal-repeat__foot">
+      <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>
+      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && !days.length ? ' disabled' : ''}>Done</button>
+    </div>`;
+}
+
+/* neben den abgelegten Slot setzen – rechts davon, sonst links; im Bild halten */
+function placeRepeat() {
+  const slotEl = calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`);
+  if (!slotEl) return;
+  const view = calendarView.getBoundingClientRect();
+  const r = slotEl.getBoundingClientRect();
+  const w = repeatEl.offsetWidth, h = repeatEl.offsetHeight;
+  let left = r.right + 10;
+  if (left + w > window.innerWidth - 16) left = r.left - 10 - w;
+  let top = r.top - 12;
+  top = Math.min(top, window.innerHeight - h - 16);
+  top = Math.max(top, 16);
+  repeatEl.style.left = `${left - view.left}px`;
+  repeatEl.style.top = `${top - view.top}px`;
+}
+
+function onRepeatClick(e) {
+  e.stopPropagation();
+  const r = repeat;
+  const mode = e.target.closest('[data-mode]');
+  const day = e.target.closest('[data-day]');
+  const run = e.target.closest('[data-run]');
+  const act = e.target.closest('[data-act]');
+  if (mode) r.mode = mode.dataset.mode;
+  else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
+  else if (run) r.run = run.dataset.run;
+  else if (act && act.dataset.act === 'remove') {
+    removeItem(calWeekStart, r.item.id);
+    renderCalendar();
+    return;
+  } else if (act && act.dataset.act === 'done') {
+    applyRepeat();
+    return;
+  } else return;
+  renderRepeat();
+  placeRepeat();
+}
+
+function applyRepeat() {
+  const r = repeat;
+  if (r.mode === 'once') { closeRepeat(); return; }
+  const days = DAYS.filter(d => r.days.has(d));
+  const end = RUNS.find(x => x.value === r.run).end(r.date);
+  /* der abgelegte Slot geht in der Serie auf */
+  removeItem(calWeekStart, r.item.id);
+  const { skipped } = addSeries({ spotId: r.spot.id, days, slot: r.item.slot, start: r.date, end });
+  const time = slotTime(r.item.slot);
+  showToast('success', `“${r.spot.title}” repeats every ${daysLabel(days)} at ${time}${end ? ` until ${longDate(end)}` : ''}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+  renderCalendar();
+}
+
+document.addEventListener('click', e => { if (repeatEl && !e.target.closest('.cal-repeat')) closeRepeat(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRepeat(); });
+window.addEventListener('resize', () => { if (repeatEl) placeRepeat(); });
 
 /* neue oder gelöschte Spots aus dem SpotTool sofort in der Palette */
 onPlanChange(kind => {
@@ -406,7 +530,7 @@ densityToggle.addEventListener('click', () => {
   const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
   densityToggle.setAttribute('aria-checked', String(expanded));
   densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
-  closeCellPicker();
+  closeRepeat();
   calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
   morphGrid(calendarView, calGrid, expanded ? 'expanded' : 'collapsed', renderNowLine);
 });

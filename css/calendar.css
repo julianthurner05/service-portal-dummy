@@ -11,6 +11,7 @@
   --density-dur: 560ms;          /* Gleiten Collapsed ↔ Expanded */
   --title-fade: 520ms;           /* Einblenden der Slot-Titel danach */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  position: relative;            /* Bezug für das Wiederholen-Fenster */
   width: 100%;
   margin: 0 0 auto;              /* oben verankert: der Kopf bleibt stehen, der Kalender wächst nur nach unten */
   display: flex;
@@ -194,8 +195,6 @@
   height: var(--slot-h);
 }
 
-.cal-slot.has-pop { z-index: 100; }
-
 /* Hit-Test läuft über die fixen Slot-Boxen, nicht über die animierte Fläche –
    nur eine aufgeklappte Karte fängt die Maus, damit ✕ erreichbar bleibt */
 .cal-slot__inner {
@@ -210,11 +209,6 @@
     bottom var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease);
 }
-
-/* freie Zelle: anklickbar (Spot wählen) und Drop-Ziel */
-.cal-cell:not(.cal-slot--closed) { cursor: pointer; }
-.cal-cell:not(.cal-slot--closed):hover .cal-slot__inner,
-.cal-cell.has-pop .cal-slot__inner { background: var(--white-6); }
 
 /* außerhalb der Öffnungszeit: fast unsichtbar */
 .cal-slot--closed .cal-slot__inner { background: transparent; }
@@ -246,9 +240,18 @@
 .cal-item.is-dragging { opacity: 0.35; }
 .cal-item:hover { z-index: 5; }
 
-.cal-item:hover .cal-slot__inner {
+/* Hover: dieser und alle anderen Slots desselben Spots leuchten auf
+   (is-lit, auch beim Zeigen auf einen Eintrag der Liste) */
+.cal-item:hover .cal-slot__inner,
+.cal-item.is-lit .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
 }
+
+[data-density="collapsed"] .cal-item.is-lit .cal-slot__inner {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--cat) 45%, transparent);
+}
+
+.cal-item.is-lit .cal-item__label { color: #ffffff; }
 
 /* Collapsed: nur der berührte Slot klappt nach unten zur Karte mit Titel
    und ✕ auf; die Karte fängt die Maus, damit das ✕ erreichbar bleibt */
@@ -381,7 +384,7 @@
   right: -4px;
   height: 1px;
   background: #ffffff;
-  z-index: 50;                     /* über den Slots (Hover 5), unter der Spot-Auswahl (100) */
+  z-index: 50;                     /* über den Slots (Hover 5) */
   pointer-events: none;
 }
 
@@ -395,55 +398,6 @@
   border-radius: 50%;
   background: #ffffff;
 }
-
-/* ---- Spot-Auswahl auf einer freien Zelle (statt ziehen) ---- */
-.cal-pick {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 250px;
-  padding: 10px 6px 6px;
-  background: var(--menu-blau);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  animation: view-in 200ms var(--ease);
-  cursor: default;
-}
-
-.cal-pick--left { left: auto; right: 0; }
-.cal-pick--up { top: auto; bottom: calc(100% + 6px); }
-
-.cal-pick__when {
-  padding: 0 8px 8px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-}
-
-.cal-pick__list {
-  max-height: 260px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.cal-pick__spot {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 7px;
-  text-align: left;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-80);
-  transition: background var(--transition), color var(--transition);
-}
-
-.cal-pick__spot:hover { background: var(--hover); color: #ffffff; }
-.cal-pick__dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.cal-pick__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- Palette rechts ---- */
 .cal-tray {
@@ -466,9 +420,22 @@
   color: var(--text-80);
 }
 
-.cal-tray__hint {
+/* Suche – wie in der Creation History, nur kompakter */
+.cal-tray__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: var(--hairline);
+}
+
+.cal-tray__search .icon { color: var(--text-60); width: 14px; height: 14px; flex: none; }
+.cal-tray__search input { flex: 1; min-width: 0; font-size: var(--fs-small); letter-spacing: var(--ls-small); }
+
+.cal-tray__empty {
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
+  line-height: 1.4;
   color: var(--text-40);
 }
 
@@ -500,13 +467,99 @@
 
 .cal-tray__item .cal-item__label { height: 28px; line-height: 28px; }
 
-/* aus dem SpotTool gekommen („Schedule“): kurz aufleuchten */
-.cal-tray__item.is-flash { animation: cal-flash 1.6s var(--ease) 2; }
-
-@keyframes cal-flash {
-  0%, 100% { box-shadow: 0 0 0 0 transparent; }
-  40%      { box-shadow: 0 0 0 2px var(--cat); background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base)); }
+/* ---- Wiederholen – Fenster nach dem Ablegen aus der Liste ---- */
+.cal-repeat {
+  position: absolute;
+  z-index: 200;
+  width: 280px;
+  padding: 14px 14px 12px;
+  background: var(--menu-blau);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  animation: view-in 200ms var(--ease);
 }
+
+.cal-repeat__head { display: flex; align-items: center; gap: 9px; }
+.cal-repeat__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--cat); }
+
+.cal-repeat__title {
+  min-width: 0;
+  font-size: var(--fs-base);
+  color: var(--text-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-repeat__when {
+  margin: 4px 0 14px 17px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+}
+
+.cal-repeat__label {
+  margin: 14px 0 8px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+/* Once / Weekly */
+.cal-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--mittelblau);
+}
+
+.cal-seg__opt {
+  height: 30px;
+  border-radius: 7px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.cal-seg__opt:hover { color: var(--text-80); }
+.cal-seg__opt.is-active { background: color-mix(in srgb, #ffffff 9%, var(--menu-blau)); color: var(--text-100); }
+
+/* Wochentage und Laufzeit */
+.cal-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.cal-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--mittelblau);
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
+}
+
+.cal-chip--day { width: 36px; padding: 0; }
+.cal-chip:hover { color: var(--text-100); }
+.cal-chip.is-active { background: var(--nav-active); color: var(--text-inverse); }
+
+.cal-repeat__sum {
+  margin-top: 14px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.45;
+  color: var(--text-66);
+}
+
+.cal-repeat__foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }
 
 /* ---- Umschalter Collapsed / Expanded – Pill aus zwei UI-Blautönen: Bahn in
    Mittelblau, Knopf in Menüblau; jedes Icon steht fest in seiner Hälfte,
