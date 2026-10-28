@@ -1,8 +1,8 @@
 /* ================================================================
-   CALENDAR – Wochenansicht aller aktiven Schedules
+   CALENDAR – Wochenraster mit Spot-Palette (die Schedule-Oberfläche)
    ================================================================ */
 .calendar-view {
-  /* Collapsed: alle Slots (--cal-slots, aus calendar.js) als dünne Farblinien
+  /* Collapsed: alle Slots (--cal-slots, aus plan.js) als dünne Farblinien
      im Platz unterhalb des Kopfes */
   --slot-gap: 5px;
   --slot-h: clamp(4px, calc((100vh - 250px) / var(--cal-slots, 56) - var(--slot-gap)), 9px);
@@ -18,16 +18,6 @@
   animation: view-in 260ms var(--ease);
 }
 
-/* Wechsel Collapsed ↔ Expanded (morphDensity in calendar.js): das Layout
-   springt sofort, sichtbar gleiten die Zeilen per transform, und das ganze
-   Raster – Fläche samt Spaltenlinien – wird per clip-path auf- bzw. zugedeckt.
-   Währenddessen keine Hover und keine (sonst gestauchten) Slot-Titel. */
-.cal-grid .cal-slot { transform-origin: top; }
-.cal-grid.is-morphing { pointer-events: none; }
-/* Titel blenden zu Beginn kurz aus und erst gegen Ende des Gleitens
-   (wenn die Slots fast ihre volle Höhe haben) wieder weich ein */
-.cal-grid.is-hiding-titles .cal-slot__title { opacity: 0; transition: opacity 160ms var(--ease); }
-
 /* Expanded: Slots hoch genug für den Titel – der Kalender wird länger als
    der Viewport und scrollt mit der Seite */
 .calendar-view[data-density="expanded"] {
@@ -35,6 +25,14 @@
   --slot-h: 28px;
   --slot-radius: 6px;
 }
+
+/* Wechsel Collapsed ↔ Expanded (morphGrid in calendar.js): das Layout
+   springt sofort, sichtbar gleiten die Zeilen per transform, und das ganze
+   Raster – Fläche samt Spaltenlinien – wird per clip-path auf- bzw. zugedeckt.
+   Währenddessen keine Hover und keine (sonst gestauchten) Titel. */
+.cal-grid .cal-slot { transform-origin: top; }
+.cal-grid.is-morphing { pointer-events: none; }
+.cal-grid.is-hiding-titles .cal-item__label { opacity: 0; transition: opacity 160ms var(--ease); }
 
 /* ---- Kopf ---- */
 .cal-head {
@@ -107,14 +105,16 @@
 
 .cal-legend__dot { width: 8px; height: 8px; border-radius: 50%; }
 
-.cal-hint {
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-40);
+/* ---- Raster + Palette nebeneinander ---- */
+.cal-layout {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
 }
 
-/* ---- Raster ---- */
 .cal-grid {
+  flex: 1;
+  min-width: 0;
   display: grid;
   grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(0, 1fr));
   padding: var(--pad-box) var(--pad-box) var(--pad-box) 0;
@@ -188,22 +188,16 @@
   transition: opacity var(--title-fade) var(--ease-out) calc(var(--density-dur) * 0.55);
 }
 
-/* Slots */
-/* Stapelung: reine Staffelung von unten nach oben (inline z-index, unterster
-   Slot 1, oberster = Slotanzahl). Ein nach unten aufklappender Slot liegt
-   dadurch immer über seinem Nachbarn – ohne Ebenenwechsel beim Hover. Nur
-   das Popover auf einem leeren Slot hebt seinen Slot auf 100. */
+/* ---- Zellen & Slots ---- */
 .cal-slot {
   position: relative;
   height: var(--slot-h);
 }
 
-.cal-slot.has-pop { z-index: 100 !important; }
-
-.cal-slot[data-slot]:not(.cal-slot--closed) { cursor: pointer; }
+.cal-slot.has-pop { z-index: 100; }
 
 /* Hit-Test läuft über die fixen Slot-Boxen, nicht über die animierte Fläche –
-   nur ein aufgeklappter Slot fängt die Maus, damit sein Stift erreichbar bleibt */
+   nur eine aufgeklappte Karte fängt die Maus, damit ✕ erreichbar bleibt */
 .cal-slot__inner {
   position: absolute;
   inset: 0;
@@ -217,134 +211,306 @@
     box-shadow var(--dur) var(--ease);
 }
 
-.cal-slot[data-slot]:not(.cal-slot--closed):hover .cal-slot__inner { background: var(--white-6); }
+/* freie Zelle: anklickbar (Spot wählen) und Drop-Ziel */
+.cal-cell:not(.cal-slot--closed) { cursor: pointer; }
+.cal-cell:not(.cal-slot--closed):hover .cal-slot__inner,
+.cal-cell.has-pop .cal-slot__inner { background: var(--white-6); }
 
 /* außerhalb der Öffnungszeit: fast unsichtbar */
 .cal-slot--closed .cal-slot__inner { background: transparent; }
 
-/* gedämpfte Kategoriefarbe – in beiden Dichten gleich, kräftig nur beim Hover */
+/* Trefferfläche reicht bis in die halbe Lücke, damit auch die dünnen
+   Linien im Collapsed-Modus gut zu treffen sind */
+.cal-cell::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--slot-gap) / -2);
+  bottom: calc(var(--slot-gap) / -2);
+}
+
+.cal-cell.is-drop .cal-slot__inner {
+  background: var(--white-14);
+  box-shadow: inset 0 0 0 1px var(--white-25);
+}
+
+/* eingeplanter Spot: gedämpfte Kategoriefarbe, kräftig nur beim Hover */
 .cal-slot--spot .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
 }
 
-/* Hover: alle Slots desselben Spots leuchten auf – weich an, kürzer aus */
-.cal-slot.is-lit .cal-slot__inner {
-  pointer-events: auto;
+.cal-item { cursor: grab; }
+.cal-item:active { cursor: grabbing; }
+.cal-item.is-fixed { cursor: default; }
+.cal-item.is-dragging { opacity: 0.35; }
+.cal-item:hover { z-index: 5; }
+
+.cal-item:hover .cal-slot__inner {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
-  box-shadow: 0 6px 18px rgba(12, 14, 41, 0.45);
-  transition:
-    background var(--dur-slow) var(--ease),
-    bottom var(--dur-slow) var(--ease),
-    border-radius var(--dur-slow) var(--ease),
-    box-shadow var(--dur-slow) var(--ease);
 }
 
-/* Collapsed: die Linie klappt nach unten zu einer Karte mit Zeit & Titel auf */
-[data-density="collapsed"] .cal-slot.is-lit .cal-slot__inner {
+/* Collapsed: nur der berührte Slot klappt nach unten zur Karte mit Titel
+   und ✕ auf; die Karte fängt die Maus, damit das ✕ erreichbar bleibt */
+[data-density="collapsed"] .cal-item:hover .cal-slot__inner {
   bottom: calc(var(--slot-h) - var(--lit-h));
   border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(12, 14, 41, 0.45);
+  pointer-events: auto;
 }
 
-/* Inhalt (Collapsed, aufgeklappt): Uhrzeit links oben, Titel links unten, Stift rechts oben */
-.cal-slot__title {
+/* beim Ziehen zuklappen – sonst verdeckt die Karte die Zellen darunter */
+[data-density="collapsed"] .cal-item.is-dragging .cal-slot__inner {
+  bottom: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.cal-item__label {
   position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto 1fr;
-  padding: 6px 6px 6px 7px;
-  color: #ffffff;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--slot-h);
+  padding: 0 7px;
+  font-size: 10.5px;
+  line-height: var(--slot-h);
+  letter-spacing: var(--ls-small);
+  color: var(--text-80);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: opacity var(--title-fade) var(--ease-out);
+}
+
+.cal-item:hover .cal-item__label { right: 20px; color: #ffffff; }
+.cal-item.is-fixed .cal-item__label { right: 20px; }
+
+[data-density="collapsed"] .cal-item .cal-item__label {
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
 }
 
-.cal-slot.is-lit .cal-slot__title {
+[data-density="collapsed"] .cal-item:hover .cal-item__label {
   opacity: 1;
+  height: var(--lit-h);
+  line-height: var(--lit-h);
+  font-size: var(--fs-small);
   transition: opacity var(--dur) var(--ease) 60ms;
 }
 
-.cal-slot__time {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  font-size: 10px;
-  letter-spacing: var(--ls-small);
-  color: var(--text-66);
-  line-height: 1;
+[data-density="collapsed"] .cal-item.is-dragging .cal-item__label { opacity: 0; }
+
+/* ✕ (Slot entfernen) und Schloss (fix von sounddna) rechts im Slot */
+.cal-item__x,
+.cal-item__lock {
+  position: absolute;
+  top: calc(var(--slot-h) / 2);
+  transform: translateY(-50%);
 }
 
-.cal-slot__text {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: end;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  line-height: 1.2;
-}
-
-.cal-slot__edit,
-.cal-slot__lock {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: start;
-}
-
-/* nur am aufgeleuchteten Slot klickbar – sonst ragt der unsichtbare Stift
-   über die Nachbar-Slots und fängt Streuklicks */
-.cal-slot__edit {
-  pointer-events: none;
+.cal-item__x {
+  right: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  color: var(--text-55);
+  opacity: 0;
+  pointer-events: none;            /* unsichtbar ⇒ nicht klickbar, sonst löschen Streuklicks */
+  transition: opacity var(--transition), background var(--transition), color var(--transition);
+}
+
+.cal-item__lock {
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  color: var(--text-40);
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+
+[data-density="collapsed"] .cal-item__lock { opacity: 0; }
+[data-density="collapsed"] .cal-item:hover .cal-item__lock { opacity: 1; }
+[data-density="collapsed"] .cal-item:hover .cal-item__x,
+[data-density="collapsed"] .cal-item:hover .cal-item__lock { top: calc(var(--lit-h) / 2); }
+
+.cal-item:hover .cal-item__x { opacity: 1; pointer-events: auto; }
+.cal-item.is-dragging .cal-item__x { opacity: 0; pointer-events: none; }
+.cal-item__x:hover { background: var(--white-14); color: #ffffff; }
+.cal-item__x .icon { width: 9px; height: 9px; stroke-width: 2; }
+
+/* Drag-Bild (setDragImage in calendar.js): saubere Titel-Pille, außerhalb
+   des Bildschirms gerendert */
+.cal-ghost {
+  position: fixed;
+  top: -200px;
+  left: 0;
+  height: 28px;
+  padding: 0 9px;
   border-radius: 6px;
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+  color: #ffffff;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 28px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Quiet Hour – ein Block über alle betroffenen Slots, Label mittig */
+.cal-quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-25);
+}
+
+/* Jetzt-Linie in der heutigen Spalte */
+.cal-now {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  height: 1px;
+  background: #ffffff;
+  z-index: 50;                     /* über den Slots (Hover 5), unter der Spot-Auswahl (100) */
+  pointer-events: none;
+}
+
+.cal-now::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* ---- Spot-Auswahl auf einer freien Zelle (statt ziehen) ---- */
+.cal-pick {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 250px;
+  padding: 10px 6px 6px;
+  background: var(--menu-blau);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  animation: view-in 200ms var(--ease);
+  cursor: default;
+}
+
+.cal-pick--left { left: auto; right: 0; }
+.cal-pick--up { top: auto; bottom: calc(100% + 6px); }
+
+.cal-pick__when {
+  padding: 0 8px 8px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+}
+
+.cal-pick__list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-pick__spot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 7px;
+  text-align: left;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
   color: var(--text-80);
   transition: background var(--transition), color var(--transition);
 }
 
-.cal-slot.is-lit .cal-slot__edit { pointer-events: auto; }
-.cal-slot__edit:hover { background: var(--white-14); color: #ffffff; }
-.cal-slot__edit .icon { width: 11px; height: 11px; stroke-width: 1.9; }
+.cal-pick__spot:hover { background: var(--hover); color: #ffffff; }
+.cal-pick__dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.cal-pick__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.cal-slot__lock { width: 11px; height: 11px; margin: 1px 2px 0 0; color: var(--text-55); }
-
-/* Expanded: Titel · Stift in einer Zeile, immer sichtbar – die Uhrzeit
-   steht schon in der Zeitspalte, der Titel bekommt die volle Breite;
-   der Stift erscheint erst beim Hover */
-[data-density="expanded"] .cal-slot__title {
-  opacity: 1;
-  overflow: hidden;
-  transition: opacity var(--title-fade) var(--ease-out);
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: 1fr;
-  align-items: center;
-  column-gap: 6px;
-  padding: 0 3px 0 8px;
+/* ---- Palette rechts ---- */
+.cal-tray {
+  width: 230px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--pad-box);
+  background: var(--mittelblau);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow var(--transition);
 }
 
-[data-density="expanded"] .cal-slot__time { display: none; }
+.cal-tray.is-drop { box-shadow: inset 0 0 0 1px var(--white-25); }
 
-[data-density="expanded"] .cal-slot__text,
-[data-density="expanded"] .cal-slot__edit,
-[data-density="expanded"] .cal-slot__lock { grid-row: 1; align-self: center; }
+.cal-tray__title {
+  font-size: var(--fs-base);
+  color: var(--text-80);
+}
 
-[data-density="expanded"] .cal-slot__text { grid-column: 1; color: var(--text-80); transition: color var(--dur) var(--ease); }
-[data-density="expanded"] .cal-slot__edit,
-[data-density="expanded"] .cal-slot__lock { grid-column: 2; }
-[data-density="expanded"] .cal-slot__lock { margin: 0 6px 0 0; }
+.cal-tray__hint {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
 
-[data-density="expanded"] .cal-slot__edit { opacity: 0; transition: opacity var(--dur) var(--ease), background var(--transition), color var(--transition); }
-[data-density="expanded"] .cal-slot.is-lit .cal-slot__edit { opacity: 1; }
-[data-density="expanded"] .cal-slot.is-lit .cal-slot__text { color: #ffffff; }
+.cal-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 0;
+}
 
-/* Umschalter Collapsed / Expanded – Pill aus zwei UI-Blautönen: Bahn in
+/* Paletten-Spot: sieht aus wie ein Expanded-Slot – nur der Titel; bleibt
+   in beiden Dichten gleich groß und lesbar */
+.cal-tray__item {
+  position: relative;
+  flex: none;
+  height: 28px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+  cursor: grab;
+  transition: background var(--dur) var(--ease);
+}
+
+.cal-tray__item:active { cursor: grabbing; }
+
+.cal-tray__item:hover {
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
+}
+
+.cal-tray__item .cal-item__label { height: 28px; line-height: 28px; }
+
+/* aus dem SpotTool gekommen („Schedule“): kurz aufleuchten */
+.cal-tray__item.is-flash { animation: cal-flash 1.6s var(--ease) 2; }
+
+@keyframes cal-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  40%      { box-shadow: 0 0 0 2px var(--cat); background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base)); }
+}
+
+/* ---- Umschalter Collapsed / Expanded – Pill aus zwei UI-Blautönen: Bahn in
    Mittelblau, Knopf in Menüblau; jedes Icon steht fest in seiner Hälfte,
-   nur der Knopf gleitet */
+   nur der Knopf gleitet ---- */
 .density-toggle {
   position: relative;
   flex: none;
@@ -385,105 +551,18 @@
 .density-toggle[aria-checked="false"] .density-toggle__icon--collapsed,
 .density-toggle[aria-checked="true"] .density-toggle__icon--expanded { color: #ffffff; }
 
-
-/* Jetzt-Linie in der heutigen Spalte */
-.cal-now {
-  position: absolute;
-  left: -4px;
-  right: -4px;
-  height: 1px;
-  background: #ffffff;
-  z-index: 150;
-  pointer-events: none;
-}
-
-.cal-now::before {
-  content: "";
-  position: absolute;
-  left: -3px;
-  top: -3px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ffffff;
-}
-
-/* Tagesleiste (nur Handy) */
-.cal-days {
-  display: none;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.cal-days__btn {
-  flex: 1;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: var(--mittelblau);
-  color: var(--text-55);
-  font-size: var(--fs-small);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.cal-days__btn span:last-child { font-size: 10px; color: var(--text-40); }
-.cal-days__btn.is-active { background: var(--nav-active); color: var(--text-inverse); }
-.cal-days__btn.is-active span:last-child { color: var(--ink-50); }
-
-.cal-empty {
-  margin-top: 16px;
-  text-align: center;
-  font-size: var(--fs-menu);
-  color: var(--text-40);
-}
-
-/* Quiet Hour – ein Block über alle betroffenen Slots, Label mittig */
-.cal-quiet {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-25);
-}
-
-/* Popover auf freiem Slot */
-.cal-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 8px 8px var(--pad-toast);
-  background: color-mix(in srgb, #ffffff 4%, var(--mittelblau));
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  white-space: nowrap;
-  animation: view-in 200ms var(--ease);
-  cursor: default;
-}
-
-.cal-pop__when { font-size: var(--fs-small); letter-spacing: var(--ls-small); color: var(--text-55); }
-
-
-@media (max-width: 1600px) {
-  .calendar-view:not(.devcal-view) .cal-hint { display: none; }
-}
-
 @media (max-width: 1240px) {
   .cal-legend { display: none; }
+  .cal-head .density-toggle { margin-left: auto; }
 }
 
 @media (max-width: 980px) {
+  /* am Handy: volle Woche, seitlich scrollbar; Palette darunter */
   .cal-head { flex-wrap: wrap; gap: 12px; }
-  .cal-hint { display: none; }
-  .cal-days { display: flex; }
-  .cal-grid { grid-template-columns: 50px minmax(0, 1fr); padding-right: 12px; }
-  .cal-col__head { display: none; }
+  .cal-layout { flex-direction: column; }
+  .cal-grid {
+    grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(110px, 1fr));
+    overflow-x: auto;
+  }
+  .cal-tray { width: 100%; }
 }

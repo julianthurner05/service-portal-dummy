@@ -1,5 +1,5 @@
 /* ================================================================
-   HOME – Dashboard aus den Live-Daten von Creation & Schedule
+   HOME – Dashboard aus den Live-Daten von SpotTool & Calendar (plan.js)
    ================================================================ */
 
 const homeStats  = document.getElementById('home-stats');
@@ -22,22 +22,20 @@ let homePlayer = null;         /* Player für den letzten Spot (Dummy, wie in de
 function renderHome() {
   const now = new Date();
   const cards = [...historyList.querySelectorAll('.card')];
-  const scheds = [...scheduleList.querySelectorAll('.sched-card')];
 
   homeDate.textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* ---- Woche & heute ---- */
+  /* ---- Woche & heute – alles aus dem Calendar ---- */
   const week = weekDates(mondayOf(now));
-  const perDay = week.map(date => scheds.reduce((n, c) => n + occurrences(c._opts, date).length, 0));
+  const perDayList = week.map(date => announcementsOn(date));
+  const perDay = perDayList.map(list => list.length);
   const weekTotal = perDay.reduce((a, b) => a + b, 0);
   const todayIdx = dayIdx(now);
+  const spotsOnAir = new Set(perDayList.flat().map(x => x.spot.id)).size;
+  const fixedThisWeek = perDayList.flat().filter(x => x.fixed).length;
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const todayAll = [];
-  scheds.forEach(c => {
-    occurrences(c._opts, week[todayIdx]).forEach(({ time }) => todayAll.push({ time, card: c }));
-  });
-  todayAll.sort((a, b) => minutesOf(a.time) - minutesOf(b.time));
+  const todayAll = perDayList[todayIdx];
   const upcoming = todayAll.filter(x => minutesOf(x.time) >= nowMin);
 
   /* ---- Kennzahlen ---- */
@@ -50,7 +48,7 @@ function renderHome() {
   homeStats.innerHTML = [
     { label: 'Spots left this month', value: left, hint: `of ${PLAN_SPOTS_PER_MONTH} in your plan · resets ${MONTH_SHORT[resetDate.getMonth()]} 1`, bar: usedThisMonth / PLAN_SPOTS_PER_MONTH },
     { label: 'Spots generated', value: generated, hint: `${usedThisMonth} this month` },
-    { label: 'Active schedules', value: scheds.filter(s => scheduleStatus(s._opts) === 'active').length, hint: `${scheds.filter(s => scheduleStatus(s._opts) === 'upcoming').length} upcoming` },
+    { label: 'Spots on air', value: spotsOnAir, hint: `this week · ${fixedThisWeek} fixed by sounddna` },
     { label: 'Announcements this week', value: weekTotal, hint: `${perDay[todayIdx]} today` },
   ].map(s => `
     <div class="home-stat">
@@ -71,8 +69,8 @@ function renderHome() {
     ? upcoming.slice(0, 5).map(x => `
         <div class="home-next__row">
           <span class="home-next__time">${x.time}</span>
-          <span class="home-next__dot" style="background:${catColor(x.card._opts.category)}"></span>
-          <span class="home-next__title">${escapeHtml(x.card._opts.title)}</span>
+          <span class="home-next__dot" style="background:${catColor(x.spot.category)}"></span>
+          <span class="home-next__title">${escapeHtml(x.spot.title)}</span>
         </div>`).join('')
     : '<p class="home-empty">Nothing more scheduled for today.</p>';
 
@@ -87,14 +85,12 @@ function renderHome() {
     </div>`).join('');
 
   /* ---- Slot-Raster ---- */
+  /* bespielbar = offen und keine Quiet Hour – wie im Calendar */
   const openSlotsPerDay = [...Array(7)].map((_, di) =>
-    [...Array(CAL_SLOTS)].filter((_, s) => isOpen(di, slotTime(s))).length);
+    [...Array(CAL_SLOTS)].filter((_, s) => !cellBlocked(di, s)).length);
   const openTotal = openSlotsPerDay.reduce((a, b) => a + b, 0);
-  const usedTotal = week.reduce((n, date) => {
-    const taken = new Set();
-    scheds.forEach(c => occurrences(c._opts, date).forEach(({ slot }) => taken.add(slot)));
-    return n + taken.size;
-  }, 0);
+  const usedTotal = perDayList.reduce((n, list, di) =>
+    n + new Set(list.filter(x => !cellBlocked(di, x.slot)).map(x => x.slot)).size, 0);
   const usedPct = openTotal ? Math.round(usedTotal / openTotal * 100) : 0;
   document.getElementById('home-slots-day').textContent = `${openSlotsPerDay[0]} (Mo–Fr) · ${openSlotsPerDay[5]} (Sa)`;
   document.getElementById('home-slots-used').textContent = `${usedTotal} of ${openTotal} · ${usedPct}%`;

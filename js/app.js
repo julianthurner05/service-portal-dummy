@@ -4,17 +4,11 @@
 
 const navItems       = document.querySelectorAll('.nav-item');
 const creationView   = document.querySelector('[data-screen="creation"]');
-const scheduleView   = document.querySelector('[data-screen="schedule"]');
 const calendarView   = document.querySelector('[data-screen="calendar"]');
-const devcalView     = document.querySelector('[data-screen="dev-calendar"]');
 const homeView       = document.querySelector('[data-screen="home"]');
 const accountView    = document.querySelector('[data-screen="account"]');
 const historyList    = document.getElementById('history-list');
-const scheduleList   = document.getElementById('schedule-list');
 const historyEmpty   = document.getElementById('history-empty');
-const historyHeading = document.getElementById('history-heading');
-const categoryFilterEl = document.getElementById('category-filter');
-const statusFilterEl   = document.getElementById('status-filter');
 const toastsEl       = document.getElementById('toasts');
 
 /* ---- Icons: alle Symbole liegen im Sprite in index.html ---- */
@@ -261,33 +255,24 @@ function createPlayer({ playBtn, slider, timeEl = null, duration = 9, resetOnSto
   return api;
 }
 
-/* ---- View-Routing ---- */
+/* ---- View-Routing ----
+   SpotTool (Spots erstellen) und Calendar (Spots einplanen) – die
+   Creation History rechts gehört nur zum SpotTool */
 function showView(view) {
   navItems.forEach(n => n.classList.toggle('is-active', n.dataset.view === view));
 
   const isCreation = view === 'spot-creation';
-  const isSchedule = view === 'schedule';
   const isCalendar = view === 'calendar';
-  const isDevCal   = view === 'dev-calendar';
   const isHome     = view === 'home';
 
   creationView.hidden = !isCreation;
-  scheduleView.hidden = !isSchedule;
   calendarView.hidden = !isCalendar;
-  devcalView.hidden = !isDevCal;
   accountView.hidden = view !== 'account';
   homeView.hidden = !isHome;
   if (isCalendar) renderCalendar();
-  if (isDevCal) renderDevCalendar();
   if (isHome) renderHome();
-  document.body.classList.toggle('no-history', !isCreation && !isSchedule);
-  document.body.classList.toggle('view-schedule', isSchedule);
+  document.body.classList.toggle('no-history', !isCreation);
 
-  historyList.hidden = !isCreation;
-  scheduleList.hidden = !isSchedule;
-  categoryFilterEl.hidden = !isSchedule;
-  statusFilterEl.hidden = !isSchedule;
-  historyHeading.textContent = isSchedule ? 'Scheduling History' : 'Creation History';
   historyEmpty.hidden = true;
   applySearch();
 }
@@ -379,11 +364,10 @@ function setDraftDot(view, on) {
   if (item) item.classList.toggle('has-draft', on);
 }
 
-/* ---- ⌘K / Ctrl+K: Suche im aktuellen Kontext ---- */
+/* ---- ⌘K / Ctrl+K: Suche in der Creation History ---- */
 document.addEventListener('keydown', e => {
   if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'k') return;
   e.preventDefault();
-  if (!scheduleView.hidden) { openSpotPicker(); return; }
   const search = document.getElementById('history-search');
   if (search && !document.body.classList.contains('no-history')) { search.focus(); search.select(); }
 });

@@ -1,5 +1,7 @@
 /* ================================================================
    SPOT CREATION – Formular, Karten, Zustände, Suche
+   Fertige Spots wandern in die Spot-Bibliothek (plan.js) und stehen
+   damit in der Palette des Calendar; „Schedule“ springt dorthin.
    ================================================================ */
 
 const cardTemplate   = document.getElementById('card-template');
@@ -114,7 +116,7 @@ function setCardState(card, state) {
   }
 }
 
-/** options: { title, date, duration, scheduled, received, texts, status, isNew } */
+/** options: { title, date, duration, category, scheduled, received, texts, status, isNew } */
 function createCard(options) {
   const frag = cardTemplate.content.cloneNode(true);
   const card = frag.querySelector('.card');
@@ -130,6 +132,7 @@ function createCard(options) {
     status: null,
     texts: options.texts ?? { first: '', second: '' },
     title: options.title,
+    category: options.category || 'standard',
   };
 
   card._player = createPlayer({
@@ -168,8 +171,12 @@ function wireCardMenu(card) {
         card.querySelector('.badge--received').hidden = false;
         break;
       case 'schedule':
-        card.querySelector('.badge--scheduled').hidden = false;
-        openScheduleFor(card._state.title, card._state.duration);
+        if (['pending', 'error', 'deleted'].includes(card._state.status)) {
+          showToast('error', card._state.status === 'pending' ? 'The spot is still being generated.' : 'This spot can’t be scheduled.');
+          break;
+        }
+        registerCardSpot(card);
+        openInCalendar(card._state.title);
         break;
       case 'reuse':
         titleInput.value = card._state.title;
@@ -179,11 +186,29 @@ function wireCardMenu(card) {
         onComposerInput();
         titleInput.focus({ preventScroll: true });
         break;
-      case 'delete':
+      case 'delete': {
         setCardState(card, 'deleted');
+        const removed = retireSpot(card._state.title);
+        if (removed) showToast('success', `Removed from ${removed} calendar slot${removed === 1 ? '' : 's'}.`);
         break;
+      }
     }
     closeAllMenus();
+  });
+}
+
+/* ---------------------------------------------------------------
+   Verbindung zum Calendar
+   --------------------------------------------------------------- */
+/* fertiger Spot → Spot-Bibliothek; neue stehen in der Palette oben */
+function registerCardSpot(card, front = true) {
+  return addSpot({ title: card._state.title, category: card._state.category, duration: card._state.duration, source: 'spottool', front });
+}
+
+/* im Calendar eingeplant → Badge an allen Karten dieses Spots */
+function setCardScheduled(title) {
+  historyList.querySelectorAll('.card').forEach(card => {
+    if (card._state.title === title && card._state.status !== 'deleted') card.querySelector('.badge--scheduled').hidden = false;
   });
 }
 
@@ -223,6 +248,7 @@ createBtn.addEventListener('click', () => {
   setTimeout(() => {
     if (card._state.status !== 'pending') return;
     setCardState(card, 'new');
+    registerCardSpot(card);
     showToast('success', 'Spot generated successfully.');
 
     /* New-State nach einer Minute wieder zurücknehmen */
@@ -233,46 +259,28 @@ createBtn.addEventListener('click', () => {
 });
 /* ---- /EXTRA ---- */
 
-/* ---- EXTRA: Suche (beide Listen) ---- */
-function setEmptyState(kind, total, filtered) {
+/* ---- EXTRA: Suche ---- */
+function setEmptyState(total, filtered) {
   historyEmpty.classList.toggle('history__empty--intro', total === 0);
   document.querySelector('.history').classList.toggle('is-empty', total === 0);
   if (total === 0) {
-    historyEmpty.innerHTML = kind === 'spots'
-      ? `${icon('wave')}<p><strong>No spots yet</strong>Enter a title and your announcement text, then create your first spot.</p>`
-      : `${icon('gantt')}<p><strong>No schedules yet</strong>Choose a spot's audio, set days and times, and send it to the schedule.</p>`;
+    historyEmpty.innerHTML = `${icon('wave')}<p><strong>No spots yet</strong>Enter a title and your announcement text, then create your first spot.</p>`;
   } else {
-    historyEmpty.textContent = kind === 'spots' ? 'No spots match your search.' : 'No schedules match your filters.';
+    historyEmpty.textContent = 'No spots match your search.';
   }
   historyEmpty.hidden = filtered > 0;
 }
 
 function applySearch() {
   const q = searchInput.value.trim().toLowerCase();
+  const cards = [...historyList.querySelectorAll('.card')];
   let visible = 0;
-
-  if (!historyList.hidden) {
-    const cards = [...historyList.querySelectorAll('.card')];
-    cards.forEach(card => {
-      const show = card._state.title.toLowerCase().includes(q);
-      card.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    setEmptyState('spots', cards.length, visible);
-  } else {
-    const cat = categoryFilter.value;
-    const st = statusFilter.value;
-    const cards = [...scheduleList.querySelectorAll('.sched-card')];
-    cards.forEach(card => {
-      const o = card._opts;
-      const show = o.title.toLowerCase().includes(q)
-        && (cat === 'all' || o.category === cat)
-        && (st === 'all' || scheduleStatus(o) === st);
-      card.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    setEmptyState('schedules', cards.length, visible);
-  }
+  cards.forEach(card => {
+    const show = card._state.title.toLowerCase().includes(q);
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  setEmptyState(cards.length, visible);
 }
 
 searchInput.addEventListener('input', applySearch);
@@ -285,16 +293,16 @@ const demoAnnouncement =
   'Liebe IKEA Kundin, lieber IKEA Kunde!\nEntdecke jede Woche ein neues Angebot für IKEA Family Mitglieder. RIAN, Beistelltisch um nur € 9,99 statt um € 29,99. Das und viele weitere Angebote findest du unter ikea.at/Innsbruck.\nLebe Smart!';
 
 const demoSpots = [
-  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
-  { title: 'IKEA FOOD Mittagsangebot Köttbullar',             date: 'Today, 10:02',     duration: 12, received: true },
-  { title: 'IKEA Family Angebot RIAN Beistelltisch',          date: 'Today, 09:48',     duration: 14, scheduled: true },
-  { title: 'Smaland Abholung Durchsage_1',                    date: 'Yesterday, 17:40', duration: 8 },
-  { title: 'Öffnungszeiten Feiertag Westbahnhof',             date: 'Yesterday, 11:12', duration: 11, status: 'error' },
-  { title: 'Schlussdurchsage Restaurant_3',                   date: 'Yesterday, 09:31', duration: 10, scheduled: true, received: true },
-  { title: 'IKEA Family Punkte Aktion September',             date: 'Mon, 10:02',       duration: 15, scheduled: true },
-  { title: 'Parkdeck Hinweis Wochenende',                     date: 'Mon, 08:24',       duration: 7,  status: 'deleted' },
-  { title: 'Fundbüro Durchsage Kassenbereich',                date: 'Sun, 14:47',       duration: 9 },
-  { title: 'IKEA Vösendorf Aktion TISDAG Frühstück',          date: 'Sun, 09:15',       duration: 13, scheduled: true, received: true },
+  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', category: 'closing',    date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
+  { title: 'IKEA FOOD Mittagsangebot Köttbullar',             category: 'commercial', date: 'Today, 10:02',     duration: 12, received: true },
+  { title: 'IKEA Family Angebot RIAN Beistelltisch',          category: 'commercial', date: 'Today, 09:48',     duration: 14, scheduled: true },
+  { title: 'Smaland Abholung Durchsage_1',                    category: 'special',    date: 'Yesterday, 17:40', duration: 8 },
+  { title: 'Öffnungszeiten Feiertag Westbahnhof',             category: 'special',    date: 'Yesterday, 11:12', duration: 11, status: 'error' },
+  { title: 'Schlussdurchsage Restaurant_3',                   category: 'closing',    date: 'Yesterday, 09:31', duration: 10, scheduled: true, received: true },
+  { title: 'IKEA Family Punkte Aktion September',             category: 'commercial', date: 'Mon, 10:02',       duration: 15, scheduled: true },
+  { title: 'Parkdeck Hinweis Wochenende',                     category: 'standard',   date: 'Mon, 08:24',       duration: 7,  status: 'deleted' },
+  { title: 'Fundbüro Durchsage Kassenbereich',                category: 'standard',   date: 'Sun, 14:47',       duration: 9 },
+  { title: 'IKEA Vösendorf Aktion TISDAG Frühstück',          category: 'commercial', date: 'Sun, 09:15',       duration: 13, scheduled: true, received: true },
 ];
 
 demoSpots.forEach(spot => {
@@ -307,3 +315,9 @@ demoSpots.forEach(spot => {
     })
   );
 });
+
+/* fertige Demo-Spots in die Bibliothek – von alt nach neu, damit der
+   neueste oben in der Palette steht */
+[...historyList.querySelectorAll('.card')].reverse()
+  .filter(card => !card._state.status)
+  .forEach(card => registerCardSpot(card));

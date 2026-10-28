@@ -10,9 +10,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/creation.css">
-  <link rel="stylesheet" href="css/schedule.css">
   <link rel="stylesheet" href="css/calendar.css">
-  <link rel="stylesheet" href="css/devcal.css">
   <link rel="stylesheet" href="css/account.css">
   <link rel="stylesheet" href="css/home.css">
   <link rel="stylesheet" href="css/login.css">
@@ -83,20 +81,9 @@
         <span class="nav-item__dot" title="Draft in progress"></span>
       </button>
 
-      <button class="nav-item" data-view="schedule">
-        <svg class="icon"><use href="#i-gantt"/></svg>
-        <span>Scheduler</span>
-        <span class="nav-item__dot" title="Draft in progress"></span>
-      </button>
-
       <button class="nav-item" data-view="calendar">
         <svg class="icon"><use href="#i-calendar"/></svg>
         <span>Calendar</span>
-      </button>
-
-      <button class="nav-item" data-view="dev-calendar">
-        <svg class="icon"><use href="#i-panel"/></svg>
-        <span>Dev-Calendar</span>
       </button>
     </nav>
 
@@ -120,7 +107,7 @@
           <h1 class="home-hero__title">Welcome back, Julian.</h1>
         </div>
         <div class="home-hero__actions">
-          <button class="ghost-btn" data-go="schedule">Plan schedule</button>
+          <button class="ghost-btn" data-go="calendar">Plan schedule</button>
           <button class="primary-btn primary-btn--small" data-go="spot-creation">
             <svg class="icon"><use href="#i-wave"/></svg>
             Create spot
@@ -254,163 +241,10 @@ Lebe Smart!</textarea>
 
     </section>
 
-    <!-- Schedule -->
-    <section class="schedule-view" data-screen="schedule" hidden>
-
-      <div class="sched-spacer" aria-hidden="true"></div>
-
-      <div class="sched-editor" id="sched-editor">
-
-        <div class="sched-editor__head" id="sched-editor-head" hidden>
-          <span class="sched-editor__label">Editing</span>
-          <button class="sched-editor__close" id="sched-editor-close" aria-label="Cancel editing" data-tip="Cancel" data-tip-pos="bottom">
-            <svg class="icon"><use href="#i-x"/></svg>
-          </button>
-        </div>
-
-        <div class="sched-stage" id="sched-title-wrap">
-        <div class="sched-stage__inner">
-        <div class="title-field">
-          <label class="title-field__label" for="sched-title">Scheduling Title</label>
-          <input class="title-field__input" id="sched-title" type="text" placeholder="Enter your title here..." autocomplete="off">
-        </div>
-        </div>
-        </div>
-
-        <div class="preview" id="preview">
-          <div class="preview__empty" id="preview-empty">
-            <span class="preview__empty-text">No announcement selected</span>
-            <button class="preview__choose" id="preview-choose" type="button">
-              Choose audio
-              <svg class="icon"><use href="#i-arrow-right"/></svg>
-            </button>
-          </div>
-          <div class="preview__player" id="preview-player" hidden>
-            <button class="play-btn" id="preview-play" aria-label="Play">
-              <svg class="icon icon--filled"><use href="#i-play"/></svg>
-            </button>
-            <div class="slider" id="preview-slider">
-              <div class="slider__track"></div>
-              <div class="slider__progress"></div>
-              <div class="slider__thumb"></div>
-            </div>
-            <span class="preview__time" id="preview-time">00:09</span>
-            <button class="preview__icon-btn" id="preview-replace" aria-label="Replace audio" data-tip="Replace audio">
-              <svg class="icon"><use href="#i-wave"/></svg>
-            </button>
-            <button class="preview__icon-btn" id="preview-clear" aria-label="Clear all" data-tip="Clear all">
-              <svg class="icon"><use href="#i-x"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="sched-stage" id="sched-body">
-        <div class="sched-stage__inner">
-
-        <div class="sched-form" id="sched-form">
-
-          <div class="sched-form__group">
-            <p class="sched-form__label">Schedule Type</p>
-            <div class="segmented" id="type-segment">
-              <span class="segmented__thumb"></span>
-              <button class="segmented__option" data-value="single">Single Day</button>
-              <button class="segmented__option is-active" data-value="weekly">Weekly</button>
-            </div>
-          </div>
-
-          <div class="sched-form__group">
-            <div class="sched-form__row">
-              <div>
-                <p class="sched-form__label">Start</p>
-                <div class="field field--date" id="start-field">
-                  <button class="field__btn" id="start-btn" type="button"><span id="start-value"></span></button>
-                </div>
-              </div>
-              <div id="end-wrap">
-                <p class="sched-form__label">End</p>
-                <div class="field field--date" id="end-field">
-                  <button class="field__btn" id="end-btn" type="button"><span id="end-value"></span></button>
-                  <button class="field__aux" id="end-aux" type="button" aria-label="Toggle infinite" data-tip="Infinite">
-                    <svg class="icon" id="end-aux-icon"></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="reveal" id="weekdays-reveal">
-              <div class="sched-form__group">
-                <p class="sched-form__label">Week Days</p>
-                <div class="day-chips" id="day-chips">
-                  <button class="day-chip" data-day="Mo">Mo</button>
-                  <button class="day-chip" data-day="Tu">Tu</button>
-                  <button class="day-chip" data-day="We">We</button>
-                  <button class="day-chip" data-day="Th">Th</button>
-                  <button class="day-chip" data-day="Fr">Fr</button>
-                  <button class="day-chip" data-day="Sa">Sa</button>
-                  <button class="day-chip" data-day="Su">Su</button>
-                </div>
-              </div>
-          </div>
-
-          <div class="sched-form__group">
-            <p class="sched-form__label">Time</p>
-            <div class="segmented" id="time-segment">
-              <span class="segmented__thumb"></span>
-              <button class="segmented__option" data-value="once">Once per Day</button>
-              <button class="segmented__option is-active" data-value="repeat">Repeat</button>
-            </div>
-          </div>
-
-          <div class="sched-form__group">
-            <div class="repeat-row">
-              <div class="dropdown dropdown--time" id="time-from"></div>
-              <span class="repeat-row__word repeat-extra">to</span>
-              <div class="dropdown dropdown--time repeat-extra" id="time-to"></div>
-              <span class="repeat-row__spacer"></span>
-              <span class="repeat-row__word repeat-extra">every</span>
-              <div class="dropdown dropdown--time repeat-extra" id="every-dropdown"></div>
-            </div>
-            <div class="conflict-wrap" id="conflict-wrap"><div class="conflict-strip" id="conflict-strip"></div></div>
-          </div>
-
-          <div class="sched-form__group">
-            <p class="sched-form__label">Category</p>
-            <div class="dropdown dropdown--full" id="category-dropdown"></div>
-          </div>
-
-        </div>
-
-        </div>
-        </div>
-
-        <div class="sched-summary" id="sched-summary" hidden></div>
-
-        <div class="sched-stage" id="sched-actions-wrap">
-        <div class="sched-stage__inner">
-
-        <div class="schedule-actions">
-          <button class="cancel-btn" id="cancel-edit" hidden>Cancel</button>
-          <button class="primary-btn" id="schedule-btn">
-            <span id="schedule-btn-label">Send to Schedule</span>
-            <svg class="icon"><use href="#i-arrow-up-right"/></svg>
-          </button>
-        </div>
-
-        </div>
-        </div>
-
-      </div>
-
-
-      <div class="sched-spacer" aria-hidden="true"></div>
-
-    </section>
-
-    <!-- Calendar -->
+    <!-- Calendar: Spots aus der Palette einplanen -->
     <section class="calendar-view" data-screen="calendar" data-density="collapsed" hidden>
       <div class="cal-head">
-        <h1 class="cal-head__title">Announcement Calendar</h1>
+        <h1 class="cal-head__title">Calendar</h1>
         <div class="cal-week">
           <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
             <svg class="icon"><use href="#i-chevron-left"/></svg>
@@ -422,45 +256,18 @@ Lebe Smart!</textarea>
         </div>
         <button class="cal-today" id="cal-today">Today</button>
         <div class="cal-legend" id="cal-legend"></div>
-        <span class="cal-hint">Every slot represents 15 minutes.</span>
         <button class="density-toggle" id="cal-density" type="button" role="switch" aria-checked="false" aria-label="Expanded view" data-tip="Expand" data-tip-pos="bottom">
           <span class="density-toggle__knob"></span>
           <svg class="icon density-toggle__icon density-toggle__icon--collapsed"><use href="#i-chevrons-down-up"/></svg>
           <svg class="icon density-toggle__icon density-toggle__icon--expanded"><use href="#i-chevrons-up-down"/></svg>
         </button>
       </div>
-      <div class="cal-days" id="cal-days"></div>
-      <div class="cal-grid" id="cal-grid"></div>
-      <p class="cal-empty" id="cal-empty" hidden></p>
-    </section>
-
-    <!-- Dev Calendar -->
-    <section class="calendar-view devcal-view" data-screen="dev-calendar" data-density="collapsed" hidden>
-      <div class="cal-head">
-        <h1 class="cal-head__title">Dev Calendar</h1>
-        <div class="cal-week">
-          <button class="cal-week__nav" id="dcal-prev" aria-label="Previous week" data-tip="Previous week">
-            <svg class="icon"><use href="#i-chevron-left"/></svg>
-          </button>
-          <span class="cal-week__label" id="dcal-range"></span>
-          <button class="cal-week__nav" id="dcal-next" aria-label="Next week" data-tip="Next week">
-            <svg class="icon"><use href="#i-chevron-right"/></svg>
-          </button>
-        </div>
-        <button class="cal-today" id="dcal-today">Today</button>
-        <span class="cal-hint devcal-hint">Every slot lives on its own – drag it to a free slot or into the tray.</span>
-        <button class="density-toggle" id="dcal-density" type="button" role="switch" aria-checked="false" aria-label="Expanded view" data-tip="Expand" data-tip-pos="bottom">
-          <span class="density-toggle__knob"></span>
-          <svg class="icon density-toggle__icon density-toggle__icon--collapsed"><use href="#i-chevrons-down-up"/></svg>
-          <svg class="icon density-toggle__icon density-toggle__icon--expanded"><use href="#i-chevrons-up-down"/></svg>
-        </button>
-      </div>
-      <div class="devcal-layout">
-        <div class="cal-grid devcal-grid" id="dcal-grid"></div>
-        <aside class="devcal-tray" id="dcal-tray">
-          <p class="devcal-tray__title">Spots</p>
-          <p class="devcal-tray__hint">Drag a spot into the calendar – as often as you like. Drop a slot here to remove it.</p>
-          <div class="devcal-tray__list" id="dcal-tray-list"></div>
+      <div class="cal-layout">
+        <div class="cal-grid" id="cal-grid"></div>
+        <aside class="cal-tray" id="cal-tray">
+          <p class="cal-tray__title">Spots</p>
+          <p class="cal-tray__hint">Drag a spot into a free slot – as often as you like – or click a slot to pick one. Drop a slot here to remove it.</p>
+          <div class="cal-tray__list" id="cal-tray-list"></div>
         </aside>
       </div>
     </section>
@@ -519,7 +326,7 @@ Lebe Smart!</textarea>
             <div class="mfa-setup">
               <div class="mfa-qr" id="mfa-qr" aria-hidden="true"></div>
               <div class="mfa-key">
-                <p class="sched-form__label">Setup key</p>
+                <p class="mfa-key__label">Setup key</p>
                 <code class="mfa-key__code">SDNA K7QX 2M9P L4WT</code>
               </div>
             </div>
@@ -570,12 +377,9 @@ Lebe Smart!</textarea>
         <svg class="icon"><use href="#i-search"/></svg>
         <input type="text" id="history-search" placeholder="Search..." autocomplete="off">
       </div>
-      <div class="dropdown dropdown--filter" id="status-filter" hidden></div>
-      <div class="dropdown dropdown--filter" id="category-filter" hidden></div>
     </div>
 
     <div class="history__list" id="history-list"></div>
-    <div class="history__list" id="schedule-list" hidden></div>
     <p class="history__empty" id="history-empty" hidden></p>
   </aside>
 
@@ -609,7 +413,6 @@ Lebe Smart!</textarea>
     </div>
   </div>
 
-  <!-- Spot-Auswahl (Audio für eine Schedule) -->
   <!-- Impressum / Datenschutz / Lizenzen -->
   <div class="lightbox" id="legal" hidden>
     <div class="lightbox__panel lightbox__panel--doc" role="dialog" aria-modal="true">
@@ -710,22 +513,6 @@ Lebe Smart!</textarea>
     </div>
   </div>
 
-  <div class="lightbox" id="spot-picker" hidden>
-    <div class="lightbox__panel" role="dialog" aria-modal="true">
-      <div class="lightbox__head">
-        <h2 class="lightbox__title">Choose audio</h2>
-        <button class="lightbox__close" id="spot-picker-close" aria-label="Close" data-tip="Close" data-tip-pos="bottom">
-          <svg class="icon"><use href="#i-x"/></svg>
-        </button>
-      </div>
-      <div class="lightbox__search">
-        <svg class="icon"><use href="#i-search"/></svg>
-        <input type="text" id="spot-picker-search" placeholder="Search spots..." autocomplete="off">
-      </div>
-      <div class="lightbox__list" id="spot-picker-list"></div>
-    </div>
-  </div>
-
   <!-- Bestätigungsdialog -->
   <div class="modal-backdrop" id="modal" hidden>
     <div class="modal" role="dialog" aria-modal="true">
@@ -804,10 +591,9 @@ Lebe Smart!</textarea>
   </template>
 
   <script src="js/app.js"></script>
+  <script src="js/plan.js"></script>
   <script src="js/creation.js"></script>
-  <script src="js/schedule.js"></script>
   <script src="js/calendar.js"></script>
-  <script src="js/dev-calendar.js"></script>
   <script src="js/account.js"></script>
   <script src="js/home.js"></script>
   <script src="js/login.js"></script>

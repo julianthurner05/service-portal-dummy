@@ -27,7 +27,6 @@ body {
   overflow: hidden;
 }
 
-body.view-schedule { grid-template-columns: 240px minmax(0, 1fr) 520px; }
 body.no-history { grid-template-columns: 240px minmax(0, 1fr); }
 body.no-history .history { display: none; }
 
@@ -950,7 +949,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    ================================================================ */
 @media (max-width: 1520px) {
   body { grid-template-columns: 220px minmax(0, 1fr) 400px; }
-  body.view-schedule { grid-template-columns: 220px minmax(0, 1fr) 470px; }
   body.no-history { grid-template-columns: 220px minmax(0, 1fr); }
 }
 
@@ -958,7 +956,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    mit der mobilen Kopfleiste, Inhalt und History bleiben nebeneinander */
 @media (max-width: 1240px) {
   body { grid-template-columns: minmax(0, 1fr) 380px; padding-top: 56px; }
-  body.view-schedule { grid-template-columns: minmax(0, 1fr) 440px; }
   body.no-history { grid-template-columns: minmax(0, 1fr); }
 
   .mobile-bar { display: flex; }
@@ -992,7 +989,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
 @media (max-width: 980px) {
   body,
-  body.view-schedule,
   body.no-history {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;

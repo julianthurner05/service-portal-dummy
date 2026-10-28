@@ -199,6 +199,13 @@
 
 .mfa-key { min-width: 0; }
 
+.mfa-key__label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-label);
+  margin-bottom: 10px;
+}
+
 .mfa-key__code {
   display: inline-block;
   margin-top: 2px;

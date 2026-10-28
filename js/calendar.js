@@ -1,60 +1,24 @@
 /* ================================================================
-   CALENDAR – Wochenansicht aller aktiven Schedules
-   - Kategorie färbt die Slots, Hover leuchtet alle Slots eines Spots
-   - Schlussdurchsagen (Closing) haben feste Slots: die Zeile wird
-     gestreckt, damit jede Zeit ihre eigene Reihe bekommt
-   - Öffnungszeiten & Quiet Hours werden als gesperrt gezeichnet
-   - Freie Slots lassen sich anklicken → Spot hier einplanen
-   - Ein Entwurf aus dem Scheduler erscheint gestrichelt als Vorschau
+   CALENDAR – die Schedule-Oberfläche
+   - Woche Mo–Sa im 15-Minuten-Raster, Daten aus plan.js
+   - jeder Slot lebt für sich: per Drag & Drop verschieben, über das ✕
+     oder durch Ablegen in der Palette entfernen
+   - rechts die Spot-Palette: jeder Spot einmal, beliebig oft einplanbar
+     (Plan-Spots + fertige Spots aus dem SpotTool)
+   - Klick auf eine freie Zelle → Spot auswählen (statt ziehen)
+   - fixe Slots (Opening/Closing) vergibt sounddna: gesperrt, mit Schloss
+   - Collapsed (Farblinien) ↔ Expanded (Slots mit Titel), gleitend
    ================================================================ */
 
-const calGrid   = document.getElementById('cal-grid');
-const calRange  = document.getElementById('cal-range');
-const calLegend = document.getElementById('cal-legend');
-const calDays   = document.getElementById('cal-days');
-const calEmpty  = document.getElementById('cal-empty');
-
-const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
-
-const CAL_HOUR_START = 8;
-const CAL_HOUR_END   = 22;                         /* exklusiv */
-const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 60 / SLOT_MIN;
-const SLOTS_PER_HOUR = 60 / SLOT_MIN;
-const CAL_DAYS       = 6;                          /* Mo–Sa: Sonntag ist geschlossen und wird nicht gezeigt */
-document.documentElement.style.setProperty('--cal-slots', CAL_SLOTS);
-document.documentElement.style.setProperty('--cal-days', CAL_DAYS);
-
-let mobileDay = Math.min(dayIdx(new Date()), CAL_DAYS - 1);   /* Tagesansicht am Handy – sonntags Samstag */
-const DAY_NAMES      = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const MONTH_SHORT    = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/* Store-Regeln (Beispiel IKEA Vösendorf) – Index 0 = Montag.
-   Einzige Quelle für Kalender, Konfliktprüfung, Home-Karte und Demo-Plan. */
-const STORE_HOURS = [['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '21:00'], ['09:00', '18:00'], null];
-const QUIET_HOURS = [{ day: 2, from: '16:00', to: '18:00' }];
-
-/* "Wednesday 16–18" bzw. "Mo–Th 9–20 · Fr 9–21 · Sa 9–18" – eine Quelle
-   für Home-Karte und Hinweise */
-const quietHoursLabel = () =>
-  QUIET_HOURS.map(q => `${DAY_NAMES[q.day]} ${parseInt(q.from, 10)}–${parseInt(q.to, 10)}`).join(', ');
-
-function storeHoursLabel() {
-  const parts = [];
-  STORE_HOURS.forEach((h, i) => {
-    if (!h) return;
-    const last = parts[parts.length - 1];
-    if (last && last.h[0] === h[0] && last.h[1] === h[1] && last.to === i - 1) { last.to = i; return; }
-    parts.push({ from: i, to: i, h });
-  });
-  return parts.map(p => `${DAYS[p.from]}${p.to > p.from ? `–${DAYS[p.to]}` : ''} ${parseInt(p.h[0], 10)}–${parseInt(p.h[1], 10)}`).join(' · ');
-}
+const calGrid      = document.getElementById('cal-grid');
+const calRange     = document.getElementById('cal-range');
+const calLegend    = document.getElementById('cal-legend');
+const calTray      = document.getElementById('cal-tray');
+const calTrayList  = document.getElementById('cal-tray-list');
 
 let calWeekStart = mondayOf(new Date());
 
-const slotIndex = t => Math.floor((minutesOf(t) - CAL_HOUR_START * 60) / SLOT_MIN);
-const slotTime  = s => hhmm(CAL_HOUR_START * 60 + s * SLOT_MIN);
-
-/* Zeitspalte: volle Stunde kräftig, halbe Stunde nur im ausgeklappten Modus */
+/* Zeitspalte: volle Stunde kräftig, halbe Stunde nur im Expanded-Modus */
 function timeColumn() {
   let html = '<div class="cal-col cal-col--time"><div class="cal-col__head"></div><div class="cal-col__body">';
   for (let s = 0; s < CAL_SLOTS; s++) {
@@ -64,51 +28,6 @@ function timeColumn() {
   }
   return html + '</div></div>';
 }
-const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-const weekDates = monday => [...Array(7)].map((_, i) => { const d = new Date(monday); d.setDate(d.getDate() + i); return d; });
-const calWeekDays = monday => weekDates(monday).slice(0, CAL_DAYS);   /* die Tage, die die Kalender zeigen */
-
-function isOpen(dayI, time) {
-  const h = STORE_HOURS[dayI];
-  return !!h && minutesOf(time) >= minutesOf(h[0]) && minutesOf(time) < minutesOf(h[1]);
-}
-
-/* Schlussdurchsagen dürfen bis einschließlich zur Schließzeit laufen –
-   alles andere muss innerhalb der Öffnungszeit liegen */
-function isAllowedTime(dayI, time, category) {
-  const h = STORE_HOURS[dayI];
-  if (!h) return false;
-  if (category !== 'closing') return isOpen(dayI, time);
-  return minutesOf(time) >= minutesOf(h[0]) && minutesOf(time) <= minutesOf(h[1]);
-}
-
-function isQuiet(dayI, time) {
-  return QUIET_HOURS.some(q => q.day === dayI && minutesOf(time) >= minutesOf(q.from) && minutesOf(time) < minutesOf(q.to));
-}
-
-/* Slot-Vorkommen eines Schedules an einem Datum.
-   all: auch Quiet Hours und Zeiten außerhalb des Kalender-Rasters liefern
-   (für die Konfliktprüfung) */
-function occurrences(o, date, { all = false } = {}) {
-  const start = parseDate(o.start);
-  if (date < start) return [];
-  if (o.type === 'single') {
-    if (!sameDay(start, date)) return [];
-  } else {
-    if (o.end && date > parseDate(o.end)) return [];
-    if (!(o.days || []).includes(DAYS[dayIdx(date)])) return [];
-  }
-
-  const times = [];
-  if (o.times) times.push(...o.times);
-  else if (o.once) times.push(o.from);
-  else {
-    for (let t = minutesOf(o.from); t <= minutesOf(o.to); t += o.every) times.push(hhmm(t));
-  }
-  const di = dayIdx(date);
-  const list = times.map(t => ({ time: t, slot: slotIndex(t) }));
-  return all ? list : list.filter(x => x.slot >= 0 && x.slot < CAL_SLOTS && !isQuiet(di, x.time));
-}
 
 function renderLegend() {
   calLegend.innerHTML = CATEGORIES.map(c =>
@@ -116,97 +35,83 @@ function renderLegend() {
   ).join('');
 }
 
+function weekRangeLabel(days) {
+  const first = days[0], last = days[days.length - 1];
+  return first.getMonth() === last.getMonth()
+    ? `${MONTH_SHORT[first.getMonth()]} ${first.getDate()} – ${last.getDate()}, ${last.getFullYear()}`
+    : `${MONTH_SHORT[first.getMonth()]} ${first.getDate()} – ${MONTH_SHORT[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
+}
+
 function renderCalendar() {
+  closeCellPicker();
   const days = calWeekDays(calWeekStart);
-  const last = days[days.length - 1];
-  const sameMonth = days[0].getMonth() === last.getMonth();
-  calRange.textContent = sameMonth
-    ? `${MONTH_SHORT[days[0].getMonth()]} ${days[0].getDate()} – ${last.getDate()}, ${last.getFullYear()}`
-    : `${MONTH_SHORT[days[0].getMonth()]} ${days[0].getDate()} – ${MONTH_SHORT[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
+  calRange.textContent = weekRangeLabel(days);
 
-  const cards = [...scheduleList.querySelectorAll('.sched-card')];
-
+  const items = weekItems(calWeekStart);
+  const fixed = fixedCells(calWeekStart);
   const today = new Date();
-
-  /* Belegung je Tag & Slot */
-  const grid = days.map((date, di) => {
-    const slots = [...Array(CAL_SLOTS)].map((_, s) => ({
-      spots: [],
-      closed: !isOpen(di, slotTime(s)),
-      quiet: isQuiet(di, slotTime(s)),
-    }));
-    cards.forEach(card => occurrences(card._opts, date).forEach(({ time, slot }) =>
-      slots[slot].spots.push({ card, time })));
-
-    return slots;
-  });
 
   let html = timeColumn();
 
-  /* Tagesleiste (Handy) */
-  const mobile = isMobile();
-  calDays.innerHTML = days.map((date, di) => `
-    <button class="cal-days__btn${di === mobileDay ? ' is-active' : ''}" data-day="${di}" type="button">
-      <span>${DAYS[di]}</span><span>${date.getDate()}</span>
-    </button>`).join('');
-
-  const total = grid.reduce((n, slots) => n + slots.reduce((m, s) => m + s.spots.length, 0), 0);
-  calEmpty.hidden = total > 0;
-  calEmpty.textContent = 'Nothing scheduled this week – click a free slot to plan a spot.';
-
-  /* Tagesspalten */
   days.forEach((date, di) => {
-    if (mobile && di !== mobileDay) return;
-    const slots = grid[di];
-    const isToday = sameDay(date, today);
-    html += `<div class="cal-col${isToday ? ' cal-col--today' : ''}" data-day="${di}">
+    html += `<div class="cal-col${sameDay(date, today) ? ' cal-col--today' : ''}" data-day="${di}">
       <div class="cal-col__head">${DAY_NAMES[di].slice(0, 3)}<span class="cal-col__date">${date.getDate()}</span></div>
       <div class="cal-col__body">`;
 
-    let skip = 0;
-    slots.forEach((slot, s) => {
-      if (skip > 0) { skip--; return; }
+    for (let s = 0; s < CAL_SLOTS; s++) {
+      /* fix von sounddna – mehrere in einem Slot werden zusammengefasst */
+      const f = fixed.get(`${di}:${s}`);
+      if (f) {
+        const label = f.length > 1 ? `${f[0].spot.title} +${f.length - 1}` : f[0].spot.title;
+        const tip = `${f.map(x => `${x.time} ${x.spot.title}`).join(' · ')} – fixed by sounddna`;
+        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
+            <div class="cal-slot__inner"></div>
+            <span class="cal-item__label">${escapeHtml(label)}</span>
+            ${icon('lock', 'cal-item__lock')}
+          </div>`;
+        continue;
+      }
 
-      /* Quiet Hour als Block */
-      if (slot.quiet && !slot.spots.length) {
+      const it = items.find(i => i.day === di && i.slot === s);
+      if (it) {
+        const spot = spotById(it.spotId);
+        html += `<div class="cal-slot cal-slot--spot cal-item" draggable="true" data-id="${it.id}" style="${catStyle(spot.category)}">
+            <div class="cal-slot__inner"></div>
+            <span class="cal-item__label">${escapeHtml(spot.title)}</span>
+            <button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>
+          </div>`;
+        continue;
+      }
+
+      /* Stille Stunde: gesperrter Block – kein Drop-Ziel */
+      if (isQuiet(di, slotTime(s))) {
         let n = 1;
-        while (slots[s + n] && slots[s + n].quiet && !slots[s + n].spots.length) n++;
-        skip = n - 1;
+        while (s + n < CAL_SLOTS && isQuiet(di, slotTime(s + n))) n++;
         html += `<div class="cal-quiet" data-rows="${n}" style="height: calc(${n} * var(--slot-h) + ${n - 1} * var(--slot-gap))">Quiet Hour</div>`;
-        return;
+        s += n - 1;
+        continue;
       }
 
-      const z = CAL_SLOTS - s;               /* oben liegt über unten */
-      if (!slot.spots.length) {
-        html += `<div class="cal-slot${slot.closed ? ' cal-slot--closed' : ''}" data-slot="${s}" style="z-index:${z}"><div class="cal-slot__inner"></div></div>`;
-        return;
-      }
-
-      /* ein Spot pro Slot – mehrere (nur Closing) werden zusammengefasst */
-      const sorted = [...slot.spots].sort((a, b) => minutesOf(a.time) - minutesOf(b.time));
-      const first = sorted[0];
-      const o = first.card._opts;
-      const title = sorted.length > 1 ? `${o.title} +${sorted.length - 1}` : o.title;
-      html += `<div class="cal-slot cal-slot--spot cal-hit" data-uid="${first.card._uid}" style="${catStyle(o.category)}z-index:${z}">
-          <div class="cal-slot__inner">
-            <div class="cal-slot__title">
-              <span class="cal-slot__time">${first.time}</span>
-              ${o.locked
-                ? icon('lock', 'cal-slot__lock')
-                : `<button class="cal-slot__edit" data-edit="${first.card._uid}" aria-label="Edit schedule" data-tip="Edit" data-tip-pos="bottom" tabindex="-1">${icon('pencil')}</button>`}
-              <span class="cal-slot__text">${escapeHtml(title)}</span>
-            </div>
-          </div>
+      const closed = !isOpen(di, slotTime(s));
+      html += `<div class="cal-slot cal-cell${closed ? ' cal-slot--closed' : ''}" data-day="${di}" data-slot="${s}">
+          <div class="cal-slot__inner"></div>
         </div>`;
-    });
+    }
 
     html += '</div></div>';
   });
 
   calGrid.innerHTML = html;
-  litUid = null;
-  renderLegend();
+  renderTray();
   renderNowLine();
+}
+
+/* ---- Palette ---- */
+function renderTray() {
+  calTrayList.innerHTML = paletteSpots().map(s => `
+    <div class="cal-tray__item" draggable="true" data-spot="${s.id}" style="${catStyle(s.category)}">
+      <span class="cal-item__label">${escapeHtml(s.title)}</span>
+    </div>`).join('');
 }
 
 /* ---- Jetzt-Linie in der heutigen Spalte ---- */
@@ -218,7 +123,7 @@ function renderNowLine() {
   const s = (now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60) / SLOT_MIN;
   if (s < 0 || s >= CAL_SLOTS) return;
   const body = col.querySelector('.cal-col__body');
-  /* Slot-Elemente decken die Reihen ab (Quiet-Blöcke mehrere) – Position aus dem DOM */
+  /* Zeilen-Elemente decken die Reihen ab (Quiet-Blöcke mehrere) – Position aus dem DOM */
   let row = 0;
   for (const el of body.querySelectorAll('.cal-slot, .cal-quiet')) {
     const span = parseInt(el.dataset.rows, 10) || 1;
@@ -235,84 +140,201 @@ function renderNowLine() {
 
 setInterval(() => { if (!calendarView.hidden) renderNowLine(); }, 60000);
 
-calDays.addEventListener('click', e => {
-  const btn = e.target.closest('.cal-days__btn');
-  if (!btn) return;
-  mobileDay = parseInt(btn.dataset.day, 10);
+/* Spot eingeplant → Karte im SpotTool bekommt das Scheduled-Badge */
+function spotPlaced(spot) {
+  if (spot) setCardScheduled(spot.title);
+}
+
+/* ---------------------------------------------------------------
+   Drag & Drop – Palette → Raster (Kopie), Raster → Raster (Verschieben),
+   Raster → Palette (Entfernen)
+   --------------------------------------------------------------- */
+let calDrag = null;                    /* { from: 'grid', id } | { from: 'palette', spotId } */
+
+const dropCell = e => {
+  const cell = e.target.closest('.cal-cell');
+  return cell && !cell.classList.contains('cal-slot--closed') ? cell : null;
+};
+
+function clearDropMarks() {
+  calGrid.querySelectorAll('.is-drop').forEach(c => c.classList.remove('is-drop'));
+  calTray.classList.remove('is-drop');
+}
+
+/* Eigenes Drag-Bild: eine saubere Titel-Pille statt des Browser-Schnappschusses
+   (der nahm Überstände wie Tooltips mit und war im Collapsed-Modus nur eine Linie) */
+function setDragImage(e, el, spot) {
+  const r = el.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'cal-ghost';
+  ghost.style.cssText = `${catStyle(spot.category)}width:${Math.round(r.width)}px;`;
+  ghost.textContent = spot.title;
+  document.body.appendChild(ghost);
+  const x = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+  const y = Math.min(Math.max(e.clientY - r.top, 0), ghost.offsetHeight);
+  e.dataTransfer.setDragImage(ghost, x, y);
+  setTimeout(() => ghost.remove(), 0);
+}
+
+calendarView.addEventListener('dragstart', e => {
+  const el = e.target.closest('.cal-item[draggable="true"], .cal-tray__item');
+  if (!el) return;
+  closeCellPicker();
+  let spot;
+  if (el.classList.contains('cal-item')) {
+    calDrag = { from: 'grid', id: +el.dataset.id };
+    const it = weekItems(calWeekStart).find(i => i.id === calDrag.id);
+    spot = it && spotById(it.spotId);
+  } else {
+    calDrag = { from: 'palette', spotId: +el.dataset.spot };
+    spot = spotById(calDrag.spotId);
+  }
+  e.dataTransfer.effectAllowed = calDrag.from === 'palette' ? 'copy' : 'move';
+  e.dataTransfer.setData('text/plain', spot ? spot.title : '');
+  if (spot) setDragImage(e, el, spot);
+  if (calDrag.from === 'grid') requestAnimationFrame(() => el.classList.add('is-dragging'));
+});
+
+calendarView.addEventListener('dragend', () => {
+  calDrag = null;
+  clearDropMarks();
+  calGrid.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
+});
+
+/* freie Zellen nehmen Slots an */
+calGrid.addEventListener('dragover', e => {
+  const cell = dropCell(e);
+  if (!cell || !calDrag) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = calDrag.from === 'palette' ? 'copy' : 'move';
+  clearDropMarks();
+  cell.classList.add('is-drop');
+});
+
+calGrid.addEventListener('drop', e => {
+  const cell = dropCell(e);
+  if (!cell || !calDrag) return;
+  e.preventDefault();
+  const day = +cell.dataset.day;
+  const slot = +cell.dataset.slot;
+  if (calDrag.from === 'grid') {
+    moveItem(calWeekStart, calDrag.id, day, slot);
+  } else if (placeSpot(calWeekStart, calDrag.spotId, day, slot)) {
+    spotPlaced(spotById(calDrag.spotId));
+  }
+  calDrag = null;
   renderCalendar();
 });
 
-let calResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(calResizeTimer);
-  calResizeTimer = setTimeout(() => { if (!calendarView.hidden) renderCalendar(); }, 150);
+/* die Palette nimmt Slots aus dem Raster an – der Slot wird entfernt,
+   die Palette selbst bleibt unverändert */
+calTray.addEventListener('dragover', e => {
+  if (!calDrag || calDrag.from !== 'grid') return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  calTray.classList.add('is-drop');
 });
 
-/* ---- Hover: alle Slots desselben Spots leuchten auf ---- */
-let litUid = null;
+calTray.addEventListener('dragleave', e => {
+  if (!calTray.contains(e.relatedTarget)) calTray.classList.remove('is-drop');
+});
 
-function setLit(uid) {
-  if (uid === litUid) return;
-  litUid = uid;
-  calGrid.querySelectorAll('.cal-hit').forEach(s =>
-    s.classList.toggle('is-lit', uid !== null && s.dataset.uid === uid));
+calTray.addEventListener('drop', e => {
+  if (!calDrag || calDrag.from !== 'grid') return;
+  e.preventDefault();
+  removeItem(calWeekStart, calDrag.id);
+  calDrag = null;
+  clearDropMarks();
+  renderCalendar();
+});
+
+/* ---------------------------------------------------------------
+   Klicks im Raster: ✕ entfernt einen Slot, freie Zelle → Spot wählen
+   --------------------------------------------------------------- */
+let cellPicker = null;
+
+function closeCellPicker() {
+  if (!cellPicker) return;
+  cellPicker.closest('.cal-slot')?.classList.remove('has-pop');
+  cellPicker.remove();
+  cellPicker = null;
 }
 
-calGrid.addEventListener('mousemove', e => {
-  const hit = e.target.closest('.cal-hit');
-  if (hit) { setLit(hit.dataset.uid); return; }
-  if (e.target.closest('.cal-slot, .cal-quiet, .cal-col__head')) setLit(null);
-});
+function openCellPicker(cell) {
+  closeCellPicker();
+  const day = +cell.dataset.day;
+  const slot = +cell.dataset.slot;
+  const date = calWeekDays(calWeekStart)[day];
+  const list = paletteSpots();
 
-calGrid.addEventListener('mouseleave', () => { setLit(null); closeCalPop(); });
-
-/* ---- Klicks: Stift → bearbeiten, freier Slot → hier einplanen ---- */
-let calPop = null;
-
-function closeCalPop() {
-  if (calPop) {
-    calPop.closest('.cal-slot')?.classList.remove('has-pop');
-    calPop.remove();
-    calPop = null;
-  }
+  cellPicker = document.createElement('div');
+  cellPicker.className = 'cal-pick';
+  if (day >= CAL_DAYS - 2) cellPicker.classList.add('cal-pick--left');
+  if (cell.getBoundingClientRect().bottom > window.innerHeight - 320) cellPicker.classList.add('cal-pick--up');
+  cellPicker.innerHTML = `
+    <p class="cal-pick__when">${DAY_NAMES[day].slice(0, 3)} ${date.getDate()} · ${slotTime(slot)}</p>
+    <div class="cal-pick__list">
+      ${list.map(s => `
+        <button class="cal-pick__spot" data-spot="${s.id}" type="button">
+          <span class="cal-pick__dot" style="background:${catColor(s.category)}"></span>
+          <span class="cal-pick__title">${escapeHtml(s.title)}</span>
+        </button>`).join('')}
+    </div>`;
+  cellPicker.addEventListener('click', e => {
+    e.stopPropagation();
+    const btn = e.target.closest('.cal-pick__spot');
+    if (!btn) return;
+    const spot = spotById(+btn.dataset.spot);
+    if (placeSpot(calWeekStart, spot.id, day, slot)) spotPlaced(spot);
+    renderCalendar();
+  });
+  cell.classList.add('has-pop');
+  cell.appendChild(cellPicker);
 }
 
 calGrid.addEventListener('click', e => {
-  const btn = e.target.closest('.cal-slot__edit');
-  if (btn) {
+  if (e.target.closest('.cal-pick')) return;
+  const x = e.target.closest('.cal-item__x');
+  if (x) {
     e.stopPropagation();
-    const card = [...scheduleList.querySelectorAll('.sched-card')].find(c => String(c._uid) === btn.dataset.edit);
-    if (card) { showView('schedule'); requestEdit(card); }
+    removeItem(calWeekStart, +x.dataset.x);
+    renderCalendar();
     return;
   }
-
-  const free = e.target.closest('.cal-slot[data-slot]');
-  if (!free || free.classList.contains('cal-slot--closed')) return;
+  const cell = e.target.closest('.cal-cell');
+  if (!cell || cell.classList.contains('cal-slot--closed')) return;
   e.stopPropagation();
-  closeCalPop();
-
-  const s = parseInt(free.dataset.slot, 10);
-  const di = parseInt(free.closest('.cal-col').dataset.day, 10);
-  const date = new Date(calWeekStart);
-  date.setDate(date.getDate() + di);
-  const time = slotTime(s);
-
-  free.classList.add('has-pop');
-  calPop = document.createElement('div');
-  calPop.className = 'cal-pop';
-  calPop.innerHTML = `
-    <span class="cal-pop__when">${DAY_NAMES[di].slice(0, 3)} ${date.getDate()} · ${time}</span>
-    <button class="ghost-btn ghost-btn--sm ghost-btn--invert cal-pop__btn" type="button">Schedule spot here ${icon('arrow-right')}</button>`;
-  calPop.querySelector('.cal-pop__btn').addEventListener('click', () => {
-    closeCalPop();
-    scheduleFromSlot(date, time);
-  });
-  free.appendChild(calPop);
+  if (cell.classList.contains('has-pop')) { closeCellPicker(); return; }
+  openCellPicker(cell);
 });
 
-document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) closeCalPop(); });
+document.addEventListener('click', e => { if (!e.target.closest('.cal-pick')) closeCellPicker(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCellPicker(); });
 
-/* ---- Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel) ----
+/* ---------------------------------------------------------------
+   Aus dem SpotTool: in den Calendar springen, Spot in der Palette zeigen.
+   Bewusst ohne Toast – der läge oben rechts genau über der Palette.
+   --------------------------------------------------------------- */
+function openInCalendar(title) {
+  showView('calendar');
+  const spot = findSpot(title);
+  const el = spot && calTrayList.querySelector(`[data-spot="${spot.id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: 'nearest' });
+  el.classList.remove('is-flash');
+  void el.offsetWidth;                            /* Animation neu starten */
+  el.classList.add('is-flash');
+}
+
+/* neue oder gelöschte Spots aus dem SpotTool sofort in der Palette */
+onPlanChange(kind => {
+  if (calendarView.hidden) return;
+  if (kind === 'spots') renderTray();
+  if (kind === 'week' && !calDrag) renderCalendar();
+});
+
+/* ---------------------------------------------------------------
+   Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel)
    FLIP: das Layout springt sofort in den Zielzustand, sichtbar gleitet es
    nur per transform – jede Zeile startet an ihrer alten Position und Höhe.
    Keyframes enthalten nur transform (transform-origin steht fest im CSS),
@@ -320,8 +342,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.cal-pop')) clo
    ~450 Zeilen hätten jeden Frame ein Layout erzwungen (in Safari ruckelig).
    Das Raster selbst – Fläche und Spaltenlinien – wird per clip-path auf-
    bzw. zugedeckt: ohne Layout, mit exakten runden Ecken.
-   Gilt für beide Kalender (normal und Dev): view trägt data-density,
-   grid ist das Raster. Laufende Animationen hängen am Raster selbst. */
+   --------------------------------------------------------------- */
 function morphGrid(view, grid, value, onDone = null) {
   const rows = [...grid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
   const top0 = grid.getBoundingClientRect().top;
@@ -379,24 +400,16 @@ function morphGrid(view, grid, value, onDone = null) {
   }, () => {});                                   /* abgebrochen: der nächste Wechsel übernimmt */
 }
 
-function morphDensity(value) {
-  setLit(null);
-  closeCalPop();
-  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
-  morphGrid(calendarView, calGrid, value, renderNowLine);
-}
-
 /* Pill-Umschalter: aria-checked = Expanded */
-function wireDensityToggle(btn, onChange) {
-  btn.addEventListener('click', () => {
-    const expanded = btn.getAttribute('aria-checked') !== 'true';
-    btn.setAttribute('aria-checked', String(expanded));
-    btn.dataset.tip = expanded ? 'Collapse' : 'Expand';
-    onChange(expanded ? 'expanded' : 'collapsed');
-  });
-}
-
-wireDensityToggle(document.getElementById('cal-density'), morphDensity);
+const densityToggle = document.getElementById('cal-density');
+densityToggle.addEventListener('click', () => {
+  const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
+  densityToggle.setAttribute('aria-checked', String(expanded));
+  densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
+  closeCellPicker();
+  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
+  morphGrid(calendarView, calGrid, expanded ? 'expanded' : 'collapsed', renderNowLine);
+});
 
 /* ---- Wochennavigation ---- */
 const calPrev = document.getElementById('cal-prev');
@@ -411,4 +424,4 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') calNext.click();
 });
 
-renderLegend(false);
+renderLegend();
