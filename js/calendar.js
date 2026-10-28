@@ -15,13 +15,16 @@ const calDays   = document.getElementById('cal-days');
 const calEmpty  = document.getElementById('cal-empty');
 
 const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
-let mobileDay = dayIdx(new Date());     /* Tagesansicht am Handy */
 
 const CAL_HOUR_START = 8;
 const CAL_HOUR_END   = 22;                         /* exklusiv */
 const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 60 / SLOT_MIN;
 const SLOTS_PER_HOUR = 60 / SLOT_MIN;
+const CAL_DAYS       = 6;                          /* Mo–Sa: Sonntag ist geschlossen und wird nicht gezeigt */
 document.documentElement.style.setProperty('--cal-slots', CAL_SLOTS);
+document.documentElement.style.setProperty('--cal-days', CAL_DAYS);
+
+let mobileDay = Math.min(dayIdx(new Date()), CAL_DAYS - 1);   /* Tagesansicht am Handy – sonntags Samstag */
 const DAY_NAMES      = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MONTH_SHORT    = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -63,6 +66,7 @@ function timeColumn() {
 }
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const weekDates = monday => [...Array(7)].map((_, i) => { const d = new Date(monday); d.setDate(d.getDate() + i); return d; });
+const calWeekDays = monday => weekDates(monday).slice(0, CAL_DAYS);   /* die Tage, die die Kalender zeigen */
 
 function isOpen(dayI, time) {
   const h = STORE_HOURS[dayI];
@@ -113,8 +117,8 @@ function renderLegend() {
 }
 
 function renderCalendar() {
-  const days = weekDates(calWeekStart);
-  const last = days[6];
+  const days = calWeekDays(calWeekStart);
+  const last = days[days.length - 1];
   const sameMonth = days[0].getMonth() === last.getMonth();
   calRange.textContent = sameMonth
     ? `${MONTH_SHORT[days[0].getMonth()]} ${days[0].getDate()} – ${last.getDate()}, ${last.getFullYear()}`

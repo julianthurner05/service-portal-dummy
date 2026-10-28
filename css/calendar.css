@@ -116,7 +116,7 @@
 /* ---- Raster ---- */
 .cal-grid {
   display: grid;
-  grid-template-columns: 50px repeat(7, minmax(0, 1fr));
+  grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(0, 1fr));
   padding: var(--pad-box) var(--pad-box) var(--pad-box) 0;
   background: var(--mittelblau);
   border-radius: var(--radius-lg);

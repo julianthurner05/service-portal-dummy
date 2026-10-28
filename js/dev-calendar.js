@@ -58,8 +58,8 @@ function dcalWeekItems(monday) {
 }
 
 function renderDevCalendar() {
-  const days = weekDates(dcalWeekStart);
-  const last = days[6];
+  const days = calWeekDays(dcalWeekStart);
+  const last = days[days.length - 1];
   const sameMonth = days[0].getMonth() === last.getMonth();
   dcalRange.textContent = sameMonth
     ? `${MONTH_SHORT[days[0].getMonth()]} ${days[0].getDate()} – ${last.getDate()}, ${last.getFullYear()}`
