@@ -133,15 +133,16 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   border-right: var(--hairline);
 }
 
-/* Logo-Feld oben: Logo füllt die Breite innerhalb des Innenabstands und sitzt
-   mittig; darunter eine Linie von Rand zu Rand */
+/* Logo-Feld oben: links und rechts so viel Abstand, wie die Menü-Icons zum
+   linken Rand haben (Sidebar 14px + Menüpunkt 12px) – das Logo füllt die
+   Breite dazwischen; darunter eine Linie von Rand zu Rand */
 .sidebar__brand {
   margin: 0 -12px 0 -14px;
-  padding: 22px 14px;
+  padding: 22px 26px;
   border-bottom: var(--hairline);
 }
 
-.sidebar__logo { display: block; width: 100%; max-width: 180px; margin: 0 auto; }
+.sidebar__logo { display: block; width: 100%; max-width: 180px; }
 
 .sidebar__nav {
   margin-top: 20px;
@@ -988,7 +989,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
   .sidebar.is-open { transform: none; }
   .sidebar__bottom { margin: auto -16px 0 -18px; padding: 12px 16px 0 18px; }
-  .sidebar__brand { margin: 0 -16px 0 -18px; padding: 22px 18px; }
+  .sidebar__brand { margin: 0 -16px 0 -18px; padding: 22px 32px; }
   .sidebar__nav { margin-top: 20px; flex-direction: column; gap: 4px; }
   .nav-item { justify-content: flex-start; padding: 0 14px; height: 44px; }
 
