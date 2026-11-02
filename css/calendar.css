@@ -73,9 +73,9 @@
 
 /* hellere Fläche als alles darunter – hebt sich vom Kalender klar ab */
 .cal-weekbar {
-  --weekbar-bg: color-mix(in srgb, #ffffff 16%, var(--menu-blau));
+  --weekbar-bg: color-mix(in srgb, #ffffff 10%, var(--menu-blau));
   position: sticky;
-  bottom: calc(12px - var(--main-pad-b));   /* 12px über dem Fensterrand (über den unteren Innenabstand hinaus) */
+  bottom: calc(28px - var(--main-pad-b));   /* 28px über dem Fensterrand (über den unteren Innenabstand hinaus) */
   z-index: 70;
   align-self: center;
   margin: -54px 0 12px;            /* liegt über dem unteren Rand des Rasters, ohne ihn zu verkürzen */
