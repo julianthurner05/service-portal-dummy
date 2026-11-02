@@ -252,8 +252,9 @@
 .calendar-view.is-editing .cal-quiet { opacity: 0.5; }
 .calendar-view.is-editing .cal-item { transition: opacity var(--dur) var(--ease); pointer-events: none; }
 
-/* vergangene Tage: ausgegraut wie im Bearbeitungsmodus, nichts mehr anfassbar */
-.cal-col--past .cal-col__body > * { opacity: 0.5; pointer-events: none; }
+/* schon gespielt (vergangene Tage, heute bis jetzt): ausgegraut wie im
+   Bearbeitungsmodus, nichts mehr anfassbar */
+.cal-col__body > .is-past { opacity: 0.5; pointer-events: none; }
 .cal-col--past .cal-col__head { color: var(--text-40); }
 .cal-col--past .cal-col__date { color: var(--text-25); }
 
@@ -440,7 +441,6 @@
 
 @keyframes cal-fade { from { opacity: 0; } to { opacity: 1; } }
 
-.cal-tray.is-editing .cal-seg,
 .cal-tray.is-editing .cal-chip,
 .cal-tray.is-editing .dropdown__toggle { background: var(--edit-field); color: var(--text-80); }
 
@@ -448,10 +448,6 @@
 .cal-tray.is-editing .dropdown__toggle:hover,
 .cal-tray.is-editing .dropdown.is-open .dropdown__toggle { background: var(--edit-field-hover); }
 
-.cal-tray.is-editing .cal-seg__opt { color: var(--text-55); }
-.cal-tray.is-editing .cal-seg__opt:hover { color: var(--text-80); }
-
-.cal-tray.is-editing .cal-seg__opt.is-active,
 .cal-tray.is-editing .cal-chip.is-active,
 .cal-tray.is-editing .cal-chip.is-active:hover { background: var(--edit-on); color: var(--edit-on-ink); }
 
@@ -552,6 +548,14 @@
 }
 
 .cal-tray__dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+/* „Expired“ zum Auf- und Zuklappen */
+.cal-tray__toggle { width: 100%; gap: 6px; text-align: left; transition: color var(--transition); }
+.cal-tray__toggle:hover { color: var(--text-80); }
+.cal-tray__chev { width: 12px; height: 12px; transition: transform var(--dur) var(--ease); }
+.cal-tray__group--expired.is-collapsed .cal-tray__chev { transform: rotate(-90deg); }
+.cal-tray__group--expired.is-collapsed .cal-tray__item { display: none; }
+.cal-tray__group--expired.is-collapsed .cal-tray__cat { margin-bottom: 0; }
 .cal-tray__count { margin-left: auto; color: var(--text-25); }
 
 /* Spot in der Liste: sieht aus wie ein Slot im Kalender – nur der Titel */
@@ -621,27 +625,38 @@
   color: var(--text-40);
 }
 
-/* Once / Weekly */
-.cal-seg {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 3px;
-  border-radius: 9px;
-  background: var(--mittelblau);
-}
-
-.cal-seg__opt {
-  height: 30px;
-  border-radius: 7px;
+/* Weekly / Repeat: Häkchen – ohne gilt „dieser Tag“ bzw. „einmal“ */
+.cal-check {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 24px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
-  color: var(--text-55);
-  transition: background var(--transition), color var(--transition);
+  color: var(--text-80);
+  transition: color var(--transition);
 }
 
-.cal-seg__opt:hover { color: var(--text-80); }
-.cal-seg__opt.is-active { background: color-mix(in srgb, #ffffff 9%, var(--menu-blau)); color: var(--text-100); }
+.cal-check:hover { color: var(--text-100); }
+
+.cal-check__box {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--edit-field);
+  color: var(--edit-on-ink);
+  transition: background var(--transition);
+}
+
+.cal-check:hover .cal-check__box { background: var(--edit-field-hover); }
+.cal-check__box .icon { width: 12px; height: 12px; opacity: 0; transition: opacity var(--transition); }
+.cal-check.is-on .cal-check__box { background: var(--edit-on); }
+.cal-check.is-on .cal-check__box .icon { opacity: 1; }
 
 /* Wochentage und Laufzeit */
 .cal-chips { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -46,6 +46,17 @@ function weekRangeLabel(days) {
     : `${MONTH_SHORT[first.getMonth()]} ${first.getDate()} – ${MONTH_SHORT[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
 }
 
+/* Slots, die schon gespielt haben: vergangene Tage ganz, heute alle bis
+   zur aktuellen Uhrzeit (ein Slot zählt ab seiner Startzeit als gespielt) */
+function playedSlots(date, now = new Date()) {
+  if (dayStart(date) < dayStart(now)) return CAL_SLOTS;
+  if (!sameDay(date, now)) return 0;
+  const elapsed = now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60;
+  return elapsed < 0 ? 0 : Math.min(CAL_SLOTS, Math.floor(elapsed / SLOT_MIN) + 1);
+}
+
+let playedMark = '';                   /* Stand beim letzten Aufbau – ändert er sich, neu zeichnen */
+
 function renderCalendar() {
   litSpot = null;
   const days = calWeekDays(calWeekStart);
@@ -57,20 +68,25 @@ function renderCalendar() {
 
   let html = timeColumn();
 
+  playedMark = days.map(d => playedSlots(d, today)).join();
+
   days.forEach((date, di) => {
-    /* vergangener Tag: nur noch zum Nachsehen – kein Ziehen, Löschen, Ablegen */
-    const past = dayStart(date) < dayStart(today);
-    html += `<div class="cal-col${sameDay(date, today) ? ' cal-col--today' : ''}${past ? ' cal-col--past' : ''}" data-day="${di}">
+    /* Gespieltes ist nur noch zum Nachsehen – kein Ziehen, Löschen, Ablegen */
+    const played = playedSlots(date, today);
+    const pastDay = played === CAL_SLOTS && !sameDay(date, today);
+    html += `<div class="cal-col${sameDay(date, today) ? ' cal-col--today' : ''}${pastDay ? ' cal-col--past' : ''}" data-day="${di}">
       <div class="cal-col__head">${DAY_NAMES[di].slice(0, 3)}<span class="cal-col__date">${date.getDate()}</span></div>
       <div class="cal-col__body">`;
 
     for (let s = 0; s < CAL_SLOTS; s++) {
+      const past = s < played;
+      const pastCls = past ? ' is-past' : '';
       /* fix von sounddna – mehrere in einem Slot werden zusammengefasst */
       const f = fixed.get(`${di}:${s}`);
       if (f) {
         const label = f.length > 1 ? `${f[0].spot.title} +${f.length - 1}` : f[0].spot.title;
         const tip = `${f.map(x => `${x.time} ${x.spot.title}`).join(' · ')} – fixed by sounddna`;
-        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed" data-spot="${f[0].spot.id}" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
+        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed${pastCls}" data-spot="${f[0].spot.id}" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(label)}</span>
             ${icon('lock', 'cal-item__lock')}
@@ -81,7 +97,7 @@ function renderCalendar() {
       const it = items.find(i => i.day === di && i.slot === s);
       if (it) {
         const spot = spotById(it.spotId);
-        html += `<div class="cal-slot cal-slot--spot cal-item"${past ? '' : ' draggable="true"'} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
+        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}"${past ? '' : ' draggable="true"'} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
             ${past ? '' : `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>`}
@@ -93,13 +109,13 @@ function renderCalendar() {
       if (isQuiet(di, slotTime(s))) {
         let n = 1;
         while (s + n < CAL_SLOTS && isQuiet(di, slotTime(s + n))) n++;
-        html += `<div class="cal-quiet" data-rows="${n}" style="height: calc(${n} * var(--slot-h) + ${n - 1} * var(--slot-gap))">Quiet Hour</div>`;
+        html += `<div class="cal-quiet${pastCls}" data-rows="${n}" style="height: calc(${n} * var(--slot-h) + ${n - 1} * var(--slot-gap))">Quiet Hour</div>`;
         s += n - 1;
         continue;
       }
 
       const closed = !isOpen(di, slotTime(s));
-      html += `<div class="cal-slot cal-cell${closed ? ' cal-slot--closed' : ''}" data-day="${di}" data-slot="${s}">
+      html += `<div class="cal-slot cal-cell${closed ? ' cal-slot--closed' : ''}${pastCls}" data-day="${di}" data-slot="${s}">
           <div class="cal-slot__inner"></div>
         </div>`;
     }
@@ -108,12 +124,10 @@ function renderCalendar() {
   });
 
   calGrid.innerHTML = html;
-  renderTray();
-  renderNowLine();
-  syncHeadHeight();
 
   /* Bearbeitungsmodus übersteht den Wochenwechsel; er endet erst, wenn der
-     abgelegte Slot weg ist (Remove, Undo …) */
+     abgelegte Slot weg ist (Cancel, Undo …). Ziel und Vorschau gleich mit
+     aufbauen, bevor irgendetwas gemessen wird – sonst blenden sie ein. */
   if (repeat) {
     if (weekItems(repeat.week).some(i => i.id === repeat.item.id)) {
       calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`)?.classList.add('is-target');
@@ -122,6 +136,10 @@ function renderCalendar() {
       closeRepeat();
     }
   }
+
+  renderTray();
+  renderNowLine();
+  syncHeadHeight();
 }
 
 /* Tageszeile und Liste docken direkt unter der (sticky) Kopfzeile an. Sticky-
@@ -180,8 +198,8 @@ function renderTray() {
   /* wieder einplanen holt einen abgelaufenen Spot zurück in seine Gruppe */
   if (expired.length) {
     html += `
-      <div class="cal-tray__group cal-tray__group--expired">
-        <p class="cal-tray__cat">Expired<span class="cal-tray__count">${expired.length}</span></p>
+      <div class="cal-tray__group cal-tray__group--expired${expiredOpen ? '' : ' is-collapsed'}">
+        <button class="cal-tray__cat cal-tray__toggle" type="button" aria-expanded="${expiredOpen}">Expired${icon('chevron-down', 'cal-tray__chev')}<span class="cal-tray__count">${expired.length}</span></button>
         ${expired.map(s => trayItem(s, true)).join('')}
       </div>`;
   }
@@ -192,6 +210,14 @@ function renderTray() {
 
 calTraySearch.addEventListener('input', renderTray);
 
+/* „Expired“ auf- und zuklappen */
+let expiredOpen = true;
+calTrayList.addEventListener('click', e => {
+  if (!e.target.closest('.cal-tray__toggle')) return;
+  expiredOpen = !expiredOpen;
+  renderTray();
+});
+
 /* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
    auf einen Eintrag der Liste ---- */
 let litSpot = null;
@@ -199,7 +225,7 @@ let litSpot = null;
 function setLit(spotId) {
   if (spotId === litSpot) return;
   litSpot = spotId;
-  calGrid.querySelectorAll('.cal-col:not(.cal-col--past) .cal-item').forEach(el =>
+  calGrid.querySelectorAll('.cal-item:not(.is-past)').forEach(el =>
     el.classList.toggle('is-lit', spotId !== null && el.dataset.spot === spotId));
 }
 
@@ -240,7 +266,14 @@ function renderNowLine() {
   }
 }
 
-setInterval(() => { if (!calendarView.hidden) renderNowLine(); }, 60000);
+/* jede Minute: Jetzt-Linie nachziehen; hat ein neuer Slot begonnen, graut
+   der gerade gespielte aus (nicht mitten im Ziehen) */
+setInterval(() => {
+  if (calendarView.hidden) return;
+  const mark = calWeekDays(calWeekStart).map(d => playedSlots(d)).join();
+  if (mark !== playedMark && !calDrag) renderCalendar();
+  else renderNowLine();
+}, 60000);
 
 /* Spot eingeplant → Karte im SpotTool bekommt das Scheduled-Badge */
 function spotPlaced(spot) {
@@ -259,7 +292,7 @@ const isCopy = e => calDrag && calDrag.from === 'grid' && e.altKey;
 
 const dropCell = e => {
   const cell = e.target.closest('.cal-cell');
-  return cell && !cell.classList.contains('cal-slot--closed') && !cell.closest('.cal-col--past') ? cell : null;
+  return cell && !cell.classList.contains('cal-slot--closed') && !cell.classList.contains('is-past') ? cell : null;
 };
 
 function clearDropMarks() {
@@ -538,10 +571,7 @@ function renderRepeat() {
     </div>
 
     <p class="cal-repeat__label">Days</p>
-    <div class="cal-seg">
-      <button class="cal-seg__opt${weekly ? '' : ' is-active'}" data-mode="day" type="button">This day</button>
-      <button class="cal-seg__opt${weekly ? ' is-active' : ''}" data-mode="weekly" type="button">Weekly</button>
-    </div>
+    <button class="cal-check${weekly ? ' is-on' : ''}" data-check="weekly" type="button" aria-pressed="${weekly}"><span class="cal-check__box">${icon('check')}</span>Weekly</button>
     ${weekly ? `
       <div class="cal-chips cal-chips--days">
         ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
@@ -553,10 +583,7 @@ function renderRepeat() {
       </div>` : ''}
 
     <p class="cal-repeat__label">Times per day</p>
-    <div class="cal-seg">
-      <button class="cal-seg__opt${repeating ? '' : ' is-active'}" data-per="once" type="button">Once</button>
-      <button class="cal-seg__opt${repeating ? ' is-active' : ''}" data-per="repeat" type="button">Repeat</button>
-    </div>
+    <button class="cal-check${repeating ? ' is-on' : ''}" data-check="repeat" type="button" aria-pressed="${repeating}"><span class="cal-check__box">${icon('check')}</span>Repeat</button>
     ${repeating ? `
       <div class="cal-repeat__fields">
         <label class="cal-repeat__field"><span>Every</span><div class="dropdown" data-dd="every"></div></label>
@@ -564,7 +591,7 @@ function renderRepeat() {
       </div>` : ''}
 
     <div class="cal-repeat__foot">
-      <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>
+      <button class="ghost-btn ghost-btn--sm" data-act="cancel" type="button">Cancel</button>
       <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && (!r.days.size || r.end === '') ? ' disabled' : ''}>Done</button>
     </div>`;
 
@@ -611,7 +638,7 @@ function paintPreview() {
     if (!onDay) return;
     slots.forEach(slot => {
       if (own && di === r.item.day && slot === r.item.slot) return;
-      const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]:not(.cal-slot--closed)`);
+      const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]:not(.cal-slot--closed, .is-past)`);
       if (!cell) return;                         /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
       cell.classList.add('is-preview');
       cell.setAttribute('style', catStyle(r.spot.category));
@@ -623,12 +650,12 @@ function paintPreview() {
 calTraySettings.addEventListener('click', e => {
   const r = repeat;
   if (!r) return;
-  const mode = e.target.closest('[data-mode]');
-  const per = e.target.closest('[data-per]');
+  const check = e.target.closest('[data-check]');
   const day = e.target.closest('[data-day]');
   const act = e.target.closest('[data-act]');
-  if (mode) r.mode = mode.dataset.mode;
-  else if (per) r.perDay = per.dataset.per;
+  /* ohne Häkchen gilt „dieser Tag“ bzw. „einmal“ */
+  if (check && check.dataset.check === 'weekly') r.mode = r.mode === 'weekly' ? 'day' : 'weekly';
+  else if (check) r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
   else if (act && act.dataset.act === 'end') {
     e.stopPropagation();
@@ -644,9 +671,11 @@ calTraySettings.addEventListener('click', e => {
   /* ✕ nimmt „infinite“ weg (Feld wird leer), ∞ setzt es wieder */
   else if (act && act.dataset.act === 'end-aux') r.end = r.end === null ? '' : null;
   else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
-  else if (act && act.dataset.act === 'remove') {
-    recordUndo();
-    removeItem(r.week, r.item.id);
+  else if (act && act.dataset.act === 'cancel') {
+    /* Ablegen rückgängig: der Slot verschwindet, ohne Spur im Verlauf */
+    closeRepeat();
+    discardPlanStep();
+    syncReadyBadges();
     renderCalendar();
     return;
   } else if (act && act.dataset.act === 'done') {

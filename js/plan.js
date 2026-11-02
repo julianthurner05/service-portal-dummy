@@ -458,6 +458,14 @@ function undoPlan() {
   return true;
 }
 
+/* Abbrechen: letzten Schritt verwerfen – zurück auf den Stand davor, ohne
+   dass er sich wiederherstellen lässt */
+function discardPlanStep() {
+  if (!undoStack.length) return false;
+  restorePlan(undoStack.pop());
+  return true;
+}
+
 function redoPlan() {
   if (!redoStack.length) return false;
   undoStack.push(snapshotPlan());
