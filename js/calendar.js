@@ -173,7 +173,6 @@ function renderTray() {
     html += `
       <div class="cal-tray__group cal-tray__group--new">
         <p class="cal-tray__cat">New<span class="cal-tray__count">${fresh.length}</span></p>
-        <p class="cal-tray__note">Drag into a category to schedule.</p>
         ${fresh.map(s => trayItem(s)).join('')}
       </div>`;
   }
@@ -183,7 +182,6 @@ function renderTray() {
     html += `
       <div class="cal-tray__group cal-tray__group--expired">
         <p class="cal-tray__cat">Expired<span class="cal-tray__count">${expired.length}</span></p>
-        <p class="cal-tray__note">Time-limited runs that have ended.</p>
         ${expired.map(s => trayItem(s, true)).join('')}
       </div>`;
   }

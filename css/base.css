@@ -217,7 +217,8 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   overflow-y: scroll;                    /* Scrollbar-Platz ist immer reserviert – der Inhalt verschiebt sich nicht,
                                             wenn sie erscheint (Spur ist unsichtbar, nur der 4px-Daumen zeigt sich) */
   scrollbar-gutter: stable both-edges;   /* hält den Inhalt exakt mittig */
-  padding: 34px 44px 64px;
+  --main-x: 44px;                        /* seitlicher Innenabstand (der Calendar nimmt ihn rundum) */
+  padding: 34px var(--main-x) 64px;
   display: flex;
   justify-content: center;
 }
@@ -993,7 +994,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .sidebar__nav { margin-top: 20px; flex-direction: column; gap: 4px; }
   .nav-item { justify-content: flex-start; padding: 0 14px; height: 44px; }
 
-  .main { padding: 24px 26px 48px; }
+  .main { --main-x: 26px; padding: 24px var(--main-x) 48px; }
 }
 
 @media (max-width: 980px) {
@@ -1020,7 +1021,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 /* Laptop-Höhen (z. B. 14-Zoll-MacBook): alles eine Spur kompakter,
    was nicht passt, darf scrollen */
 @media (max-height: 1010px) {
-  .main { padding: 26px 40px 56px; }
+  .main { --main-x: 40px; padding: 26px var(--main-x) 56px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

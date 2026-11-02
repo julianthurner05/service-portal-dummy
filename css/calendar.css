@@ -9,8 +9,7 @@
   --slot-radius: 6px;
   --head-h: 70px;                /* Höhe der Kopfzeile (aus calendar.js gemessen) */
   --main-pad: 34px;              /* oberer Innenabstand des Scrollbereichs (aus calendar.js) */
-  --top-gap: 14px;               /* Abstand des Kalenders zur Oberkante – die angedockte
-                                    Tageszeile endet so auf der Linie unter dem Logo */
+  --top-gap: var(--main-pad);    /* Abstand des Kalenders zur Oberkante – rundum gleich */
   --main-pad-b: 56px;            /* unterer Innenabstand des Scrollbereichs (aus calendar.js) */
   --tray-w: 240px;               /* Breite der Liste rechts */
   --layout-gap: 18px;            /* Abstand Raster ↔ Liste */
@@ -22,14 +21,13 @@
   animation: view-in 260ms var(--ease);
 }
 
-/* rundum so viel Abstand wie oben (--top-gap); die Scrollbar-Spur (4px je
-   Seite, base.css) ist links und rechts schon abgezogen */
+/* rundum so viel Abstand wie links: seitlicher Innenabstand plus die 4px
+   Scrollbar-Spur (base.css), die links und rechts dazukommt */
 @media (min-width: 981px) {
-  body.view-calendar .main { padding: 14px 10px; }
+  body.view-calendar .main { padding-block: calc(var(--main-x) + 4px); }
 }
 
-/* ---- Streifen oben – kein Titel mehr, der Kalender rückt bis knapp an die
-   Oberkante. Der Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt
+/* ---- Streifen oben – kein Titel mehr, über dem Kalender nur der Rand. Der Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt
    darunter weg; Ruhe- und Andockposition sind gleich. ---- */
 .cal-head {
   position: sticky;
@@ -541,13 +539,6 @@
   padding-top: 16px;
   border-top: var(--hairline);
   border-radius: 0;
-}
-
-.cal-tray__note {
-  margin: -4px 0 6px 2px;
-  font-size: 11.5px;
-  letter-spacing: var(--ls-small);
-  color: var(--text-40);
 }
 
 .cal-tray__cat {
