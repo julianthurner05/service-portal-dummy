@@ -15,7 +15,6 @@
 
 const calGrid      = document.getElementById('cal-grid');
 const calRange     = document.getElementById('cal-range');
-const calLegend    = document.getElementById('cal-legend');
 const calTray      = document.getElementById('cal-tray');
 const calTrayList  = document.getElementById('cal-tray-list');
 const calTraySearch = document.getElementById('cal-tray-search');
@@ -32,12 +31,6 @@ function timeColumn() {
     html += `<div class="cal-time${half ? ' cal-time--half' : ''}">${hour || half ? slotTime(s) : ''}</div>`;
   }
   return html + '</div></div>';
-}
-
-function renderLegend() {
-  calLegend.innerHTML = CATEGORIES.map(c =>
-    `<span class="cal-legend__item"><span class="cal-legend__dot" style="background:${c.color}"></span>${c.label}</span>`
-  ).join('');
 }
 
 function weekRangeLabel(days) {
@@ -515,4 +508,3 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') calNext.click();
 });
 
-renderLegend();

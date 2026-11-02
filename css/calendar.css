@@ -78,23 +78,6 @@
 
 .cal-today:hover { color: var(--text-100); }
 
-.cal-legend {
-  margin-left: auto;
-  display: flex;
-  gap: 16px;
-}
-
-.cal-legend__item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-}
-
-.cal-legend__dot { width: 8px; height: 8px; border-radius: 50%; }
-
 /* ---- Raster + Palette nebeneinander ---- */
 .cal-layout {
   display: flex;
@@ -519,10 +502,6 @@
 }
 
 .cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }
-
-@media (max-width: 1240px) {
-  .cal-legend { display: none; }
-}
 
 @media (max-width: 980px) {
   /* am Handy: volle Woche, seitlich scrollbar; Liste darunter – ohne
