@@ -286,10 +286,12 @@ function weekItems(monday) {
   /* danach die Wiederholungen aus dem Calendar – nur in freie Zellen */
   weekDates(monday).forEach((date, di) => userSeries.forEach(r => {
     if (!seriesOn(r, date, di)) return;
-    const cell = `${di}:${r.slot}`;
-    if (taken.has(cell) || cellBlocked(di, r.slot)) return;
-    taken.add(cell);
-    items.push({ id: ++itemUid, spotId: r.spotId, day: di, slot: r.slot, seriesId: r.id });
+    r.slots.forEach(slot => {
+      const cell = `${di}:${slot}`;
+      if (taken.has(cell) || cellBlocked(di, slot)) return;
+      taken.add(cell);
+      items.push({ id: ++itemUid, spotId: r.spotId, day: di, slot, seriesId: r.id });
+    });
   }));
   weeks.set(key, items);
   return items;
@@ -297,11 +299,12 @@ function weekItems(monday) {
 
 /* ---------------------------------------------------------------
    Wiederholungen (Serien) – im Calendar beim Ablegen eingestellt:
-   ein Spot zur selben Uhrzeit an gewählten Wochentagen, ab dem
-   Ablegedatum bis zu einem Enddatum oder ohne Ende
+   ein Spot zu einer oder mehreren Uhrzeiten (Repeat: alle N Minuten)
+   an gewählten Wochentagen, ab dem Ablegedatum bis zu einem Enddatum
+   oder ohne Ende
    --------------------------------------------------------------- */
 let seriesUid = 0;
-const userSeries = [];                /* { id, spotId, days: ['Mo', …], slot, start: Date, end: Date | null } */
+const userSeries = [];                /* { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null } */
 
 const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -314,20 +317,22 @@ function seriesOn(r, date, dayI) {
 /* Serie anlegen: gilt für alle Wochen, die später zum ersten Mal geöffnet
    werden, und wird sofort in die schon geöffneten Wochen eingetragen.
    Liefert { placed, skipped } für die schon geöffneten Wochen. */
-function addSeries({ spotId, days, slot, start, end = null }) {
-  const r = { id: ++seriesUid, spotId, days, slot, start: dayStart(start), end: end ? dayStart(end) : null };
+function addSeries({ spotId, days, slots, start, end = null }) {
+  const r = { id: ++seriesUid, spotId, days, slots, start: dayStart(start), end: end ? dayStart(end) : null };
   userSeries.push(r);
   let placed = 0, skipped = 0;
   weeks.forEach((items, key) => {
     const monday = parseDate(key);
     weekDates(monday).forEach((date, di) => {
       if (!seriesOn(r, date, di)) return;
-      if (cellFree(monday, di, slot)) {
-        items.push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
-        placed++;
-      } else {
-        skipped++;
-      }
+      slots.forEach(slot => {
+        if (cellFree(monday, di, slot)) {
+          items.push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
+          placed++;
+        } else {
+          skipped++;
+        }
+      });
     });
   });
   emitPlanChange('week');
@@ -379,4 +384,59 @@ function announcementsOn(date) {
     if (d === di) entries.forEach(f => list.push({ time: f.time, slot, spot: f.spot, fixed: true }));
   });
   return list.sort((a, b) => minutesOf(a.time) - minutesOf(b.time));
+}
+
+/* ---------------------------------------------------------------
+   Rückgängig / Wiederholen (⌘Z / ⇧⌘Z im Calendar)
+   Vor jeder Änderung im Calendar wird der ganze Plan-Zustand gemerkt:
+   geöffnete Wochen, Serien und die Spots (Kategorie, Liste, Reihenfolge).
+   Noch nicht geöffnete Wochen entstehen beim nächsten Öffnen ohnehin neu.
+   --------------------------------------------------------------- */
+const undoStack = [];
+const redoStack = [];
+const UNDO_LIMIT = 60;
+
+function snapshotPlan() {
+  return {
+    weeks: [...weeks].map(([key, items]) => [key, items.map(i => ({ ...i }))]),
+    series: userSeries.map(r => ({ ...r, days: [...r.days], slots: [...r.slots] })),
+    spots: spots.map(sp => ({ ...sp })),
+  };
+}
+
+function restorePlan(snap) {
+  weeks.clear();
+  snap.weeks.forEach(([key, items]) => weeks.set(key, items.map(i => ({ ...i }))));
+  userSeries.splice(0, userSeries.length, ...snap.series.map(r => ({ ...r, days: [...r.days], slots: [...r.slots] })));
+  spots.splice(0, spots.length, ...snap.spots.map(sp => ({ ...sp })));
+  emitPlanChange('spots');
+  emitPlanChange('week');
+}
+
+/* vor einer Änderung aufrufen */
+function recordUndo() {
+  undoStack.push(snapshotPlan());
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+}
+
+function undoPlan() {
+  if (!undoStack.length) return false;
+  redoStack.push(snapshotPlan());
+  restorePlan(undoStack.pop());
+  return true;
+}
+
+function redoPlan() {
+  if (!redoStack.length) return false;
+  undoStack.push(snapshotPlan());
+  restorePlan(redoStack.pop());
+  return true;
+}
+
+/* Änderungen aus dem SpotTool (Liste, Löschen) gehören nicht in den Verlauf
+   des Calendar – danach ist ein Zurückspringen nicht mehr eindeutig */
+function clearPlanHistory() {
+  undoStack.length = 0;
+  redoStack.length = 0;
 }

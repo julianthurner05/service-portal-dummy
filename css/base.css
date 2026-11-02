@@ -126,22 +126,22 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 /* kompakt: schmale Spalte, niedrige Menüpunkte, kleine Icons; Logo voll hell;
    Hairline rechts als Begrenzung zum Inhalt */
 .sidebar {
-  padding: 32px 12px 22px 14px;
+  padding: 0 12px 22px 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-right: var(--hairline);
 }
 
-/* Logo linksbündig auf einer Linie mit den Menü-Icons; darunter eine Linie
-   von Rand zu Rand (über den Innenabstand der Sidebar) */
+/* Logo-Feld oben: Logo füllt die Breite innerhalb des Innenabstands und sitzt
+   mittig; darunter eine Linie von Rand zu Rand */
 .sidebar__brand {
   margin: 0 -12px 0 -14px;
-  padding: 2px 12px 24px 26px;
+  padding: 22px 14px;
   border-bottom: var(--hairline);
 }
 
-.sidebar__logo { display: block; width: 118px; }
+.sidebar__logo { display: block; width: 100%; max-width: 180px; margin: 0 auto; }
 
 .sidebar__nav {
   margin-top: 20px;
@@ -166,7 +166,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   transition: background var(--transition), color var(--transition);
 }
 
-.nav-item .icon { width: 18px; height: 18px; flex: none; }
+.nav-item .icon { width: 16px; height: 16px; flex: none; }
 
 .nav-item:hover { background: var(--hover); color: var(--text-80); }
 
@@ -978,7 +978,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     width: 72vw;
     max-width: 320px;
     z-index: 80;
-    padding: 28px 16px 24px 18px;
+    padding: 0 16px 24px 18px;
     background: var(--dunkelblau);
     border-right: var(--hairline);
     transform: translateX(-104%);
@@ -988,8 +988,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
   .sidebar.is-open { transform: none; }
   .sidebar__bottom { margin: auto -16px 0 -18px; padding: 12px 16px 0 18px; }
-  .sidebar__brand { margin: 0 -16px 0 -18px; padding: 0 16px 20px 32px; }
-  .sidebar__logo { width: 120px; }
+  .sidebar__brand { margin: 0 -16px 0 -18px; padding: 22px 18px; }
   .sidebar__nav { margin-top: 20px; flex-direction: column; gap: 4px; }
   .nav-item { justify-content: flex-start; padding: 0 14px; height: 44px; }
 

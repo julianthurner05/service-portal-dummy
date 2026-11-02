@@ -186,6 +186,7 @@ function wireCardMenu(card) {
       case 'delete': {
         setCardState(card, 'deleted');
         const removed = retireSpot(card._state.title);
+        clearPlanHistory();
         syncReadyBadges();
         if (removed) showToast('success', `Removed from ${removed} calendar slot${removed === 1 ? '' : 's'}.`);
         break;
@@ -208,6 +209,7 @@ function toggleCardReady(card) {
   const ready = !isSpotReady(title);
   /* ohne Kategorie – die bekommt er im Calendar durch Ziehen in eine Gruppe */
   setSpotReady({ title, category: null, duration, source: 'spottool' }, ready);
+  clearPlanHistory();
   syncReadyBadges();
   showToast('success', ready ? `“${title}” is ready – drag it into a category in the calendar.` : `“${title}” removed from Ready for Schedule.`);
 }

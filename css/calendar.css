@@ -367,10 +367,21 @@
   background: var(--mittelblau);
   border-radius: var(--radius-lg);
   box-shadow: inset 0 0 0 1px transparent;
-  transition: box-shadow var(--transition);
+  transition: box-shadow var(--transition), background var(--dur) var(--ease);
 }
 
 .cal-tray.is-drop { box-shadow: inset 0 0 0 1px var(--white-25); }
+
+/* nach dem Ablegen: das Feld färbt sich in der Kategoriefarbe des Spots ein
+   und zeigt statt der Liste die Einstellungen */
+.cal-tray.is-editing { background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--mittelblau)); }
+.cal-tray.is-editing > :not(.cal-tray__settings) { display: none; }
+
+.cal-tray__settings {
+  display: flex;
+  flex-direction: column;
+  animation: view-in 220ms var(--ease);
+}
 
 .cal-tray__title {
   margin-bottom: 16px;
@@ -495,19 +506,24 @@
 
 .cal-tray__item.is-new:hover { background: var(--white-6); }
 
-/* ---- Wiederholen – Fenster nach dem Ablegen aus der Liste ---- */
-.cal-repeat {
-  position: absolute;
-  z-index: 200;
-  width: 280px;
-  padding: 14px 14px 12px;
-  background: var(--menu-blau);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  animation: view-in 200ms var(--ease);
+/* ---- Einstellungen im Ready-Feld ---- */
+.cal-repeat__head { display: flex; align-items: center; gap: 9px; }
+
+.cal-repeat__close {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  color: var(--text-55);
+  transition: background var(--transition), color var(--transition);
 }
 
-.cal-repeat__head { display: flex; align-items: center; gap: 9px; }
+.cal-repeat__close:hover { background: var(--white-10); color: var(--text-100); }
+.cal-repeat__close .icon { width: 12px; height: 12px; }
 .cal-repeat__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--cat); }
 
 .cal-repeat__title {
@@ -520,14 +536,14 @@
 }
 
 .cal-repeat__when {
-  margin: 4px 0 14px 17px;
+  margin: 4px 0 4px 17px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
   color: var(--text-55);
 }
 
 .cal-repeat__label {
-  margin: 14px 0 8px;
+  margin: 18px 0 8px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
   color: var(--text-40);
@@ -569,14 +585,23 @@
   transition: background var(--transition), color var(--transition);
 }
 
-.cal-chip--day { width: 36px; padding: 0; }
+/* Wochentage in einer Reihe über die ganze Breite */
+.cal-chips--days { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 8px; }
+.cal-chip--day { padding: 0; }
 .cal-chip:hover { color: var(--text-100); }
 .cal-chip.is-active { background: var(--nav-active); color: var(--text-inverse); }
+
+/* Repeat: alle N Minuten bis Uhrzeit */
+.cal-repeat__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+.cal-repeat__field { display: flex; flex-direction: column; gap: 6px; }
+.cal-repeat__field > span { font-size: 11.5px; letter-spacing: var(--ls-small); color: var(--text-40); }
+.cal-repeat__field .dropdown__toggle { height: 34px; padding: 0 10px 0 12px; font-size: var(--fs-small); }
 
 .cal-repeat__foot {
   display: flex;
   justify-content: space-between;
-  margin-top: 18px;
+  margin-top: 22px;
 }
 
 .cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }

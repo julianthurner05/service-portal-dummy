@@ -8,8 +8,10 @@
      nach Kategorien gruppiert – Ziehen in eine andere Gruppe ändert die
      Kategorie. Frische Spots stehen unten unter „New“ und müssen erst in
      eine Kategorie gezogen werden, bevor sie einplanbar sind
-   - nach dem Ablegen aus der Liste: kleines Fenster für Wiederholungen
-     (Wochentage, Laufzeit bis zu Monaten oder ohne Ende)
+   - nach dem Ablegen aus der Liste färbt sich das Ready-Feld ein und zeigt
+     die Einstellungen: Tage (dieser Tag / wöchentlich mit Laufzeit bis zu
+     Monaten oder ohne Ende) und pro Tag einmal oder Repeat (alle N Minuten)
+   - ⌘Z / ⇧⌘Z: letzte Änderung im Calendar rückgängig / wiederherstellen
    - Hover: alle Slots desselben Spots leuchten auf
    - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
    - Kopfzeile, Tageszeile und Liste bleiben beim Scrollen stehen
@@ -22,6 +24,7 @@ const calTray      = document.getElementById('cal-tray');
 const calTrayList  = document.getElementById('cal-tray-list');
 const calTraySearch = document.getElementById('cal-tray-search');
 const calTrayEmpty = document.getElementById('cal-tray-empty');
+const calTraySettings = document.getElementById('cal-tray-settings');
 
 let calWeekStart = mondayOf(new Date());
 
@@ -272,15 +275,20 @@ calendarView.addEventListener('dragstart', e => {
     calDrag = { from: 'palette', spotId: +el.dataset.spot };
     spot = spotById(calDrag.spotId);
   }
-  if (calDrag.from === 'palette') {
-    calTray.classList.add('is-sorting');
-    calTray.classList.toggle('is-sorting-new', !spot.category);
-  }
   e.dataTransfer.effectAllowed = 'copyMove';
   e.dataTransfer.setData('text/plain', spot ? spot.title : '');
   if (spot) setDragImage(e, el, spot);
   /* beim Verschieben verblasst das Original, beim Kopieren bleibt es stehen */
   if (calDrag.from === 'grid' && !e.altKey) requestAnimationFrame(() => el.classList.add('is-dragging'));
+});
+
+/* Rahmen um die Kategorie-Gruppen erst, wenn ein Spot aus der Liste über dem
+   Ready-Feld gezogen wird – beim Ziehen in den Kalender bleiben sie weg */
+calendarView.addEventListener('dragover', e => {
+  if (!calDrag || calDrag.from !== 'palette') return;
+  const inTray = !!e.target.closest('.cal-tray');
+  calTray.classList.toggle('is-sorting', inTray);
+  calTray.classList.toggle('is-sorting-new', inTray && dragIsNew());
 });
 
 calendarView.addEventListener('dragend', () => {
@@ -307,6 +315,7 @@ calGrid.addEventListener('drop', e => {
   e.preventDefault();
   const day = +cell.dataset.day;
   const slot = +cell.dataset.slot;
+  recordUndo();
   let placed = null;
   if (isCopy(e)) {
     placeSpot(calWeekStart, calDrag.spotId, day, slot);
@@ -354,10 +363,11 @@ calTray.addEventListener('drop', e => {
   if (!calDrag) return;
   e.preventDefault();
   if (calDrag.from === 'grid') {
+    recordUndo();
     removeItem(calWeekStart, calDrag.id);
   } else {
     const g = targetGroup(e);
-    if (g) setSpotCategory(calDrag.spotId, g.dataset.cat);
+    if (g) { recordUndo(); setSpotCategory(calDrag.spotId, g.dataset.cat); }
   }
   calDrag = null;
   calTray.classList.remove('is-sorting', 'is-sorting-new');
@@ -372,14 +382,17 @@ calGrid.addEventListener('click', e => {
   const x = e.target.closest('.cal-item__x');
   if (!x) return;
   e.stopPropagation();
+  recordUndo();
   removeItem(calWeekStart, +x.dataset.x);
   renderCalendar();
 });
 
 /* ---------------------------------------------------------------
-   Wiederholen – kleines Fenster direkt nach dem Ablegen aus der Liste:
-   Once (nur dieser Slot) oder Weekly (Wochentage + Laufzeit). Weekly legt
-   eine Serie an (plan.js), die auch für spätere Wochen gilt.
+   Einstellungen nach dem Ablegen – im Ready-Feld, das sich dafür in der
+   Kategoriefarbe einfärbt:
+   - Days: dieser Tag oder Weekly (Wochentage + Laufzeit)
+   - Times per day: einmal oder Repeat (alle N Minuten bis Uhrzeit)
+   Weekly legt eine Serie an (plan.js), die auch für spätere Wochen gilt.
    --------------------------------------------------------------- */
 const addDays   = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
 const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
@@ -390,6 +403,7 @@ const RUNS = [
   { value: '6m',   label: '6 months', end: d => addDays(addMonths(d, 6), -1) },
   { value: 'none', label: 'No end',   end: () => null },
 ];
+const EVERY = [15, 30, 45, 60, 90, 120];
 const longDate = d => `${DAY_NAMES[dayIdx(d)].slice(0, 3)} ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 
 function daysLabel(days) {
@@ -398,53 +412,62 @@ function daysLabel(days) {
   return run ? `${DAYS[idx[0]]}–${DAYS[idx[idx.length - 1]]}` : idx.map(i => DAYS[i]).join(', ');
 }
 
-let repeatEl = null;
-let repeat = null;                    /* { item, spot, date, mode, days: Set, run } */
+let repeat = null;                    /* { item, spot, date, mode: 'day'|'weekly', days: Set, run, perDay: 'once'|'repeat', every, until } */
+
+/* Uhrzeiten eines Tages mit der aktuellen Einstellung (Slot-Indizes) */
+function repeatSlots(r) {
+  if (r.perDay === 'once') return [r.item.slot];
+  const step = r.every / SLOT_MIN;
+  const last = slotIndex(r.until);
+  const list = [];
+  for (let s = r.item.slot; s <= last && s < CAL_SLOTS; s += step) list.push(s);
+  return list;
+}
 
 function closeRepeat() {
-  if (!repeatEl) return;
+  if (!repeat) return;
   clearPreview();
-  repeatEl.remove();
-  repeatEl = null;
   repeat = null;
+  calTraySettings.hidden = true;
+  calTraySettings.innerHTML = '';
+  calTray.classList.remove('is-editing');
+  calTray.removeAttribute('style');
 }
 
 function openRepeat(item) {
   closeRepeat();
   const spot = spotById(item.spotId);
   const date = calWeekDays(calWeekStart)[item.day];
-  repeat = { item, spot, date, mode: 'once', days: new Set([DAYS[item.day]]), run: '1m' };
-  repeatEl = document.createElement('div');
-  repeatEl.className = 'cal-repeat';
-  repeatEl.setAttribute('role', 'dialog');
-  repeatEl.style.cssText = catStyle(spot.category);
-  repeatEl.addEventListener('click', onRepeatClick);
-  calendarView.appendChild(repeatEl);
+  const lastStart = slotTime(CAL_SLOTS - 1);
+  const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
+  repeat = { item, spot, date, mode: 'day', days: new Set([DAYS[item.day]]), run: '1m', perDay: 'once', every: 60, until };
+  calTray.classList.add('is-editing');
+  calTray.style.cssText = catStyle(spot.category);
+  calTraySettings.hidden = false;
   renderRepeat();
-  placeRepeat();
 }
 
 function renderRepeat() {
   const r = repeat;
   const weekly = r.mode === 'weekly';
+  const repeating = r.perDay === 'repeat';
   const time = slotTime(r.item.slot);
-  const days = [...r.days];
 
-  repeatEl.innerHTML = `
+  calTraySettings.innerHTML = `
     <div class="cal-repeat__head">
       <span class="cal-repeat__dot"></span>
       <p class="cal-repeat__title">${escapeHtml(r.spot.title)}</p>
+      <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
     </div>
     <p class="cal-repeat__when">${longDate(r.date)} · ${time}</p>
 
+    <p class="cal-repeat__label">Days</p>
     <div class="cal-seg">
-      <button class="cal-seg__opt${weekly ? '' : ' is-active'}" data-mode="once" type="button">Once</button>
+      <button class="cal-seg__opt${weekly ? '' : ' is-active'}" data-mode="day" type="button">This day</button>
       <button class="cal-seg__opt${weekly ? ' is-active' : ''}" data-mode="weekly" type="button">Weekly</button>
     </div>
-
     ${weekly ? `
-      <p class="cal-repeat__label">On</p>
-      <div class="cal-chips">
+      <div class="cal-chips cal-chips--days">
         ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
       </div>
       <p class="cal-repeat__label">Runs for</p>
@@ -452,10 +475,38 @@ function renderRepeat() {
         ${RUNS.map(x => `<button class="cal-chip${x.value === r.run ? ' is-active' : ''}" data-run="${x.value}" type="button">${x.label}</button>`).join('')}
       </div>` : ''}
 
+    <p class="cal-repeat__label">Times per day</p>
+    <div class="cal-seg">
+      <button class="cal-seg__opt${repeating ? '' : ' is-active'}" data-per="once" type="button">Once</button>
+      <button class="cal-seg__opt${repeating ? ' is-active' : ''}" data-per="repeat" type="button">Repeat</button>
+    </div>
+    ${repeating ? `
+      <div class="cal-repeat__fields">
+        <label class="cal-repeat__field"><span>Every</span><div class="dropdown" data-dd="every"></div></label>
+        <label class="cal-repeat__field"><span>Until</span><div class="dropdown" data-dd="until"></div></label>
+      </div>` : ''}
+
     <div class="cal-repeat__foot">
       <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>
-      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && !days.length ? ' disabled' : ''}>Done</button>
+      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && !r.days.size ? ' disabled' : ''}>Done</button>
     </div>`;
+
+  if (repeating) {
+    buildDropdown(calTraySettings.querySelector('[data-dd="every"]'), {
+      options: EVERY.map(m => ({ value: String(m), label: `${m} min` })),
+      value: String(r.every),
+      onChange: v => { r.every = +v; renderRepeat(); },
+    });
+    const untilOptions = [];
+    for (let s = r.item.slot + 1; s < CAL_SLOTS; s++) untilOptions.push({ value: slotTime(s), label: slotTime(s) });
+    if (!untilOptions.some(o => o.value === r.until) && untilOptions.length) r.until = untilOptions[untilOptions.length - 1].value;
+    buildDropdown(calTraySettings.querySelector('[data-dd="until"]'), {
+      options: untilOptions,
+      value: r.until,
+      tall: true,
+      onChange: v => { r.until = v; renderRepeat(); },
+    });
+  }
   paintPreview();
 }
 
@@ -472,46 +523,39 @@ function clearPreview() {
 function paintPreview() {
   clearPreview();
   const r = repeat;
-  if (r.mode !== 'weekly' || !r.days.size) return;
+  if (r.mode === 'weekly' && !r.days.size) return;
   const end = RUNS.find(x => x.value === r.run).end(r.date);
   const rule = { days: [...r.days], start: dayStart(r.date), end: end ? dayStart(end) : null };
+  const slots = repeatSlots(r);
   calWeekDays(calWeekStart).forEach((date, di) => {
-    if (di === r.item.day || !seriesOn(rule, date, di)) return;
-    const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${r.item.slot}"]:not(.cal-slot--closed)`);
-    if (!cell) return;                           /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
-    cell.classList.add('is-preview');
-    cell.setAttribute('style', catStyle(r.spot.category));
-    cell.insertAdjacentHTML('beforeend', `<span class="cal-item__label">${escapeHtml(r.spot.title)}</span>`);
+    const onDay = r.mode === 'weekly' ? seriesOn(rule, date, di) : di === r.item.day;
+    if (!onDay) return;
+    slots.forEach(slot => {
+      if (di === r.item.day && slot === r.item.slot) return;
+      const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]:not(.cal-slot--closed)`);
+      if (!cell) return;                         /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
+      cell.classList.add('is-preview');
+      cell.setAttribute('style', catStyle(r.spot.category));
+      cell.insertAdjacentHTML('beforeend', `<span class="cal-item__label">${escapeHtml(r.spot.title)}</span>`);
+    });
   });
 }
 
-/* unter den abgelegten Slot setzen (bei Platzmangel darüber) – nie auf
-   dieselbe Zeile, dort zeigt die Vorschau die anderen Tage; im Bild halten */
-function placeRepeat() {
-  const slotEl = calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`);
-  if (!slotEl) return;
-  const view = calendarView.getBoundingClientRect();
-  const r = slotEl.getBoundingClientRect();
-  const w = repeatEl.offsetWidth, h = repeatEl.offsetHeight;
-  const left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16));
-  let top = r.bottom + 10;
-  if (top + h > window.innerHeight - 16) top = r.top - 10 - h;
-  top = Math.max(top, 16);
-  repeatEl.style.left = `${left - view.left}px`;
-  repeatEl.style.top = `${top - view.top}px`;
-}
-
-function onRepeatClick(e) {
-  e.stopPropagation();
+calTraySettings.addEventListener('click', e => {
   const r = repeat;
+  if (!r) return;
   const mode = e.target.closest('[data-mode]');
+  const per = e.target.closest('[data-per]');
   const day = e.target.closest('[data-day]');
   const run = e.target.closest('[data-run]');
   const act = e.target.closest('[data-act]');
   if (mode) r.mode = mode.dataset.mode;
+  else if (per) r.perDay = per.dataset.per;
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
   else if (run) r.run = run.dataset.run;
+  else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
   else if (act && act.dataset.act === 'remove') {
+    recordUndo();
     removeItem(calWeekStart, r.item.id);
     renderCalendar();
     return;
@@ -520,25 +564,48 @@ function onRepeatClick(e) {
     return;
   } else return;
   renderRepeat();
-  placeRepeat();
-}
+});
 
 function applyRepeat() {
   const r = repeat;
-  if (r.mode === 'once') { closeRepeat(); return; }
-  const days = DAYS.filter(d => r.days.has(d));
-  const end = RUNS.find(x => x.value === r.run).end(r.date);
-  /* der abgelegte Slot geht in der Serie auf */
-  removeItem(calWeekStart, r.item.id);
-  const { skipped } = addSeries({ spotId: r.spot.id, days, slot: r.item.slot, start: r.date, end });
+  const slots = repeatSlots(r);
   const time = slotTime(r.item.slot);
-  showToast('success', `“${r.spot.title}” repeats every ${daysLabel(days)} at ${time}${end ? ` until ${longDate(end)}` : ''}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+  const perDay = slots.length > 1 ? `every ${r.every} min from ${time} to ${slotTime(slots[slots.length - 1])}` : `at ${time}`;
+  if (r.mode === 'day') {
+    if (slots.length === 1) { closeRepeat(); return; }
+    recordUndo();
+    let skipped = 0;
+    slots.slice(1).forEach(slot => { if (!placeSpot(calWeekStart, r.spot.id, r.item.day, slot)) skipped++; });
+    showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+  } else {
+    const days = DAYS.filter(d => r.days.has(d));
+    const end = RUNS.find(x => x.value === r.run).end(r.date);
+    recordUndo();
+    /* der abgelegte Slot geht in der Serie auf */
+    removeItem(calWeekStart, r.item.id);
+    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: r.date, end });
+    showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+  }
+  closeRepeat();
   renderCalendar();
 }
 
-document.addEventListener('click', e => { if (repeatEl && !e.target.closest('.cal-repeat')) closeRepeat(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRepeat(); });
-window.addEventListener('resize', () => { if (repeatEl) placeRepeat(); });
+
+/* ---------------------------------------------------------------
+   ⌘Z / Ctrl+Z: letzte Änderung im Calendar rückgängig, mit ⇧ wiederherstellen
+   (in Eingabefeldern bleibt es beim normalen Text-Rückgängig)
+   --------------------------------------------------------------- */
+document.addEventListener('keydown', e => {
+  if (calendarView.hidden || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+  if (e.target instanceof Element && e.target.closest('input, textarea, [contenteditable]')) return;
+  e.preventDefault();
+  closeRepeat();
+  if (e.shiftKey ? redoPlan() : undoPlan()) {
+    syncReadyBadges();
+    renderCalendar();
+  }
+});
 
 /* neue oder gelöschte Spots aus dem SpotTool sofort in der Palette */
 onPlanChange(kind => {
@@ -555,7 +622,7 @@ calNext.addEventListener('click', () => { calWeekStart.setDate(calWeekStart.getD
 document.getElementById('cal-today').addEventListener('click', () => { calWeekStart = mondayOf(new Date()); renderCalendar(); });
 
 document.addEventListener('keydown', e => {
-  if (calendarView.hidden || e.target.matches('input, textarea')) return;
+  if (calendarView.hidden || (e.target instanceof Element && e.target.closest('input, textarea'))) return;
   if (e.key === 'ArrowLeft') calPrev.click();
   if (e.key === 'ArrowRight') calNext.click();
 });
