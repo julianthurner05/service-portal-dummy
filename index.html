@@ -245,21 +245,24 @@ Lebe Smart!</textarea>
 
     <!-- Calendar: Spots aus der Palette einplanen -->
     <section class="calendar-view" data-screen="calendar" hidden>
-      <div class="cal-head">
-        <h1 class="cal-head__title">Calendar</h1>
-        <div class="cal-week">
-          <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
-            <svg class="icon"><use href="#i-chevron-left"/></svg>
-          </button>
-          <span class="cal-week__label" id="cal-range"></span>
-          <button class="cal-week__nav" id="cal-next" aria-label="Next week" data-tip="Next week">
-            <svg class="icon"><use href="#i-chevron-right"/></svg>
-          </button>
-        </div>
-        <button class="cal-today" id="cal-today">Today</button>
-      </div>
+      <!-- schmaler Streifen oben: der Kalender scrollt darunter weg -->
+      <div class="cal-head" aria-hidden="true"></div>
       <div class="cal-layout">
-        <div class="cal-grid" id="cal-grid"></div>
+        <div class="cal-main">
+          <div class="cal-grid" id="cal-grid"></div>
+          <!-- Woche wechseln: kleine Leiste unten mittig über dem Kalender -->
+          <div class="cal-weekbar">
+            <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
+              <svg class="icon"><use href="#i-chevron-left"/></svg>
+            </button>
+            <span class="cal-week__label" id="cal-range"></span>
+            <button class="cal-week__nav" id="cal-next" aria-label="Next week" data-tip="Next week">
+              <svg class="icon"><use href="#i-chevron-right"/></svg>
+            </button>
+            <span class="cal-weekbar__divider"></span>
+            <button class="cal-today" id="cal-today">Today</button>
+          </div>
+        </div>
         <aside class="cal-tray" id="cal-tray">
           <p class="cal-tray__title">Ready for Schedule</p>
           <div class="cal-tray__search">

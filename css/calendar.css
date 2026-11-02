@@ -9,6 +9,9 @@
   --slot-radius: 6px;
   --head-h: 70px;                /* Höhe der Kopfzeile (aus calendar.js gemessen) */
   --main-pad: 34px;              /* oberer Innenabstand des Scrollbereichs (aus calendar.js) */
+  --top-gap: 14px;               /* Abstand des Kalenders zur Oberkante – die angedockte
+                                    Tageszeile endet so auf der Linie unter dem Logo */
+  --main-pad-b: 56px;            /* unterer Innenabstand des Scrollbereichs (aus calendar.js) */
   --tray-w: 240px;               /* Breite der Liste rechts */
   --layout-gap: 18px;            /* Abstand Raster ↔ Liste */
   position: relative;            /* Bezug für das Wiederholen-Fenster */
@@ -19,19 +22,15 @@
   animation: view-in 260ms var(--ease);
 }
 
-/* ---- Kopf – bleibt beim Scrollen oben stehen. Er reicht samt Fläche bis
-   an die Oberkante des Scrollbereichs (über dessen Innenabstand), damit
-   darüber nichts durchscrollt. Ruhe- und Andockposition sind gleich – sonst
-   schiebt der Browser ihn schon ungescrollt nach unten über das Raster. ---- */
+/* ---- Streifen oben – kein Titel mehr, der Kalender rückt bis knapp an die
+   Oberkante. Der Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt
+   darunter weg; Ruhe- und Andockposition sind gleich. ---- */
 .cal-head {
   position: sticky;
   top: calc(-1 * var(--main-pad));
   z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin: calc(-1 * var(--main-pad)) 0 0;
-  padding: var(--main-pad) 0 22px;
+  height: var(--top-gap);
+  margin-top: calc(-1 * var(--main-pad));
   background: var(--dunkelblau);
 }
 
@@ -59,25 +58,44 @@
   background: radial-gradient(circle at 0 100%, transparent calc(var(--radius-lg) - 0.5px), var(--dunkelblau) var(--radius-lg));
 }
 
-.cal-head__title {
-  font-size: var(--fs-heading);
-  letter-spacing: var(--ls-heading);
-  font-weight: 400;
-  white-space: nowrap;
+/* ---- Woche wechseln – kleine Leiste unten mittig über dem Kalender; sie
+   bleibt beim Scrollen am unteren Rand stehen ---- */
+.cal-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.cal-week {
+.cal-weekbar {
+  position: sticky;
+  bottom: 22px;
+  z-index: 70;
+  align-self: center;
+  margin: -64px 0 22px;            /* liegt über dem unteren Rand des Rasters, ohne ihn zu verkürzen */
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 38px;
+  height: 42px;
   padding: 0 6px;
-  background: var(--mittelblau);
-  border-radius: var(--radius-md);
+  background: var(--menu-blau);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
+.cal-weekbar__divider { width: 1px; height: 18px; margin: 0 4px; background: var(--white-14); }
+
+.cal-weekbar .cal-today {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  transition: background var(--transition), color var(--transition);
+}
+
+.cal-weekbar .cal-today:hover { background: var(--hover); }
+
 .cal-week__label {
-  min-width: 180px;
+  min-width: 170px;
   text-align: center;
   font-size: var(--fs-base);
   color: var(--text-80);
@@ -113,11 +131,11 @@
 }
 
 .cal-grid {
-  flex: 1;
   min-width: 0;
   display: grid;
   grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(0, 1fr));
-  padding: var(--pad-box) var(--pad-box) var(--pad-box) 0;
+  /* unten Platz für die Wochen-Leiste, damit sie am Ende keine Slots verdeckt */
+  padding: var(--pad-box) var(--pad-box) 80px 0;
   background: var(--mittelblau);
   border-radius: var(--radius-lg);
 }
@@ -368,7 +386,7 @@
   position: sticky;
   top: var(--head-h);
   width: var(--tray-w);
-  height: calc(100vh - var(--main-pad) - var(--head-h) - 24px);
+  height: calc(100vh - var(--top-gap) - var(--main-pad-b));
   flex: none;
   display: flex;
   flex-direction: column;
@@ -799,8 +817,7 @@
 @media (max-width: 980px) {
   /* am Handy: volle Woche, seitlich scrollbar; Liste darunter – ohne
      Sticky (die Seite scrollt hier unter der mobilen Kopfleiste) */
-  .cal-head { position: static; flex-wrap: wrap; gap: 12px; margin-top: 0; padding: 0 0 16px; }
-  .cal-head::before, .cal-head::after { display: none; }
+  .cal-head { display: none; }
   .cal-layout { flex-direction: column; align-items: stretch; }
   .cal-grid {
     grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(110px, 1fr));

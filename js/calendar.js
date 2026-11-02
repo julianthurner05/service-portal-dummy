@@ -118,8 +118,10 @@ function renderCalendar() {
 const calHead = calendarView.querySelector('.cal-head');
 const mainEl  = document.querySelector('.main');
 function syncHeadHeight() {
-  const pad = parseFloat(getComputedStyle(mainEl).paddingTop) || 0;
+  const cs = getComputedStyle(mainEl);
+  const pad = parseFloat(cs.paddingTop) || 0;
   calendarView.style.setProperty('--main-pad', `${pad}px`);
+  calendarView.style.setProperty('--main-pad-b', `${parseFloat(cs.paddingBottom) || 0}px`);
   calendarView.style.setProperty('--head-h', `${calHead.offsetHeight - pad}px`);
 }
 window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeight(); });
