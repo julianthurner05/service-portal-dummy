@@ -394,15 +394,63 @@ calGrid.addEventListener('click', e => {
    - Times per day: einmal oder Repeat (alle N Minuten bis Uhrzeit)
    Weekly legt eine Serie an (plan.js), die auch für spätere Wochen gilt.
    --------------------------------------------------------------- */
-const addDays   = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
-const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
-const RUNS = [
-  { value: '1w',   label: '1 week',   end: d => addDays(d, 6) },
-  { value: '1m',   label: '1 month',  end: d => addDays(addMonths(d, 1), -1) },
-  { value: '3m',   label: '3 months', end: d => addDays(addMonths(d, 3), -1) },
-  { value: '6m',   label: '6 months', end: d => addDays(addMonths(d, 6), -1) },
-  { value: 'none', label: 'No end',   end: () => null },
-];
+/* Enddatum: null = infinite, '' = noch nicht gewählt, sonst 'dd.mm.yyyy' */
+const endOf = r => (r.end ? parseDate(r.end) : null);
+const MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/* Datepicker wie im alten Scheduler: Monatsansicht, Montag zuerst, optional
+   „Set to infinite“; Tage vor min sind gesperrt */
+function openDatepicker(field, { value, min = null, onSelect, allowInfinite = false, onInfinite = null }) {
+  closeAllMenus();
+  const selected = value ? parseDate(value) : (min || new Date());
+  let viewYear = selected.getFullYear();
+  let viewMonth = selected.getMonth();
+  const today = fmtDate(new Date());
+
+  const pop = document.createElement('div');
+  pop.className = 'datepicker';
+  field.appendChild(pop);
+
+  const render = () => {
+    const offset = dayIdx(new Date(viewYear, viewMonth, 1));       /* Montag zuerst */
+    let cells = '';
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(viewYear, viewMonth, i - offset + 1);   /* Date rollt Monatsgrenzen selbst über */
+      const label = fmtDate(date);
+      const muted = date.getMonth() !== viewMonth;
+      const off = min && date < min;
+      cells += `<button class="datepicker__day${muted ? ' is-muted' : ''}${off ? ' is-disabled' : ''}${label === value ? ' is-selected' : ''}${label === today ? ' is-today' : ''}" data-date="${label}" type="button"${off ? ' disabled' : ''}>${date.getDate()}</button>`;
+    }
+    pop.innerHTML = `
+      <div class="datepicker__head">
+        <button class="datepicker__nav" data-nav="-1" type="button">${icon('chevron-left')}</button>
+        <span class="datepicker__month">${MONTH_LONG[viewMonth]} ${viewYear}</span>
+        <button class="datepicker__nav" data-nav="1" type="button">${icon('chevron-right')}</button>
+      </div>
+      <div class="datepicker__grid">
+        ${DAYS.map(d => `<span class="datepicker__dow">${d}</span>`).join('')}
+        ${cells}
+      </div>
+      ${allowInfinite ? `<div class="datepicker__foot"><button class="datepicker__infinite" type="button">${icon('infinity')}Set to infinite</button></div>` : ''}`;
+  };
+
+  pop.addEventListener('click', e => {
+    e.stopPropagation();
+    const nav = e.target.closest('[data-nav]');
+    if (nav) {
+      viewMonth += parseInt(nav.dataset.nav, 10);
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      render();
+      return;
+    }
+    const day = e.target.closest('[data-date]:not([disabled])');
+    if (day) { pop.remove(); onSelect(day.dataset.date); return; }
+    if (e.target.closest('.datepicker__infinite')) { pop.remove(); if (onInfinite) onInfinite(); }
+  });
+
+  render();
+}
 const EVERY = [15, 30, 45, 60, 90, 120];
 const longDate = d => `${DAY_NAMES[dayIdx(d)].slice(0, 3)} ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 
@@ -442,7 +490,7 @@ function openRepeat(item) {
   const date = calWeekDays(calWeekStart)[item.day];
   const lastStart = slotTime(CAL_SLOTS - 1);
   const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
-  repeat = { item, spot, date, mode: 'day', days: new Set([DAYS[item.day]]), run: '1m', perDay: 'once', every: 60, until };
+  repeat = { item, spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until };
   calTray.classList.add('is-editing');
   calTray.style.cssText = catStyle(spot.category);
   calTraySettings.hidden = false;
@@ -475,9 +523,10 @@ function renderRepeat() {
       <div class="cal-chips cal-chips--days">
         ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
       </div>
-      <p class="cal-repeat__label">Runs for</p>
-      <div class="cal-chips">
-        ${RUNS.map(x => `<button class="cal-chip${x.value === r.run ? ' is-active' : ''}" data-run="${x.value}" type="button">${x.label}</button>`).join('')}
+      <p class="cal-repeat__label">Runs until</p>
+      <div class="field field--date">
+        <button class="field__btn" data-act="end" type="button"><span class="${r.end === '' ? 'is-placeholder' : ''}">${r.end === null ? 'infinite' : (r.end || 'Select end date')}</span></button>
+        <button class="field__aux" data-act="end-aux" type="button" aria-label="${r.end === null ? 'Remove infinite' : 'Set to infinite'}">${icon(r.end === null ? 'x' : 'infinity')}</button>
       </div>` : ''}
 
     <p class="cal-repeat__label">Times per day</p>
@@ -493,7 +542,7 @@ function renderRepeat() {
 
     <div class="cal-repeat__foot">
       <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>
-      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && !r.days.size ? ' disabled' : ''}>Done</button>
+      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && (!r.days.size || r.end === '') ? ' disabled' : ''}>Done</button>
     </div>`;
 
   if (repeating) {
@@ -528,8 +577,8 @@ function clearPreview() {
 function paintPreview() {
   clearPreview();
   const r = repeat;
-  if (r.mode === 'weekly' && !r.days.size) return;
-  const end = RUNS.find(x => x.value === r.run).end(r.date);
+  if (r.mode === 'weekly' && (!r.days.size || r.end === '')) return;
+  const end = endOf(r);
   const rule = { days: [...r.days], start: dayStart(r.date), end: end ? dayStart(end) : null };
   const slots = repeatSlots(r);
   calWeekDays(calWeekStart).forEach((date, di) => {
@@ -552,12 +601,23 @@ calTraySettings.addEventListener('click', e => {
   const mode = e.target.closest('[data-mode]');
   const per = e.target.closest('[data-per]');
   const day = e.target.closest('[data-day]');
-  const run = e.target.closest('[data-run]');
   const act = e.target.closest('[data-act]');
   if (mode) r.mode = mode.dataset.mode;
   else if (per) r.perDay = per.dataset.per;
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
-  else if (run) r.run = run.dataset.run;
+  else if (act && act.dataset.act === 'end') {
+    e.stopPropagation();
+    openDatepicker(act.closest('.field--date'), {
+      value: r.end || fmtDate(r.date),
+      min: dayStart(r.date),
+      allowInfinite: true,
+      onSelect: d => { r.end = d; renderRepeat(); },
+      onInfinite: () => { r.end = null; renderRepeat(); },
+    });
+    return;
+  }
+  /* ✕ nimmt „infinite“ weg (Feld wird leer), ∞ setzt es wieder */
+  else if (act && act.dataset.act === 'end-aux') r.end = r.end === null ? '' : null;
   else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
   else if (act && act.dataset.act === 'remove') {
     recordUndo();
@@ -584,7 +644,7 @@ function applyRepeat() {
     showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
   } else {
     const days = DAYS.filter(d => r.days.has(d));
-    const end = RUNS.find(x => x.value === r.run).end(r.date);
+    const end = endOf(r);
     recordUndo();
     /* der abgelegte Slot geht in der Serie auf */
     removeItem(calWeekStart, r.item.id);
