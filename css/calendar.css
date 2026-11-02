@@ -67,23 +67,31 @@
   flex-direction: column;
 }
 
+/* hellere Fläche als alles darunter – hebt sich vom Kalender klar ab */
 .cal-weekbar {
+  --weekbar-bg: color-mix(in srgb, #ffffff 16%, var(--menu-blau));
   position: sticky;
-  bottom: 22px;
+  bottom: calc(12px - var(--main-pad-b));   /* 12px über dem Fensterrand (über den unteren Innenabstand hinaus) */
   z-index: 70;
   align-self: center;
-  margin: -64px 0 22px;            /* liegt über dem unteren Rand des Rasters, ohne ihn zu verkürzen */
+  margin: -54px 0 12px;            /* liegt über dem unteren Rand des Rasters, ohne ihn zu verkürzen */
   display: flex;
   align-items: center;
   gap: 4px;
   height: 42px;
   padding: 0 6px;
-  background: var(--menu-blau);
+  background: var(--weekbar-bg);
   border-radius: 12px;
   box-shadow: var(--shadow);
 }
 
-.cal-weekbar__divider { width: 1px; height: 18px; margin: 0 4px; background: var(--white-14); }
+.cal-weekbar .cal-week__label { color: var(--text-100); }
+.cal-weekbar .cal-week__nav,
+.cal-weekbar .cal-today { color: var(--text-80); }
+.cal-weekbar .cal-week__nav:hover,
+.cal-weekbar .cal-today:hover { background: var(--white-14); color: var(--text-100); }
+
+.cal-weekbar__divider { width: 1px; height: 18px; margin: 0 4px; background: var(--white-25); }
 
 .cal-weekbar .cal-today {
   height: 30px;
@@ -91,8 +99,6 @@
   border-radius: 8px;
   transition: background var(--transition), color var(--transition);
 }
-
-.cal-weekbar .cal-today:hover { background: var(--hover); }
 
 .cal-week__label {
   min-width: 170px;

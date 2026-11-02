@@ -130,6 +130,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--sidebar-bg);
   border-right: var(--hairline);
 }
 
@@ -980,7 +981,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     max-width: 320px;
     z-index: 80;
     padding: 0 16px 24px 18px;
-    background: var(--dunkelblau);
+    background: var(--sidebar-bg);
     border-right: var(--hairline);
     transform: translateX(-104%);
     transition: transform var(--t-reveal-close) var(--ease);

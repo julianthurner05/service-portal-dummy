@@ -9,6 +9,7 @@
   --mittelblau:     #191b33;                 /* Eingabefelder, Dialoge */
   --card-bg:        #1d1f38;                 /* Karten */
   --menu-blau:      #262840;                 /* Menüs, Toasts, Dropdowns */
+  --sidebar-bg:     color-mix(in srgb, var(--mittelblau) 50%, var(--dunkelblau)); /* Sidebar: eine Spur heller als die Seite */
   --off-white:      #d4d7e3;                 /* New-State, Dialog */
   --card-ghost:     color-mix(in srgb, var(--card-bg) 38%, var(--dunkelblau)); /* Error/Deleted */
   --card-new-bg:    var(--off-white);
