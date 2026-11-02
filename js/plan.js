@@ -90,7 +90,7 @@ const emitPlanChange = kind => planListeners.forEach(fn => fn(kind));
    Spot-Bibliothek
    --------------------------------------------------------------- */
 let spotUid = 0;
-const spots = [];                     /* { id, title, category, duration, source: 'plan' | 'spottool', ready, retired } */
+const spots = [];                     /* { id, title, category (null = noch keine), duration, source: 'plan' | 'spottool', ready, retired } */
 
 const findSpot = title => spots.find(s => s.title === title) || null;
 const spotById = id => spots.find(s => s.id === id) || null;
@@ -109,16 +109,33 @@ function addSpot({ title, category = 'standard', duration = 9, source = 'plan', 
 }
 
 /* „Ready for Schedule“: der Spot steht in der Liste im Calendar.
-   Aus der Liste nehmen lässt eingeplante Slots stehen. */
+   Frisch aus dem SpotTool hat er noch keine Kategorie (null) – er steht
+   unten unter „New“ und wird erst durch Ziehen in eine Kategorie
+   einplanbar. Aus der Liste nehmen lässt eingeplante Slots stehen. */
 function setSpotReady(meta, ready) {
   const s = addSpot({ ...meta, ready });
   if (s.ready !== ready) {
     s.ready = ready;
-    /* neu in die Liste → nach oben */
-    if (ready) { spots.splice(spots.indexOf(s), 1); spots.unshift(s); }
+    if (ready) moveSpotToEnd(s);
     emitPlanChange('spots');
   }
   return s;
+}
+
+function moveSpotToEnd(s) {
+  spots.splice(spots.indexOf(s), 1);
+  spots.push(s);
+}
+
+/* Kategorie ändern (Ziehen in eine andere Gruppe der Liste) – der Spot steht
+   danach unten in seiner neuen Gruppe; Farbe ändert sich überall mit */
+function setSpotCategory(spotId, category) {
+  const s = spotById(spotId);
+  if (!s || s.category === category) return false;
+  s.category = category;
+  moveSpotToEnd(s);
+  emitPlanChange('spots');
+  return true;
 }
 
 const isSpotReady = title => { const s = findSpot(title); return !!s && s.ready && !s.retired; };

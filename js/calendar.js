@@ -4,7 +4,10 @@
    - jeder Slot lebt für sich: per Drag & Drop verschieben, über das ✕
      oder durch Ablegen in der Palette entfernen
    - rechts die Liste „Ready for Schedule“: jeder Spot einmal, beliebig oft
-     einplanbar (Plan-Spots + im SpotTool freigegebene Spots), mit Suche
+     einplanbar (Plan-Spots + im SpotTool freigegebene Spots), mit Suche;
+     nach Kategorien gruppiert – Ziehen in eine andere Gruppe ändert die
+     Kategorie. Frische Spots stehen unten unter „New“ und müssen erst in
+     eine Kategorie gezogen werden, bevor sie einplanbar sind
    - nach dem Ablegen aus der Liste: kleines Fenster für Wiederholungen
      (Wochentage, Laufzeit bis zu Monaten oder ohne Ende)
    - Hover: alle Slots desselben Spots leuchten auf
@@ -118,27 +121,45 @@ function syncHeadHeight() {
 }
 window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeight(); });
 
-/* ---- Liste „Ready for Schedule“ ---- */
+/* ---- Liste „Ready for Schedule“ ----
+   Gruppen je Kategorie (Opening/Closing vergibt sounddna – keine Gruppe),
+   darunter „New“ für frisch freigegebene Spots ohne Kategorie */
+const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
+
+const trayItem = s => `
+  <div class="cal-tray__item${s.category ? '' : ' is-new'}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
+    <span class="cal-item__label">${escapeHtml(s.title)}</span>
+  </div>`;
+
 function renderTray() {
   const all = paletteSpots();
   const q = calTraySearch.value.trim().toLowerCase();
   const list = all.filter(s => s.title.toLowerCase().includes(q));
-  calTrayList.innerHTML = CATEGORIES.map(cat => {
+
+  /* Gruppen bleiben auch leer stehen – sie sind Ablageziele; nur beim Suchen
+     verschwinden leere */
+  let html = TRAY_CATS.map(cat => {
     const group = list.filter(s => s.category === cat.value);
-    if (!group.length) return '';
+    if (q && !group.length) return '';
     return `
-      <div class="cal-tray__group">
+      <div class="cal-tray__group" data-cat="${cat.value}">
         <p class="cal-tray__cat"><span class="cal-tray__dot" style="background:${cat.color}"></span>${cat.label}<span class="cal-tray__count">${group.length}</span></p>
-        ${group.map(s => `
-          <div class="cal-tray__item" draggable="true" data-spot="${s.id}" style="${catStyle(s.category)}">
-            <span class="cal-item__label">${escapeHtml(s.title)}</span>
-          </div>`).join('')}
+        ${group.length ? group.map(trayItem).join('') : '<p class="cal-tray__none">Drop a spot here</p>'}
       </div>`;
   }).join('');
-  calTrayEmpty.hidden = list.length > 0;
-  calTrayEmpty.textContent = all.length
-    ? 'No spots match your search.'
-    : 'No spots yet – mark a spot in the SpotTool as Ready for Schedule.';
+
+  const fresh = list.filter(s => !s.category);
+  if (fresh.length) {
+    html += `
+      <div class="cal-tray__group cal-tray__group--new">
+        <p class="cal-tray__cat">New<span class="cal-tray__count">${fresh.length}</span></p>
+        <p class="cal-tray__note">Drag into a category to schedule.</p>
+        ${fresh.map(trayItem).join('')}
+      </div>`;
+  }
+  calTrayList.innerHTML = html;
+  calTrayEmpty.hidden = list.length > 0 || !q;
+  calTrayEmpty.textContent = 'No spots match your search.';
 }
 
 calTraySearch.addEventListener('input', renderTray);
@@ -215,8 +236,12 @@ const dropCell = e => {
 
 function clearDropMarks() {
   calGrid.querySelectorAll('.is-drop').forEach(c => c.classList.remove('is-drop'));
+  calTrayList.querySelectorAll('.is-drop').forEach(g => g.classList.remove('is-drop'));
   calTray.classList.remove('is-drop');
 }
+
+/* Spot aus „New“ (noch ohne Kategorie): erst in eine Kategorie ziehen */
+const dragIsNew = () => calDrag && calDrag.from === 'palette' && !spotById(calDrag.spotId).category;
 
 /* Eigenes Drag-Bild: eine saubere Titel-Pille statt des Browser-Schnappschusses
    (der nahm Überstände wie Tooltips mit und war im Collapsed-Modus nur eine Linie) */
@@ -247,7 +272,11 @@ calendarView.addEventListener('dragstart', e => {
     calDrag = { from: 'palette', spotId: +el.dataset.spot };
     spot = spotById(calDrag.spotId);
   }
-  e.dataTransfer.effectAllowed = calDrag.from === 'palette' ? 'copy' : 'copyMove';
+  if (calDrag.from === 'palette') {
+    calTray.classList.add('is-sorting');
+    calTray.classList.toggle('is-sorting-new', !spot.category);
+  }
+  e.dataTransfer.effectAllowed = 'copyMove';
   e.dataTransfer.setData('text/plain', spot ? spot.title : '');
   if (spot) setDragImage(e, el, spot);
   /* beim Verschieben verblasst das Original, beim Kopieren bleibt es stehen */
@@ -256,6 +285,7 @@ calendarView.addEventListener('dragstart', e => {
 
 calendarView.addEventListener('dragend', () => {
   calDrag = null;
+  calTray.classList.remove('is-sorting', 'is-sorting-new');
   clearDropMarks();
   calGrid.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
 });
@@ -264,7 +294,7 @@ calendarView.addEventListener('dragend', () => {
 calGrid.addEventListener('dragover', e => {
   if (calDrag && calDrag.from === 'grid') calDrag.el.classList.toggle('is-dragging', !e.altKey);
   const cell = dropCell(e);
-  if (!cell || !calDrag) return;
+  if (!cell || !calDrag || dragIsNew()) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = calDrag.from === 'palette' || isCopy(e) ? 'copy' : 'move';
   clearDropMarks();
@@ -273,7 +303,7 @@ calGrid.addEventListener('dragover', e => {
 
 calGrid.addEventListener('drop', e => {
   const cell = dropCell(e);
-  if (!cell || !calDrag) return;
+  if (!cell || !calDrag || dragIsNew()) return;
   e.preventDefault();
   const day = +cell.dataset.day;
   const slot = +cell.dataset.slot;
@@ -291,24 +321,46 @@ calGrid.addEventListener('drop', e => {
   if (placed) openRepeat(placed);
 });
 
-/* die Palette nimmt Slots aus dem Raster an – der Slot wird entfernt,
-   die Palette selbst bleibt unverändert */
+/* Liste als Ablage:
+   - Slot aus dem Raster → wird aus dem Kalender entfernt
+   - Spot aus der Liste in eine andere Kategorie-Gruppe → Kategorie (und
+     Farbe überall) ändert sich */
+const targetGroup = e => {
+  const g = e.target.closest('.cal-tray__group[data-cat]');
+  return g && g.dataset.cat !== spotById(calDrag.spotId).category ? g : null;
+};
+
 calTray.addEventListener('dragover', e => {
-  if (!calDrag || calDrag.from !== 'grid') return;
+  if (!calDrag) return;
+  if (calDrag.from === 'grid') {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    calTray.classList.add('is-drop');
+    return;
+  }
+  const g = targetGroup(e);
+  calTrayList.querySelectorAll('.cal-tray__group.is-drop').forEach(x => { if (x !== g) x.classList.remove('is-drop'); });
+  if (!g) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
-  calTray.classList.add('is-drop');
+  g.classList.add('is-drop');
 });
 
 calTray.addEventListener('dragleave', e => {
-  if (!calTray.contains(e.relatedTarget)) calTray.classList.remove('is-drop');
+  if (!calTray.contains(e.relatedTarget)) clearDropMarks();
 });
 
 calTray.addEventListener('drop', e => {
-  if (!calDrag || calDrag.from !== 'grid') return;
+  if (!calDrag) return;
   e.preventDefault();
-  removeItem(calWeekStart, calDrag.id);
+  if (calDrag.from === 'grid') {
+    removeItem(calWeekStart, calDrag.id);
+  } else {
+    const g = targetGroup(e);
+    if (g) setSpotCategory(calDrag.spotId, g.dataset.cat);
+  }
   calDrag = null;
+  calTray.classList.remove('is-sorting', 'is-sorting-new');
   clearDropMarks();
   renderCalendar();
 });

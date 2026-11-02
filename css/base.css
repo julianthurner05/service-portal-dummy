@@ -123,18 +123,21 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 /* ================================================================
    SIDEBAR
    ================================================================ */
-/* kompakt: schmale Spalte, niedrige Menüpunkte, kleine Icons; Logo voll hell */
+/* kompakt: schmale Spalte, niedrige Menüpunkte, kleine Icons; Logo voll hell;
+   Hairline rechts als Begrenzung zum Inhalt */
 .sidebar {
   padding: 32px 12px 22px 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-right: var(--hairline);
 }
 
+/* linksbündig, auf einer Linie mit den Menü-Icons */
 .sidebar__logo {
   width: 112px;
-  align-self: center;
-  margin-top: 2px;
+  align-self: flex-start;
+  margin: 2px 0 0 12px;
 }
 
 .sidebar__nav {

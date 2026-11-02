@@ -117,7 +117,7 @@ function setCardState(card, state) {
   }
 }
 
-/** options: { title, date, duration, category, scheduled, received, texts, status, isNew } */
+/** options: { title, date, duration, scheduled, received, texts, status, isNew } */
 function createCard(options) {
   const frag = cardTemplate.content.cloneNode(true);
   const card = frag.querySelector('.card');
@@ -133,7 +133,6 @@ function createCard(options) {
     status: null,
     texts: options.texts ?? { first: '', second: '' },
     title: options.title,
-    category: options.category || 'standard',
   };
 
   card._player = createPlayer({
@@ -205,15 +204,12 @@ function toggleCardReady(card) {
     showToast('error', card._state.status === 'pending' ? 'The spot is still being generated.' : 'This spot can’t be scheduled.');
     return;
   }
-  const { title, category, duration } = card._state;
-  if (category === 'closing') {
-    showToast('error', 'Opening and closing announcements are scheduled by sounddna.');
-    return;
-  }
+  const { title, duration } = card._state;
   const ready = !isSpotReady(title);
-  setSpotReady({ title, category, duration, source: 'spottool', front: true }, ready);
+  /* ohne Kategorie – die bekommt er im Calendar durch Ziehen in eine Gruppe */
+  setSpotReady({ title, category: null, duration, source: 'spottool' }, ready);
   syncReadyBadges();
-  showToast('success', ready ? `“${title}” is ready for schedule.` : `“${title}” removed from Ready for Schedule.`);
+  showToast('success', ready ? `“${title}” is ready – drag it into a category in the calendar.` : `“${title}” removed from Ready for Schedule.`);
 }
 
 /* Ready-Badge an allen Karten nach der Liste ausrichten */
@@ -310,16 +306,16 @@ const demoAnnouncement =
   'Liebe IKEA Kundin, lieber IKEA Kunde!\nEntdecke jede Woche ein neues Angebot für IKEA Family Mitglieder. RIAN, Beistelltisch um nur € 9,99 statt um € 29,99. Das und viele weitere Angebote findest du unter ikea.at/Innsbruck.\nLebe Smart!';
 
 const demoSpots = [
-  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', category: 'commercial', date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
-  { title: 'IKEA FOOD Mittagsangebot Köttbullar',             category: 'commercial', date: 'Today, 10:02',     duration: 12, received: true },
-  { title: 'IKEA Family Angebot RIAN Beistelltisch',          category: 'commercial', date: 'Today, 09:48',     duration: 14, scheduled: true },
-  { title: 'Smaland Abholung Durchsage_1',                    category: 'special',    date: 'Yesterday, 17:40', duration: 8 },
-  { title: 'Öffnungszeiten Feiertag Westbahnhof',             category: 'special',    date: 'Yesterday, 11:12', duration: 11, status: 'error' },
-  { title: 'Schlussdurchsage Restaurant_3',                   category: 'closing',    date: 'Yesterday, 09:31', duration: 10, scheduled: true, received: true },
-  { title: 'IKEA Family Punkte Aktion September',             category: 'commercial', date: 'Mon, 10:02',       duration: 15, scheduled: true },
-  { title: 'Parkdeck Hinweis Wochenende',                     category: 'standard',   date: 'Mon, 08:24',       duration: 7,  status: 'deleted' },
-  { title: 'Fundbüro Durchsage Kassenbereich',                category: 'standard',   date: 'Sun, 14:47',       duration: 9 },
-  { title: 'IKEA Vösendorf Aktion TISDAG Frühstück',          category: 'commercial', date: 'Sun, 09:15',       duration: 13, scheduled: true, received: true },
+  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
+  { title: 'IKEA FOOD Mittagsangebot Köttbullar',             date: 'Today, 10:02',     duration: 12, received: true },
+  { title: 'IKEA Family Angebot RIAN Beistelltisch',          date: 'Today, 09:48',     duration: 14, scheduled: true },
+  { title: 'Smaland Abholung Durchsage_1',                    date: 'Yesterday, 17:40', duration: 8 },
+  { title: 'Öffnungszeiten Feiertag Westbahnhof',             date: 'Yesterday, 11:12', duration: 11, status: 'error' },
+  { title: 'Schlussdurchsage Restaurant_3',                   date: 'Yesterday, 09:31', duration: 10, scheduled: true, received: true },
+  { title: 'IKEA Family Punkte Aktion September',             date: 'Mon, 10:02',       duration: 15, scheduled: true },
+  { title: 'Parkdeck Hinweis Wochenende',                     date: 'Mon, 08:24',       duration: 7,  status: 'deleted' },
+  { title: 'Fundbüro Durchsage Kassenbereich',                date: 'Sun, 14:47',       duration: 9 },
+  { title: 'IKEA Vösendorf Aktion TISDAG Frühstück',          date: 'Sun, 09:15',       duration: 13, scheduled: true, received: true },
 ];
 
 demoSpots.forEach(spot => {

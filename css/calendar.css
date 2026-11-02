@@ -19,7 +19,8 @@
 
 /* ---- Kopf – bleibt beim Scrollen oben stehen. Er reicht samt Fläche bis
    an die Oberkante des Scrollbereichs (über dessen Innenabstand), damit
-   darüber nichts durchscrollt. ---- */
+   darüber nichts durchscrollt. Ruhe- und Andockposition sind gleich – sonst
+   schiebt der Browser ihn schon ungescrollt nach unten über das Raster. ---- */
 .cal-head {
   position: sticky;
   top: calc(-1 * var(--main-pad));
@@ -27,8 +28,8 @@
   display: flex;
   align-items: center;
   gap: 20px;
-  margin: calc(-16px - var(--main-pad)) 0 6px;
-  padding: calc(16px + var(--main-pad)) 0 16px;
+  margin: calc(-1 * var(--main-pad)) 0 6px;
+  padding: var(--main-pad) 0 16px;
   background: var(--dunkelblau);
 }
 
@@ -376,14 +377,56 @@
   min-height: 0;
   overflow-y: auto;
   margin: 0 -6px;                  /* Platz für den Scrollbalken, ohne die Spots zu verschmälern */
-  padding: 20px 6px 2px;
+  padding: 14px 6px 2px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 10px;
 }
 
-/* eine Gruppe je Kategorie: Name mit Farbpunkt, darunter die Spots */
-.cal-tray__group { display: flex; flex-direction: column; gap: 4px; }
+/* eine Gruppe je Kategorie: Name mit Farbpunkt, darunter die Spots. Die
+   Gruppen sind auch Ablageziele – Ziehen eines Spots hinein ändert seine
+   Kategorie; beim Ziehen werden sie angedeutet, das Ziel leuchtet auf */
+.cal-tray__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 -6px;
+  padding: 6px;
+  border-radius: 10px;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+
+.cal-tray.is-sorting .cal-tray__group[data-cat] { box-shadow: inset 0 0 0 1px var(--white-6); }
+.cal-tray.is-sorting-new .cal-tray__group[data-cat] { box-shadow: inset 0 0 0 1px var(--white-14); }
+.cal-tray .cal-tray__group.is-drop { background: var(--white-6); box-shadow: inset 0 0 0 1px var(--white-25); }
+
+/* leere Gruppe: Platzhalter als Ablageziel */
+.cal-tray__none {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--white-14);
+  border-radius: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-25);
+}
+
+/* „New“: frisch freigegeben, noch ohne Kategorie – unten, abgetrennt */
+.cal-tray__group--new {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: var(--hairline);
+  border-radius: 0;
+}
+
+.cal-tray__note {
+  margin: -4px 0 6px 2px;
+  font-size: 11.5px;
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
 
 .cal-tray__cat {
   display: flex;
@@ -416,6 +459,15 @@
 }
 
 .cal-tray__item .cal-item__label { height: 28px; line-height: 28px; }
+
+/* Spot ohne Kategorie: neutral und gestrichelt, bis er eingeordnet ist */
+.cal-tray__item.is-new {
+  background: var(--white-3);
+  outline: 1px dashed var(--white-25);
+  outline-offset: -1px;
+}
+
+.cal-tray__item.is-new:hover { background: var(--white-6); }
 
 /* ---- Wiederholen – Fenster nach dem Ablegen aus der Liste ---- */
 .cal-repeat {
