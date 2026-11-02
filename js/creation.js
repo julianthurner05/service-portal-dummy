@@ -310,7 +310,7 @@ const demoAnnouncement =
   'Liebe IKEA Kundin, lieber IKEA Kunde!\nEntdecke jede Woche ein neues Angebot für IKEA Family Mitglieder. RIAN, Beistelltisch um nur € 9,99 statt um € 29,99. Das und viele weitere Angebote findest du unter ikea.at/Innsbruck.\nLebe Smart!';
 
 const demoSpots = [
-  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', category: 'closing',    date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
+  { title: 'IKEA FOOD Vösendorf Schlussdurchsage Café Bar_2', category: 'commercial', date: 'Today, 10:21',     duration: 9,  scheduled: true, received: true },
   { title: 'IKEA FOOD Mittagsangebot Köttbullar',             category: 'commercial', date: 'Today, 10:02',     duration: 12, received: true },
   { title: 'IKEA Family Angebot RIAN Beistelltisch',          category: 'commercial', date: 'Today, 09:48',     duration: 14, scheduled: true },
   { title: 'Smaland Abholung Durchsage_1',                    category: 'special',    date: 'Yesterday, 17:40', duration: 8 },

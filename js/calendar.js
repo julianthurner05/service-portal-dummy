@@ -8,8 +8,9 @@
    - nach dem Ablegen aus der Liste: kleines Fenster für Wiederholungen
      (Wochentage, Laufzeit bis zu Monaten oder ohne Ende)
    - Hover: alle Slots desselben Spots leuchten auf
+   - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
+   - Kopfzeile, Tageszeile und Liste bleiben beim Scrollen stehen
    - fixe Slots (Opening/Closing) vergibt sounddna: gesperrt, mit Schloss
-   - Collapsed (Farblinien) ↔ Expanded (Slots mit Titel), gleitend
    ================================================================ */
 
 const calGrid      = document.getElementById('cal-grid');
@@ -109,17 +110,38 @@ function renderCalendar() {
   calGrid.innerHTML = html;
   renderTray();
   renderNowLine();
+  syncHeadHeight();
 }
+
+/* Tageszeile und Liste docken direkt unter der (sticky) Kopfzeile an. Sticky-
+   Abstände zählen ab dem Innenabstand des Scrollbereichs, die Kopfzeile reicht
+   aber darüber hinaus bis an die Oberkante – den Teil ziehen wir ab. */
+const calHead = calendarView.querySelector('.cal-head');
+const mainEl  = document.querySelector('.main');
+function syncHeadHeight() {
+  const pad = parseFloat(getComputedStyle(mainEl).paddingTop) || 0;
+  calendarView.style.setProperty('--main-pad', `${pad}px`);
+  calendarView.style.setProperty('--head-h', `${calHead.offsetHeight - pad}px`);
+}
+window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeight(); });
 
 /* ---- Liste „Ready for Schedule“ ---- */
 function renderTray() {
   const all = paletteSpots();
   const q = calTraySearch.value.trim().toLowerCase();
   const list = all.filter(s => s.title.toLowerCase().includes(q));
-  calTrayList.innerHTML = list.map(s => `
-    <div class="cal-tray__item" draggable="true" data-spot="${s.id}" style="${catStyle(s.category)}">
-      <span class="cal-item__label">${escapeHtml(s.title)}</span>
-    </div>`).join('');
+  calTrayList.innerHTML = CATEGORIES.map(cat => {
+    const group = list.filter(s => s.category === cat.value);
+    if (!group.length) return '';
+    return `
+      <div class="cal-tray__group">
+        <p class="cal-tray__cat"><span class="cal-tray__dot" style="background:${cat.color}"></span>${cat.label}<span class="cal-tray__count">${group.length}</span></p>
+        ${group.map(s => `
+          <div class="cal-tray__item" draggable="true" data-spot="${s.id}" style="${catStyle(s.category)}">
+            <span class="cal-item__label">${escapeHtml(s.title)}</span>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
   calTrayEmpty.hidden = list.length > 0;
   calTrayEmpty.textContent = all.length
     ? 'No spots match your search.'
@@ -187,7 +209,11 @@ function spotPlaced(spot) {
    Drag & Drop – Palette → Raster (Kopie), Raster → Raster (Verschieben),
    Raster → Palette (Entfernen)
    --------------------------------------------------------------- */
-let calDrag = null;                    /* { from: 'grid', id } | { from: 'palette', spotId } */
+let calDrag = null;                    /* { from: 'grid', id, spotId, el } | { from: 'palette', spotId } */
+
+/* Slot aus dem Raster: mit Option (Alt) kopieren, sonst verschieben –
+   Option darf auch erst während des Ziehens gedrückt werden */
+const isCopy = e => calDrag && calDrag.from === 'grid' && e.altKey;
 
 const dropCell = e => {
   const cell = e.target.closest('.cal-cell');
@@ -221,17 +247,18 @@ calendarView.addEventListener('dragstart', e => {
   setLit(null);
   let spot;
   if (el.classList.contains('cal-item')) {
-    calDrag = { from: 'grid', id: +el.dataset.id };
-    const it = weekItems(calWeekStart).find(i => i.id === calDrag.id);
-    spot = it && spotById(it.spotId);
+    const it = weekItems(calWeekStart).find(i => i.id === +el.dataset.id);
+    calDrag = { from: 'grid', id: it.id, spotId: it.spotId, el };
+    spot = spotById(it.spotId);
   } else {
     calDrag = { from: 'palette', spotId: +el.dataset.spot };
     spot = spotById(calDrag.spotId);
   }
-  e.dataTransfer.effectAllowed = calDrag.from === 'palette' ? 'copy' : 'move';
+  e.dataTransfer.effectAllowed = calDrag.from === 'palette' ? 'copy' : 'copyMove';
   e.dataTransfer.setData('text/plain', spot ? spot.title : '');
   if (spot) setDragImage(e, el, spot);
-  if (calDrag.from === 'grid') requestAnimationFrame(() => el.classList.add('is-dragging'));
+  /* beim Verschieben verblasst das Original, beim Kopieren bleibt es stehen */
+  if (calDrag.from === 'grid' && !e.altKey) requestAnimationFrame(() => el.classList.add('is-dragging'));
 });
 
 calendarView.addEventListener('dragend', () => {
@@ -242,10 +269,11 @@ calendarView.addEventListener('dragend', () => {
 
 /* freie Zellen nehmen Slots an */
 calGrid.addEventListener('dragover', e => {
+  if (calDrag && calDrag.from === 'grid') calDrag.el.classList.toggle('is-dragging', !e.altKey);
   const cell = dropCell(e);
   if (!cell || !calDrag) return;
   e.preventDefault();
-  e.dataTransfer.dropEffect = calDrag.from === 'palette' ? 'copy' : 'move';
+  e.dataTransfer.dropEffect = calDrag.from === 'palette' || isCopy(e) ? 'copy' : 'move';
   clearDropMarks();
   cell.classList.add('is-drop');
 });
@@ -257,7 +285,9 @@ calGrid.addEventListener('drop', e => {
   const day = +cell.dataset.day;
   const slot = +cell.dataset.slot;
   let placed = null;
-  if (calDrag.from === 'grid') {
+  if (isCopy(e)) {
+    placeSpot(calWeekStart, calDrag.spotId, day, slot);
+  } else if (calDrag.from === 'grid') {
     moveItem(calWeekStart, calDrag.id, day, slot);
   } else {
     placed = placeSpot(calWeekStart, calDrag.spotId, day, slot);
@@ -328,6 +358,7 @@ let repeat = null;                    /* { item, spot, date, mode, days: Set, ru
 
 function closeRepeat() {
   if (!repeatEl) return;
+  clearPreview();
   repeatEl.remove();
   repeatEl = null;
   repeat = null;
@@ -393,19 +424,46 @@ function renderRepeat() {
       <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>
       <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && !days.length ? ' disabled' : ''}>Done</button>
     </div>`;
+  paintPreview();
 }
 
-/* neben den abgelegten Slot setzen – rechts davon, sonst links; im Bild halten */
+/* Vorschau: in diesen freien Zellen der Woche landet der Spot mit der
+   aktuellen Einstellung – leicht angedeutet, bevor man „Done“ drückt */
+function clearPreview() {
+  calGrid.querySelectorAll('.cal-cell.is-preview').forEach(cell => {
+    cell.classList.remove('is-preview');
+    cell.removeAttribute('style');
+    cell.querySelector('.cal-item__label')?.remove();
+  });
+}
+
+function paintPreview() {
+  clearPreview();
+  const r = repeat;
+  if (r.mode !== 'weekly' || !r.days.size) return;
+  const end = RUNS.find(x => x.value === r.run).end(r.date);
+  const rule = { days: [...r.days], start: dayStart(r.date), end: end ? dayStart(end) : null };
+  calWeekDays(calWeekStart).forEach((date, di) => {
+    if (di === r.item.day || !seriesOn(rule, date, di)) return;
+    const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${r.item.slot}"]:not(.cal-slot--closed)`);
+    if (!cell) return;                           /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
+    cell.classList.add('is-preview');
+    cell.setAttribute('style', catStyle(r.spot.category));
+    cell.insertAdjacentHTML('beforeend', `<span class="cal-item__label">${escapeHtml(r.spot.title)}</span>`);
+  });
+}
+
+/* unter den abgelegten Slot setzen (bei Platzmangel darüber) – nie auf
+   dieselbe Zeile, dort zeigt die Vorschau die anderen Tage; im Bild halten */
 function placeRepeat() {
   const slotEl = calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`);
   if (!slotEl) return;
   const view = calendarView.getBoundingClientRect();
   const r = slotEl.getBoundingClientRect();
   const w = repeatEl.offsetWidth, h = repeatEl.offsetHeight;
-  let left = r.right + 10;
-  if (left + w > window.innerWidth - 16) left = r.left - 10 - w;
-  let top = r.top - 12;
-  top = Math.min(top, window.innerHeight - h - 16);
+  const left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16));
+  let top = r.bottom + 10;
+  if (top + h > window.innerHeight - 16) top = r.top - 10 - h;
   top = Math.max(top, 16);
   repeatEl.style.left = `${left - view.left}px`;
   repeatEl.style.top = `${top - view.top}px`;
@@ -455,84 +513,6 @@ onPlanChange(kind => {
   if (calendarView.hidden) return;
   if (kind === 'spots') renderTray();
   if (kind === 'week' && !calDrag) renderCalendar();
-});
-
-/* ---------------------------------------------------------------
-   Dichte: Collapsed (Farblinien) ↔ Expanded (Slots mit Titel)
-   FLIP: das Layout springt sofort in den Zielzustand, sichtbar gleitet es
-   nur per transform – jede Zeile startet an ihrer alten Position und Höhe.
-   Keyframes enthalten nur transform (transform-origin steht fest im CSS),
-   damit der Browser sie auf dem Compositor abspielt; Höhen-Transitions über
-   ~450 Zeilen hätten jeden Frame ein Layout erzwungen (in Safari ruckelig).
-   Das Raster selbst – Fläche und Spaltenlinien – wird per clip-path auf-
-   bzw. zugedeckt: ohne Layout, mit exakten runden Ecken.
-   --------------------------------------------------------------- */
-function morphGrid(view, grid, value, onDone = null) {
-  const rows = [...grid.querySelectorAll('.cal-col__body > .cal-time, .cal-col__body > .cal-slot, .cal-col__body > .cal-quiet')];
-  const top0 = grid.getBoundingClientRect().top;
-  const first = rows.map(el => el.getBoundingClientRect());
-
-  (grid._morphAnims || []).forEach(a => a.cancel());
-  grid._morphAnims = [];
-  grid.style.minHeight = '';
-  const gridFirst = grid.getBoundingClientRect().height;
-  view.dataset.density = value;
-
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { if (onDone) onDone(); return; }
-
-  const top1 = grid.getBoundingClientRect().top;
-  const last = rows.map(el => el.getBoundingClientRect());
-  const gridLast = grid.getBoundingClientRect().height;
-  const css = getComputedStyle(view);
-  const timing = {
-    duration: parseFloat(css.getPropertyValue('--density-dur')) || 560,
-    easing: css.getPropertyValue('--ease').trim() || 'ease',
-  };
-
-  grid.classList.add('is-morphing', 'is-hiding-titles');
-  clearTimeout(grid._titleTimer);
-  grid._titleTimer = setTimeout(() => grid.classList.remove('is-hiding-titles'), timing.duration * 0.6);
-  rows.forEach((el, i) => {
-    const a = first[i], b = last[i];
-    let from;
-    if (el.classList.contains('cal-time') || el.classList.contains('cal-quiet')) {
-      /* reine Text-Zeilen (Uhrzeit, „Quiet Hour“) nur verschieben (mittig), nie stauchen */
-      const dy = (a.top - top0 + a.height / 2) - (b.top - top1 + b.height / 2);
-      if (Math.abs(dy) < 0.5) return;
-      from = `translateY(${dy}px)`;
-    } else {
-      const dy = (a.top - top0) - (b.top - top1);
-      const sy = b.height ? a.height / b.height : 1;
-      from = `translateY(${dy}px) scaleY(${sy})`;
-    }
-    grid._morphAnims.push(el.animate([{ transform: from }, { transform: 'none' }], timing));
-  });
-
-  /* Raster für die Dauer mindestens so hoch wie das größere der beiden
-     Zustände halten (beim Zuklappen) und den Überstand unten wegclippen */
-  const gridMax = Math.max(gridFirst, gridLast);
-  const radius = getComputedStyle(grid).borderTopLeftRadius;
-  const clip = h => `inset(0px 0px ${gridMax - h}px 0px round ${radius})`;
-  grid.style.minHeight = `${gridMax}px`;
-  const gridAnim = grid.animate([{ clipPath: clip(gridFirst) }, { clipPath: clip(gridLast) }], timing);
-  grid._morphAnims.push(gridAnim);
-
-  gridAnim.finished.then(() => {
-    grid.style.minHeight = '';
-    grid.classList.remove('is-morphing');
-    if (onDone) onDone();
-  }, () => {});                                   /* abgebrochen: der nächste Wechsel übernimmt */
-}
-
-/* Pill-Umschalter: aria-checked = Expanded */
-const densityToggle = document.getElementById('cal-density');
-densityToggle.addEventListener('click', () => {
-  const expanded = densityToggle.getAttribute('aria-checked') !== 'true';
-  densityToggle.setAttribute('aria-checked', String(expanded));
-  densityToggle.dataset.tip = expanded ? 'Collapse' : 'Expand';
-  closeRepeat();
-  calGrid.querySelectorAll('.cal-now').forEach(n => n.remove());
-  morphGrid(calendarView, calGrid, expanded ? 'expanded' : 'collapsed', renderNowLine);
 });
 
 /* ---- Wochennavigation ---- */

@@ -63,7 +63,7 @@ function isQuiet(dayI, time) {
 
 /* ---- Slot-Raster ---- */
 const CAL_HOUR_START = 8;
-const CAL_HOUR_END   = 22;                         /* exklusiv */
+const CAL_HOUR_END   = 21;                         /* exklusiv: letzte Zeile 20:45 */
 const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 60 / SLOT_MIN;
 const SLOTS_PER_HOUR = 60 / SLOT_MIN;
 const CAL_DAYS       = 6;                          /* Mo–Sa: Sonntag ist geschlossen und wird nicht gezeigt */
@@ -171,7 +171,7 @@ const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille 
   { title: 'ZLS Durchsage',                    category: 'standard' },
   { title: 'SMÅLAND Kipa Durchsage',           category: 'special' },
   { title: 'Stille Stunde Durchsage',          category: 'special' },
-  { title: 'Café Bar Schlussdurchsage',        category: 'closing' },
+  { title: 'Café Bar Schlussdurchsage',        category: 'commercial' },
   { title: '1. Schlussdurchsage',              category: 'closing' },
   { title: '2. Schlussdurchsage',              category: 'closing' },
   { title: '3. Schlussdurchsage',              category: 'closing' },
@@ -197,9 +197,9 @@ const BASE_PLAN = [
   { spot: 'SMÅLAND Kipa Durchsage',           days: ['Fr'], times: ['13:30'] },
   { spot: 'SMÅLAND Kipa Durchsage',           days: ['Sa'], times: ['10:30'] },
   { spot: 'Stille Stunde Durchsage',          days: ['We'], times: ['15:45'] },
+  { spot: 'Café Bar Schlussdurchsage',        days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
 
   /* fix – von sounddna vergeben, dürfen bis zur Schließzeit laufen */
-  { spot: 'Café Bar Schlussdurchsage', fixed: true, days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
   { spot: '1. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:30'] },
   { spot: '2. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:45'] },
   { spot: '3. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:55'] },
@@ -227,14 +227,15 @@ let itemUid = 0;
 const weeks = new Map();              /* Montag 'dd.mm.yyyy' → [{ id, spotId, day, slot }] */
 
 /* fixe Slots einer Woche: 'day:slot' → [{ spot, time }] (mehrere Schlussdurchsagen
-   können sich einen 15-Minuten-Slot teilen) */
+   können sich einen 15-Minuten-Slot teilen). Eine Durchsage genau auf der
+   Rasterkante (Fr 21:00) kommt in den letzten Slot, statt zu verschwinden. */
 function fixedCells(monday) {
   const cells = new Map();
   weekDates(monday).forEach((date, di) => BASE_PLAN.forEach(e => {
     if (!e.fixed || !entryActive(e, date, di)) return;
     const spot = findSpot(e.spot);
     e.times.forEach(time => {
-      const slot = slotIndex(time);
+      const slot = minutesOf(time) === CAL_HOUR_END * 60 ? CAL_SLOTS - 1 : slotIndex(time);
       if (slot < 0 || slot >= CAL_SLOTS) return;
       const key = `${di}:${slot}`;
       if (!cells.has(key)) cells.set(key, []);
