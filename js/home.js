@@ -84,20 +84,6 @@ function renderHome() {
       <span class="home-bar__label">${DAYS[i]}</span>
     </div>`).join('');
 
-  /* ---- Slot-Raster ---- */
-  /* bespielbar = offen und keine Quiet Hour – wie im Calendar */
-  const openSlotsPerDay = [...Array(7)].map((_, di) =>
-    [...Array(CAL_SLOTS)].filter((_, s) => !cellBlocked(di, s)).length);
-  const openTotal = openSlotsPerDay.reduce((a, b) => a + b, 0);
-  const usedTotal = perDayList.reduce((n, list, di) =>
-    n + new Set(list.filter(x => !cellBlocked(di, x.slot)).map(x => x.slot)).size, 0);
-  const usedPct = openTotal ? Math.round(usedTotal / openTotal * 100) : 0;
-  document.getElementById('home-slots-day').textContent = `${openSlotsPerDay[0]} (Mo–Fr) · ${openSlotsPerDay[5]} (Sa)`;
-  document.getElementById('home-slots-used').textContent = `${usedTotal} of ${openTotal} · ${usedPct}%`;
-  document.getElementById('home-slots-fill').style.width = `${usedPct}%`;
-  document.getElementById('home-slots-hint').textContent =
-    `${openTotal - usedTotal} free slots left this week. Quiet hour ${quietHoursLabel()}.`;
-
   /* ---- Letzter Spot ---- */
   const last = cards.find(c => !['deleted', 'error', 'pending'].includes(c._state.status));
   if (homePlayer) homePlayer.stop();
