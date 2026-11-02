@@ -62,7 +62,7 @@ function isQuiet(dayI, time) {
 }
 
 /* ---- Slot-Raster ---- */
-const CAL_HOUR_START = 8;
+const CAL_HOUR_START = 9;                          /* Öffnung – davor läuft nichts */
 const CAL_HOUR_END   = 21;                         /* exklusiv: letzte Zeile 20:45 */
 const CAL_SLOTS      = (CAL_HOUR_END - CAL_HOUR_START) * 60 / SLOT_MIN;
 const SLOTS_PER_HOUR = 60 / SLOT_MIN;
@@ -292,17 +292,6 @@ function seriesOn(r, date, dayI) {
   if (dayI >= CAL_DAYS || !r.days.includes(DAYS[dayI])) return false;
   const d = dayStart(date);
   return d >= r.start && (!r.end || d <= r.end);
-}
-
-/* Termine einer Serie (ohne Rücksicht auf belegte Zellen) – für die Vorschau;
-   ohne Ende: null */
-function seriesDates(r) {
-  if (!r.end) return null;
-  let n = 0;
-  for (const d = new Date(r.start); d <= r.end; d.setDate(d.getDate() + 1)) {
-    if (seriesOn(r, d, dayIdx(d))) n++;
-  }
-  return n;
 }
 
 /* Serie anlegen: gilt für alle Wochen, die später zum ersten Mal geöffnet

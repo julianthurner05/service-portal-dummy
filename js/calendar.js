@@ -383,18 +383,7 @@ function renderRepeat() {
   const r = repeat;
   const weekly = r.mode === 'weekly';
   const time = slotTime(r.item.slot);
-  const run = RUNS.find(x => x.value === r.run);
-  const end = run.end(r.date);
   const days = [...r.days];
-  let sum;
-  if (!weekly) {
-    sum = `Only on ${longDate(r.date)} at ${time}.`;
-  } else if (!days.length) {
-    sum = 'Pick at least one day.';
-  } else {
-    const n = end ? seriesDates({ days, start: r.date, end }) : null;
-    sum = `Every ${daysLabel(days)} at ${time}${end ? ` until ${longDate(end)} · ${n} announcement${n === 1 ? '' : 's'}` : ', with no end date'}.`;
-  }
 
   repeatEl.innerHTML = `
     <div class="cal-repeat__head">
@@ -417,8 +406,6 @@ function renderRepeat() {
       <div class="cal-chips">
         ${RUNS.map(x => `<button class="cal-chip${x.value === r.run ? ' is-active' : ''}" data-run="${x.value}" type="button">${x.label}</button>`).join('')}
       </div>` : ''}
-
-    <p class="cal-repeat__sum">${sum}</p>
 
     <div class="cal-repeat__foot">
       <button class="ghost-btn ghost-btn--sm ghost-btn--danger" data-act="remove" type="button">Remove</button>

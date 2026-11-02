@@ -23,11 +23,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 430px;
+  grid-template-columns: 196px minmax(0, 1fr) 430px;
   overflow: hidden;
 }
 
-body.no-history { grid-template-columns: 240px minmax(0, 1fr); }
+body.no-history { grid-template-columns: 196px minmax(0, 1fr); }
 body.no-history .history { display: none; }
 
 button {
@@ -106,7 +106,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 
 .mobile-bar__menu:hover { background: var(--hover); }
-.mobile-bar__logo { width: 96px; opacity: 0.35; margin-left: auto; }
+.mobile-bar__logo { width: 96px; margin-left: auto; }
 
 .sidebar-backdrop {
   display: none;
@@ -123,25 +123,25 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 /* ================================================================
    SIDEBAR
    ================================================================ */
+/* kompakt: schmale Spalte, niedrige Menüpunkte, kleine Icons; Logo voll hell */
 .sidebar {
-  padding: 34px 16px 28px 20px;
+  padding: 32px 12px 22px 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .sidebar__logo {
-  width: 132px;
-  opacity: 0.35;
+  width: 112px;
   align-self: center;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .sidebar__nav {
-  margin-top: 76px;
+  margin-top: 52px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-item {
@@ -149,18 +149,18 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: var(--radius-md);
-  font-size: var(--fs-nav);
+  gap: 11px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 14.5px;
   letter-spacing: var(--ls-nav);
   color: var(--text-60);
   text-align: left;
   transition: background var(--transition), color var(--transition);
 }
 
-.nav-item .icon { width: 20px; height: 20px; }
+.nav-item .icon { width: 16px; height: 16px; flex: none; }
 
 .nav-item:hover { background: var(--hover); color: var(--text-80); }
 
@@ -174,11 +174,11 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .nav-item__dot {
   display: none;
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
   border-radius: 50%;
   background: var(--text-66);
 }
@@ -190,12 +190,12 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   font-size: var(--fs-section);
   letter-spacing: var(--ls-section);
   color: var(--text-40);
-  margin: 26px 0 8px 14px;
+  margin: 20px 0 6px 12px;
 }
 
 .sidebar__bottom {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: var(--hairline);
   display: flex;
   flex-direction: column;
@@ -948,8 +948,8 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    RESPONSIVE (Layout-Ebene)
    ================================================================ */
 @media (max-width: 1520px) {
-  body { grid-template-columns: 220px minmax(0, 1fr) 400px; }
-  body.no-history { grid-template-columns: 220px minmax(0, 1fr); }
+  body { grid-template-columns: 188px minmax(0, 1fr) 400px; }
+  body.no-history { grid-template-columns: 188px minmax(0, 1fr); }
 }
 
 /* Ab hier kein Icon-Zwischenzustand mehr: das Menü wird sofort zum Drawer

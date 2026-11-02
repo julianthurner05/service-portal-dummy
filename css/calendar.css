@@ -512,18 +512,10 @@
 .cal-chip:hover { color: var(--text-100); }
 .cal-chip.is-active { background: var(--nav-active); color: var(--text-inverse); }
 
-.cal-repeat__sum {
-  margin-top: 14px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  line-height: 1.45;
-  color: var(--text-66);
-}
-
 .cal-repeat__foot {
   display: flex;
   justify-content: space-between;
-  margin-top: 14px;
+  margin-top: 18px;
 }
 
 .cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }
