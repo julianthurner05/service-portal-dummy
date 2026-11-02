@@ -269,6 +269,7 @@ function showView(view) {
   calendarView.hidden = !isCalendar;
   accountView.hidden = view !== 'account';
   homeView.hidden = !isHome;
+  document.body.classList.toggle('view-calendar', isCalendar);   /* vor dem Rendern – der Calendar misst den Innenabstand */
   if (isCalendar) renderCalendar();
   if (isHome) renderHome();
   document.body.classList.toggle('no-history', !isCreation);

@@ -134,16 +134,15 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   border-right: var(--hairline);
 }
 
-/* Logo-Feld oben: links so viel Abstand, wie die Menü-Icons zum linken Rand
-   haben (Sidebar 14px + Menüpunkt 12px), damit das Logo bündig über den Icons
-   beginnt; darunter eine Linie von Rand zu Rand */
+/* Logo-Feld oben: Logo mittig, Innenabstand wie die Menü-Icons zum linken
+   Rand (Sidebar 14px + Menüpunkt 12px); darunter eine Linie von Rand zu Rand */
 .sidebar__brand {
   margin: 0 -12px 0 -14px;
   padding: 22px 26px;
   border-bottom: var(--hairline);
 }
 
-.sidebar__logo { display: block; width: 100%; max-width: 124px; }
+.sidebar__logo { display: block; width: 100%; max-width: 124px; margin: 0 auto; }
 
 .sidebar__nav {
   margin-top: 20px;
@@ -198,7 +197,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   font-size: var(--fs-section);
   letter-spacing: var(--ls-section);
   color: var(--text-40);
-  margin: 22px 0 7px 12px;
+  margin: 22px 0 7px;
 }
 
 /* die Linie darüber geht von Rand zu Rand (über den Innenabstand der Sidebar) */

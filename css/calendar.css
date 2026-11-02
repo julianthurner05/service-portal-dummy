@@ -22,6 +22,12 @@
   animation: view-in 260ms var(--ease);
 }
 
+/* rundum so viel Abstand wie oben (--top-gap); die Scrollbar-Spur (4px je
+   Seite, base.css) ist links und rechts schon abgezogen */
+@media (min-width: 981px) {
+  body.view-calendar .main { padding: 14px 10px; }
+}
+
 /* ---- Streifen oben – kein Titel mehr, der Kalender rückt bis knapp an die
    Oberkante. Der Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt
    darunter weg; Ruhe- und Andockposition sind gleich. ---- */
@@ -247,6 +253,11 @@
 .calendar-view.is-editing .cal-item:not(.is-target),
 .calendar-view.is-editing .cal-quiet { opacity: 0.5; }
 .calendar-view.is-editing .cal-item { transition: opacity var(--dur) var(--ease); pointer-events: none; }
+
+/* vergangene Tage: ausgegraut wie im Bearbeitungsmodus, nichts mehr anfassbar */
+.cal-col--past .cal-col__body > * { opacity: 0.5; pointer-events: none; }
+.cal-col--past .cal-col__head { color: var(--text-40); }
+.cal-col--past .cal-col__date { color: var(--text-25); }
 
 /* neu hinzukommende Slots (abgelegt + Vorschau): so hell wie gehovert */
 .cal-item.is-target .cal-slot__inner,
@@ -524,6 +535,14 @@
   border-radius: 0;
 }
 
+/* „Expired“: zeitlich begrenzt und ausgelaufen – ganz unten, gedämpft */
+.cal-tray__group--expired {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: var(--hairline);
+  border-radius: 0;
+}
+
 .cal-tray__note {
   margin: -4px 0 6px 2px;
   font-size: 11.5px;
@@ -571,6 +590,9 @@
 }
 
 .cal-tray__item.is-new:hover { background: var(--white-6); }
+
+.cal-tray__item.is-expired { opacity: 0.5; transition: background var(--dur) var(--ease), opacity var(--dur) var(--ease); }
+.cal-tray__item.is-expired:hover { opacity: 0.85; }
 
 /* ---- Einstellungen im Ready-Feld ---- */
 .cal-repeat__head { display: flex; align-items: center; gap: 9px; }

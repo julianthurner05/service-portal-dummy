@@ -47,7 +47,6 @@ function weekRangeLabel(days) {
 }
 
 function renderCalendar() {
-  closeRepeat();
   litSpot = null;
   const days = calWeekDays(calWeekStart);
   calRange.textContent = weekRangeLabel(days);
@@ -59,7 +58,9 @@ function renderCalendar() {
   let html = timeColumn();
 
   days.forEach((date, di) => {
-    html += `<div class="cal-col${sameDay(date, today) ? ' cal-col--today' : ''}" data-day="${di}">
+    /* vergangener Tag: nur noch zum Nachsehen – kein Ziehen, Löschen, Ablegen */
+    const past = dayStart(date) < dayStart(today);
+    html += `<div class="cal-col${sameDay(date, today) ? ' cal-col--today' : ''}${past ? ' cal-col--past' : ''}" data-day="${di}">
       <div class="cal-col__head">${DAY_NAMES[di].slice(0, 3)}<span class="cal-col__date">${date.getDate()}</span></div>
       <div class="cal-col__body">`;
 
@@ -80,10 +81,10 @@ function renderCalendar() {
       const it = items.find(i => i.day === di && i.slot === s);
       if (it) {
         const spot = spotById(it.spotId);
-        html += `<div class="cal-slot cal-slot--spot cal-item" draggable="true" data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
+        html += `<div class="cal-slot cal-slot--spot cal-item"${past ? '' : ' draggable="true"'} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
-            <button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>
+            ${past ? '' : `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>`}
           </div>`;
         continue;
       }
@@ -110,6 +111,17 @@ function renderCalendar() {
   renderTray();
   renderNowLine();
   syncHeadHeight();
+
+  /* Bearbeitungsmodus übersteht den Wochenwechsel; er endet erst, wenn der
+     abgelegte Slot weg ist (Remove, Undo …) */
+  if (repeat) {
+    if (weekItems(repeat.week).some(i => i.id === repeat.item.id)) {
+      calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`)?.classList.add('is-target');
+      paintPreview();
+    } else {
+      closeRepeat();
+    }
+  }
 }
 
 /* Tageszeile und Liste docken direkt unter der (sticky) Kopfzeile an. Sticky-
@@ -128,18 +140,21 @@ window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeig
 
 /* ---- Liste „Ready for Schedule“ ----
    Gruppen je Kategorie (Opening/Closing vergibt sounddna – keine Gruppe),
-   darunter „New“ für frisch freigegebene Spots ohne Kategorie */
+   darunter „New“ für frisch freigegebene Spots ohne Kategorie und ganz
+   unten „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
 const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
 
-const trayItem = s => `
-  <div class="cal-tray__item${s.category ? '' : ' is-new'}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
+const trayItem = (s, expired) => `
+  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
   </div>`;
 
 function renderTray() {
   const all = paletteSpots();
   const q = calTraySearch.value.trim().toLowerCase();
-  const list = all.filter(s => s.title.toLowerCase().includes(q));
+  const found = all.filter(s => s.title.toLowerCase().includes(q));
+  const expired = found.filter(isSpotExpired);
+  const list = found.filter(s => !expired.includes(s));
 
   /* Gruppen bleiben auch leer stehen – sie sind Ablageziele; nur beim Suchen
      verschwinden leere */
@@ -149,7 +164,7 @@ function renderTray() {
     return `
       <div class="cal-tray__group" data-cat="${cat.value}">
         <p class="cal-tray__cat"><span class="cal-tray__dot" style="background:${cat.color}"></span>${cat.label}<span class="cal-tray__count">${group.length}</span></p>
-        ${group.length ? group.map(trayItem).join('') : '<p class="cal-tray__none">Drop a spot here</p>'}
+        ${group.length ? group.map(s => trayItem(s)).join('') : '<p class="cal-tray__none">Drop a spot here</p>'}
       </div>`;
   }).join('');
 
@@ -159,11 +174,21 @@ function renderTray() {
       <div class="cal-tray__group cal-tray__group--new">
         <p class="cal-tray__cat">New<span class="cal-tray__count">${fresh.length}</span></p>
         <p class="cal-tray__note">Drag into a category to schedule.</p>
-        ${fresh.map(trayItem).join('')}
+        ${fresh.map(s => trayItem(s)).join('')}
+      </div>`;
+  }
+
+  /* wieder einplanen holt einen abgelaufenen Spot zurück in seine Gruppe */
+  if (expired.length) {
+    html += `
+      <div class="cal-tray__group cal-tray__group--expired">
+        <p class="cal-tray__cat">Expired<span class="cal-tray__count">${expired.length}</span></p>
+        <p class="cal-tray__note">Time-limited runs that have ended.</p>
+        ${expired.map(s => trayItem(s, true)).join('')}
       </div>`;
   }
   calTrayList.innerHTML = html;
-  calTrayEmpty.hidden = list.length > 0 || !q;
+  calTrayEmpty.hidden = found.length > 0 || !q;
   calTrayEmpty.textContent = 'No spots match your search.';
 }
 
@@ -176,7 +201,7 @@ let litSpot = null;
 function setLit(spotId) {
   if (spotId === litSpot) return;
   litSpot = spotId;
-  calGrid.querySelectorAll('.cal-item').forEach(el =>
+  calGrid.querySelectorAll('.cal-col:not(.cal-col--past) .cal-item').forEach(el =>
     el.classList.toggle('is-lit', spotId !== null && el.dataset.spot === spotId));
 }
 
@@ -236,7 +261,7 @@ const isCopy = e => calDrag && calDrag.from === 'grid' && e.altKey;
 
 const dropCell = e => {
   const cell = e.target.closest('.cal-cell');
-  return cell && !cell.classList.contains('cal-slot--closed') ? cell : null;
+  return cell && !cell.classList.contains('cal-slot--closed') && !cell.closest('.cal-col--past') ? cell : null;
 };
 
 function clearDropMarks() {
@@ -462,7 +487,7 @@ function daysLabel(days) {
   return run ? `${DAYS[idx[0]]}–${DAYS[idx[idx.length - 1]]}` : idx.map(i => DAYS[i]).join(', ');
 }
 
-let repeat = null;                    /* { item, spot, date, mode: 'day'|'weekly', days: Set, run, perDay: 'once'|'repeat', every, until } */
+let repeat = null;                    /* { item, week, spot, date, mode: 'day'|'weekly', days: Set, end, perDay: 'once'|'repeat', every, until } */
 
 /* Uhrzeiten eines Tages mit der aktuellen Einstellung (Slot-Indizes) */
 function repeatSlots(r) {
@@ -492,7 +517,7 @@ function openRepeat(item) {
   const date = calWeekDays(calWeekStart)[item.day];
   const lastStart = slotTime(CAL_SLOTS - 1);
   const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
-  repeat = { item, spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until };
+  repeat = { item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until };
   calTray.classList.add('is-editing');
   calTray.style.cssText = catStyle(spot.category);
   calTraySettings.hidden = false;
@@ -564,8 +589,9 @@ function renderRepeat() {
   paintPreview();
 }
 
-/* Vorschau: in diesen freien Zellen der Woche landet der Spot mit der
-   aktuellen Einstellung – leicht angedeutet, bevor man „Done“ drückt */
+/* Vorschau: in diesen freien Zellen der angezeigten Woche landet der Spot mit
+   der aktuellen Einstellung – leicht angedeutet, bevor man „Done“ drückt.
+   Auch in anderen Wochen, solange die Bearbeitung offen ist. */
 function clearPreview() {
   calGrid.querySelectorAll('.cal-cell.is-preview').forEach(cell => {
     cell.classList.remove('is-preview');
@@ -581,11 +607,12 @@ function paintPreview() {
   const end = endOf(r);
   const rule = { days: [...r.days], start: dayStart(r.date), end: end ? dayStart(end) : null };
   const slots = repeatSlots(r);
+  const own = sameDay(calWeekStart, r.week);
   calWeekDays(calWeekStart).forEach((date, di) => {
-    const onDay = r.mode === 'weekly' ? seriesOn(rule, date, di) : di === r.item.day;
+    const onDay = r.mode === 'weekly' ? seriesOn(rule, date, di) : own && di === r.item.day;
     if (!onDay) return;
     slots.forEach(slot => {
-      if (di === r.item.day && slot === r.item.slot) return;
+      if (own && di === r.item.day && slot === r.item.slot) return;
       const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]:not(.cal-slot--closed)`);
       if (!cell) return;                         /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
       cell.classList.add('is-preview');
@@ -621,7 +648,7 @@ calTraySettings.addEventListener('click', e => {
   else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
   else if (act && act.dataset.act === 'remove') {
     recordUndo();
-    removeItem(calWeekStart, r.item.id);
+    removeItem(r.week, r.item.id);
     renderCalendar();
     return;
   } else if (act && act.dataset.act === 'done') {
@@ -640,14 +667,14 @@ function applyRepeat() {
     if (slots.length === 1) { closeRepeat(); return; }
     recordUndo();
     let skipped = 0;
-    slots.slice(1).forEach(slot => { if (!placeSpot(calWeekStart, r.spot.id, r.item.day, slot)) skipped++; });
+    slots.slice(1).forEach(slot => { if (!placeSpot(r.week, r.spot.id, r.item.day, slot)) skipped++; });
     showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
   } else {
     const days = DAYS.filter(d => r.days.has(d));
     const end = endOf(r);
     recordUndo();
     /* der abgelegte Slot geht in der Serie auf */
-    removeItem(calWeekStart, r.item.id);
+    removeItem(r.week, r.item.id);
     const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: r.date, end });
     showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
   }

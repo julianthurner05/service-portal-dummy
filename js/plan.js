@@ -339,6 +339,37 @@ function addSeries({ spotId, days, slots, start, end = null }) {
   return { series: r, placed, skipped };
 }
 
+/* ---------------------------------------------------------------
+   Abgelaufen: ein Spot war nur zeitlich begrenzt geplant (Basisplan mit
+   Enddatum bzw. Serien mit „Runs until“), alle Zeiträume sind vorbei und
+   er hat in dieser und den kommenden Wochen keine Slots mehr
+   --------------------------------------------------------------- */
+function spotEnd(spot) {
+  const ends = [];
+  let open = false;
+  BASE_PLAN.forEach(e => {
+    if (e.fixed || e.spot !== spot.title) return;
+    if (e.end) ends.push(parseDate(e.end)); else open = true;
+  });
+  userSeries.forEach(r => {
+    if (r.spotId !== spot.id) return;
+    if (r.end) ends.push(r.end); else open = true;
+  });
+  if (open || !ends.length) return null;            /* unbefristet oder nie geplant */
+  return new Date(Math.max(...ends));
+}
+
+function isSpotExpired(spot) {
+  const end = spotEnd(spot);
+  const today = dayStart(new Date());
+  if (!end || end >= today) return false;
+  const thisWeek = mondayOf(today);
+  for (const [key, items] of weeks) {
+    if (parseDate(key) >= thisWeek && items.some(i => i.spotId === spot.id)) return false;
+  }
+  return true;
+}
+
 /* frei für einen Spot: offen, keine Quiet Hour, kein fixer und kein anderer Slot */
 function cellFree(monday, dayI, slot, ignoreId = null) {
   if (dayI < 0 || dayI >= CAL_DAYS || slot < 0 || slot >= CAL_SLOTS || cellBlocked(dayI, slot)) return false;
