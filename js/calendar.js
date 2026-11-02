@@ -504,7 +504,6 @@ function renderRepeat() {
   const r = repeat;
   const weekly = r.mode === 'weekly';
   const repeating = r.perDay === 'repeat';
-  const time = slotTime(r.item.slot);
 
   calTraySettings.innerHTML = `
     <div class="cal-repeat__head">
@@ -512,7 +511,6 @@ function renderRepeat() {
       <p class="cal-repeat__title">${escapeHtml(r.spot.title)}</p>
       <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
     </div>
-    <p class="cal-repeat__when">${longDate(r.date)} · ${time}</p>
 
     <p class="cal-repeat__label">Days</p>
     <div class="cal-seg">

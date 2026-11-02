@@ -574,13 +574,6 @@
   text-overflow: ellipsis;
 }
 
-.cal-repeat__when {
-  margin: 4px 0 4px 17px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-}
-
 .cal-repeat__label {
   margin: 18px 0 8px;
   font-size: var(--fs-small);
