@@ -221,14 +221,17 @@
    der abgelegte Slot und die Vorschau – so sähen die neuen Slots aus –
    stehen in voller Farbe davor */
 .calendar-view.is-editing .cal-item:not(.is-target),
-.calendar-view.is-editing .cal-quiet { opacity: 0.3; }
-.calendar-view.is-editing .cal-item { transition: opacity var(--dur) var(--ease); }
+.calendar-view.is-editing .cal-quiet { opacity: 0.5; }
+.calendar-view.is-editing .cal-item { transition: opacity var(--dur) var(--ease); pointer-events: none; }
 
+/* neu hinzukommende Slots (abgelegt + Vorschau): so hell wie gehovert */
+.cal-item.is-target .cal-slot__inner,
 .cal-cell.is-preview .cal-slot__inner {
-  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+  background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
 }
 
-.cal-cell.is-preview .cal-item__label { color: var(--text-80); }
+.cal-item.is-target .cal-item__label,
+.cal-cell.is-preview .cal-item__label { color: #ffffff; }
 
 /* eingeplanter Spot: gedämpfte Kategoriefarbe, kräftig nur beim Hover */
 .cal-slot--spot .cal-slot__inner {

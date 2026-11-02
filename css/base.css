@@ -133,16 +133,16 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   border-right: var(--hairline);
 }
 
-/* Logo-Feld oben: links und rechts so viel Abstand, wie die Menü-Icons zum
-   linken Rand haben (Sidebar 14px + Menüpunkt 12px) – das Logo füllt die
-   Breite dazwischen; darunter eine Linie von Rand zu Rand */
+/* Logo-Feld oben: links so viel Abstand, wie die Menü-Icons zum linken Rand
+   haben (Sidebar 14px + Menüpunkt 12px), damit das Logo bündig über den Icons
+   beginnt; darunter eine Linie von Rand zu Rand */
 .sidebar__brand {
   margin: 0 -12px 0 -14px;
   padding: 22px 26px;
   border-bottom: var(--hairline);
 }
 
-.sidebar__logo { display: block; width: 100%; max-width: 180px; }
+.sidebar__logo { display: block; width: 100%; max-width: 124px; }
 
 .sidebar__nav {
   margin-top: 20px;
