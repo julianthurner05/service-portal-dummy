@@ -432,6 +432,8 @@ function closeRepeat() {
   calTraySettings.innerHTML = '';
   calTray.classList.remove('is-editing');
   calTray.removeAttribute('style');
+  calendarView.classList.remove('is-editing');
+  calGrid.querySelectorAll('.cal-item.is-target').forEach(el => el.classList.remove('is-target'));
 }
 
 function openRepeat(item) {
@@ -444,6 +446,9 @@ function openRepeat(item) {
   calTray.classList.add('is-editing');
   calTray.style.cssText = catStyle(spot.category);
   calTraySettings.hidden = false;
+  /* Bearbeitungsmodus: bestehende Slots treten zurück, der abgelegte bleibt */
+  calendarView.classList.add('is-editing');
+  calGrid.querySelector(`.cal-item[data-id="${item.id}"]`)?.classList.add('is-target');
   renderRepeat();
 }
 

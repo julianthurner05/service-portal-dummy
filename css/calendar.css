@@ -217,14 +217,18 @@
   box-shadow: inset 0 0 0 1px var(--white-25);
 }
 
-/* Vorschau aus dem Wiederholen-Fenster: hier landet der Spot mit der
-   aktuellen Einstellung – nur angedeutet */
+/* Bearbeitungsmodus (nach dem Ablegen): die bestehenden Slots treten zurück,
+   der abgelegte Slot und die Vorschau – so sähen die neuen Slots aus –
+   stehen in voller Farbe davor */
+.calendar-view.is-editing .cal-item:not(.is-target),
+.calendar-view.is-editing .cal-quiet { opacity: 0.3; }
+.calendar-view.is-editing .cal-item { transition: opacity var(--dur) var(--ease); }
+
 .cal-cell.is-preview .cal-slot__inner {
-  background: color-mix(in srgb, var(--cat) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat) 45%, transparent);
+  background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
 }
 
-.cal-cell.is-preview .cal-item__label { color: var(--text-40); }
+.cal-cell.is-preview .cal-item__label { color: var(--text-80); }
 
 /* eingeplanter Spot: gedämpfte Kategoriefarbe, kräftig nur beim Hover */
 .cal-slot--spot .cal-slot__inner {
@@ -355,11 +359,13 @@
 }
 
 /* ---- Liste „Ready for Schedule“ rechts – bleibt beim Scrollen stehen ---- */
+/* volle verfügbare Höhe; ist die Liste länger, scrollt sie innen – wie die
+   Creation History */
 .cal-tray {
   position: sticky;
   top: var(--head-h);
   width: var(--tray-w);
-  max-height: calc(100vh - var(--head-h) - 24px);
+  height: calc(100vh - var(--main-pad) - var(--head-h) - 24px);
   flex: none;
   display: flex;
   flex-direction: column;
@@ -372,16 +378,50 @@
 
 .cal-tray.is-drop { box-shadow: inset 0 0 0 1px var(--white-25); }
 
-/* nach dem Ablegen: das Feld färbt sich in der Kategoriefarbe des Spots ein
-   und zeigt statt der Liste die Einstellungen */
-.cal-tray.is-editing { background: color-mix(in srgb, var(--cat) var(--cat-tint), var(--mittelblau)); }
+/* nach dem Ablegen: dasselbe Feld (gleiche Größe) füllt sich mit der
+   Kategoriefarbe und zeigt statt der Liste die Einstellungen. Farben wie im
+   Bearbeiten-Modus des alten Schedulers: Fläche dunkel in der Kategorie,
+   darauf nur Weiß-Abstufungen; Aktives ist weiß mit Schrift in Feldfarbe. */
+.cal-tray.is-editing {
+  --edit-bg:          color-mix(in srgb, var(--cat) var(--cat-tint), var(--cat-base));
+  --edit-field:       var(--white-6);
+  --edit-field-hover: var(--white-10);
+  --edit-on:          #ffffff;
+  --edit-on-ink:      var(--edit-bg);
+  --edit-pop:         color-mix(in srgb, #ffffff 7%, var(--edit-bg));
+  background: var(--edit-bg);
+}
+
 .cal-tray.is-editing > :not(.cal-tray__settings) { display: none; }
 
 .cal-tray__settings {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  animation: view-in 220ms var(--ease);
+  animation: cal-fade var(--dur) var(--ease);
 }
+
+@keyframes cal-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.cal-tray.is-editing .cal-seg,
+.cal-tray.is-editing .cal-chip,
+.cal-tray.is-editing .dropdown__toggle { background: var(--edit-field); color: var(--text-80); }
+
+.cal-tray.is-editing .cal-chip:hover,
+.cal-tray.is-editing .dropdown__toggle:hover,
+.cal-tray.is-editing .dropdown.is-open .dropdown__toggle { background: var(--edit-field-hover); }
+
+.cal-tray.is-editing .cal-seg__opt { color: var(--text-55); }
+.cal-tray.is-editing .cal-seg__opt:hover { color: var(--text-80); }
+
+.cal-tray.is-editing .cal-seg__opt.is-active,
+.cal-tray.is-editing .cal-chip.is-active,
+.cal-tray.is-editing .cal-chip.is-active:hover { background: var(--edit-on); color: var(--edit-on-ink); }
+
+.cal-tray.is-editing .dropdown__menu { background: var(--edit-pop); }
+.cal-tray.is-editing .ghost-btn--invert { color: var(--edit-on-ink); }
 
 .cal-tray__title {
   margin-bottom: 16px;
@@ -601,7 +641,8 @@
 .cal-repeat__foot {
   display: flex;
   justify-content: space-between;
-  margin-top: 22px;
+  margin-top: auto;
+  padding-top: 22px;
 }
 
 .cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }
@@ -617,5 +658,5 @@
     overflow-x: auto;
   }
   .cal-col__head { position: static; }
-  .cal-tray { position: static; width: 100%; max-height: none; }
+  .cal-tray { position: static; width: 100%; height: auto; }
 }
