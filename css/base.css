@@ -196,9 +196,10 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   margin: 20px 0 6px 12px;
 }
 
+/* die Linie darüber geht von Rand zu Rand (über den Innenabstand der Sidebar) */
 .sidebar__bottom {
-  margin-top: auto;
-  padding-top: 12px;
+  margin: auto -12px 0 -14px;
+  padding: 12px 12px 0 14px;
   border-top: var(--hairline);
   display: flex;
   flex-direction: column;
@@ -983,6 +984,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   }
 
   .sidebar.is-open { transform: none; }
+  .sidebar__bottom { margin: auto -16px 0 -18px; padding: 12px 16px 0 18px; }
   .sidebar__logo { width: 120px; margin-top: 0; }
   .sidebar__nav { margin-top: 40px; flex-direction: column; gap: 4px; }
   .nav-item { justify-content: flex-start; padding: 0 14px; height: 44px; }
