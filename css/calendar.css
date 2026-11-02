@@ -529,12 +529,10 @@
   border-radius: 0;
 }
 
-/* „Expired“: zeitlich begrenzt und ausgelaufen – ganz unten, gedämpft */
+/* „Expired“: zeitlich begrenzt und ausgelaufen – ganz unten, ohne Linie */
 .cal-tray__group--expired {
   margin-top: 4px;
   padding-top: 16px;
-  border-top: var(--hairline);
-  border-radius: 0;
 }
 
 .cal-tray__cat {
