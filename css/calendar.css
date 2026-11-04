@@ -264,6 +264,12 @@
 .cal-item.is-target .cal-item__label,
 .cal-cell.is-preview .cal-item__label { color: #ffffff; }
 
+/* fällt mit der Änderung weg: die Zelle steht leer */
+.calendar-view.is-editing .cal-item.is-removed { opacity: 1; }
+.cal-item.is-removed .cal-slot__inner { background: var(--white-3); }
+.cal-item.is-removed .cal-item__label,
+.cal-item.is-removed .cal-item__x { visibility: hidden; }
+
 /* belegt von einem anderen Spot: rot umrandet und voll sichtbar; mit
    „Replace taken slots“ steht dort stattdessen der neue Spot */
 .calendar-view.is-editing .cal-item.is-conflict { opacity: 1; }

@@ -730,6 +730,10 @@ function repeatSlots(r) {
 
 const isWeekly = r => r.kind === 'series' || r.mode === 'weekly';
 
+/* Serienbeginn: bestehende Serie wie gehabt; neue Serien gelten ab dem
+   Montag ihrer Woche (Gespieltes wird beim Eintragen übersprungen) */
+const repeatStart = r => (r.kind === 'series' ? r.start : mondayOf(r.date));
+
 /* gibt es noch, worum es geht? (sonst endet die Bearbeitung) */
 const repeatAlive = () => (repeat.kind === 'series'
   ? (repeat.series ? userSeries.includes(repeat.series) : spots.includes(repeat.spot) && !repeat.spot.retired)
@@ -789,7 +793,7 @@ function openSeries(spot, series = null) {
   closeRepeat();
   repeat = {
     kind: 'series', item: null, week: new Date(calWeekStart), spot, series,
-    start: series ? series.start : dayStart(new Date()),
+    start: series ? series.start : mondayOf(new Date()),
     days: new Set(series ? series.days : []), end: series && series.end ? fmtDate(series.end) : null,
     times: series ? [...series.slots].sort((a, b) => a - b) : [], override: false,
   };
@@ -916,27 +920,49 @@ function renderRepeat() {
 
 /* Vorschau in der angezeigten Woche (auch beim Wochenwechsel):
    keep     – Slots, die bleiben bzw. neu sind (hell)
-   place    – freie Zellen, in die der Spot neu kommt (hell angedeutet)
+   place    – freie Zellen, in die der Spot neu kommt (hell angedeutet); auf
+              schon gespielten Zellen nur zum Ansehen (ausgegraut) – dort
+              kommt nichts dazu
+   remove   – Slots der Serie, die mit der Änderung wegfallen: Zelle steht leer
    conflict – belegt von einem anderen Spot: rot umrandet, mit „Replace
               taken slots“ steht dort stattdessen der neue Spot */
 function previewCells() {
   const r = repeat;
-  const out = { keep: [], place: [], conflict: [] };
+  const out = { keep: [], place: [], remove: [], conflict: [] };
   const own = sameDay(calWeekStart, r.week);
   if (r.kind !== 'series' && own) out.keep.push(r.item.id);
-  if (!repeatValid(r)) return out;
   const items = weekItems(calWeekStart);
+  const dates = calWeekDays(calWeekStart);
+  const ours = it => r.kind === 'series' && r.series && it.seriesId === r.series.id;
+  if (!repeatValid(r)) {
+    /* ohne Tage fällt die ganze Serie weg, sonst (z. B. Enddatum fehlt) bleibt sie */
+    items.forEach(it => {
+      if (ours(it) && it.slot >= playedSlots(dates[it.day])) (r.days.size ? out.keep : out.remove).push(it.id);
+    });
+    return out;
+  }
   const end = endOf(r);
-  const rule = { days: [...r.days], start: r.kind === 'series' ? r.start : dayStart(r.date), end: end ? dayStart(end) : null };
+  const rule = { days: [...r.days], start: repeatStart(r), end: end ? dayStart(end) : null };
+  /* Gespieltes zeigt die Vorschau ab der Startwoche */
+  const pastRule = { ...rule, start: mondayOf(rule.start) };
   const slots = repeatSlots(r);
-  calWeekDays(calWeekStart).forEach((date, di) => {
-    const onDay = isWeekly(r) ? seriesOn(rule, date, di) : own && di === r.item.day;
-    if (!onDay) return;
+  dates.forEach((date, di) => {
     const played = playedSlots(date);
+    const on = isWeekly(r) ? seriesOn(rule, date, di) : own && di === r.item.day;
+    const onPast = isWeekly(r) ? seriesOn(pastRule, date, di) : on;
+    items.forEach(it => {
+      if (it.day === di && ours(it) && it.slot >= played && !(on && slots.includes(it.slot))) out.remove.push(it.id);
+    });
     slots.forEach(slot => {
-      if (slot < played) return;
       const it = items.find(i => i.day === di && i.slot === slot);
-      if (it && r.kind === 'series' && r.series && it.seriesId === r.series.id) { out.keep.push(it.id); return; }
+      if (slot < played) {
+        if (!onPast) return;
+        if (it && it.spotId === r.spot.id) out.keep.push(it.id);
+        else if (!it && cellFree(calWeekStart, di, slot)) out.place.push({ di, slot });
+        return;
+      }
+      if (!on) return;
+      if (it && ours(it)) { out.keep.push(it.id); return; }
       if (it && r.kind !== 'series' && it.id === r.item.id) return;
       /* derselbe Spot läuft dort schon (andere Serie) – bleibt, kein Konflikt */
       if (it && it.spotId === r.spot.id) { out.keep.push(it.id); return; }
@@ -953,7 +979,7 @@ function clearPreview() {
     cell.removeAttribute('style');
     cell.querySelector('.cal-item__label')?.remove();
   });
-  calGrid.querySelectorAll('.cal-item.is-target').forEach(el => el.classList.remove('is-target'));
+  calGrid.querySelectorAll('.cal-item.is-target, .cal-item.is-removed').forEach(el => el.classList.remove('is-target', 'is-removed'));
   calGrid.querySelectorAll('.cal-item.is-conflict').forEach(el => {
     if (el.classList.contains('is-replace')) {
       el.setAttribute('style', el.dataset.origStyle);
@@ -969,6 +995,7 @@ function paintPreview() {
   const r = repeat;
   const p = previewCells();
   p.keep.forEach(id => calGrid.querySelector(`.cal-item[data-id="${id}"]`)?.classList.add('is-target'));
+  p.remove.forEach(id => calGrid.querySelector(`.cal-item[data-id="${id}"]`)?.classList.add('is-removed'));
   p.place.forEach(({ di, slot }) => {
     const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]`);
     if (!cell) return;
@@ -1074,7 +1101,7 @@ function applyRepeat() {
     recordUndo();
     /* der Slot geht in der Serie auf */
     removeItem(r.week, r.item.id);
-    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: r.date, end, override: r.override });
+    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: repeatStart(r), end, override: r.override });
     showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
   }
   closeRepeat();
