@@ -27,8 +27,9 @@
   body.view-calendar .main { padding-block: calc(var(--main-x) + 4px); }
 }
 
-/* ---- Streifen oben – kein Titel mehr, über dem Kalender nur der Rand. Der Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt
-   darunter weg; Ruhe- und Andockposition sind gleich. ---- */
+/* ---- Streifen oben – kein Titel mehr, über dem Kalender nur der Rand. Der
+   Streifen (Seitenfarbe) bleibt stehen, der Kalender scrollt darunter weg;
+   Ruhe- und Andockposition sind gleich. ---- */
 .cal-head {
   position: sticky;
   top: calc(-1 * var(--main-pad));
@@ -36,30 +37,6 @@
   height: var(--top-gap);
   margin-top: calc(-1 * var(--main-pad));
   background: var(--dunkelblau);
-}
-
-/* Die runden oberen Ecken des Rasters bleiben beim Scrollen: zwei Eck-Masken
-   in Seitenfarbe hängen direkt unter der Kopfzeile an der linken und rechten
-   Rasterkante und runden die angedockte Tageszeile ab. In Ruhe liegen sie
-   genau auf den echten Ecken (die Kopfzeile endet an der Rasteroberkante). */
-.cal-head::before,
-.cal-head::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  width: var(--radius-lg);
-  height: var(--radius-lg);
-  pointer-events: none;
-}
-
-.cal-head::before {
-  left: 0;
-  background: radial-gradient(circle at 100% 100%, transparent calc(var(--radius-lg) - 0.5px), var(--dunkelblau) var(--radius-lg));
-}
-
-.cal-head::after {
-  right: calc(var(--tray-w) + var(--layout-gap));
-  background: radial-gradient(circle at 0 100%, transparent calc(var(--radius-lg) - 0.5px), var(--dunkelblau) var(--radius-lg));
 }
 
 /* ---- Woche wechseln – kleine Leiste unten mittig über dem Kalender; sie
@@ -144,10 +121,9 @@
   min-width: 0;
   display: grid;
   grid-template-columns: 50px repeat(var(--cal-days, 6), minmax(0, 1fr));
-  /* unten Platz für die Wochen-Leiste, damit sie am Ende keine Slots verdeckt */
-  padding: var(--pad-box) var(--pad-box) 80px 0;
-  background: var(--mittelblau);
-  border-radius: var(--radius-lg);
+  /* ohne Rahmen direkt auf der Seite (wie das SpotTool); unten Platz für
+     die Wochen-Leiste, damit sie am Ende keine Slots verdeckt */
+  padding-bottom: 80px;
 }
 
 .cal-col {
@@ -170,7 +146,7 @@
   justify-content: center;
   gap: 8px;
   padding-bottom: 12px;
-  background: var(--mittelblau);
+  background: var(--dunkelblau);
   font-size: var(--fs-base);
   color: var(--text-80);
 }
