@@ -248,7 +248,15 @@ calTrayList.addEventListener('click', e => {
   if (e.target.closest('.cal-tray__toggle')) {
     expiredOpen = !expiredOpen;
     renderTray();
+    return;
   }
+  /* Klick auf einen Spot: seine Serie bearbeiten – ohne Serie eine neue
+     anlegen; Spots ohne Kategorie lassen sich noch nicht einplanen */
+  const item = e.target.closest('.cal-tray__item');
+  const spot = item && spotById(+item.dataset.spot);
+  if (!spot || !spot.category) return;
+  setLit(null);
+  openSeries(spot, spotSeries(spot.id)[0] || null);
 });
 
 /* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
@@ -519,7 +527,8 @@ calGrid.addEventListener('click', e => {
   if (!el || calendarView.classList.contains('is-editing')) return;
   const it = weekItems(calWeekStart).find(i => i.id === +el.dataset.id);
   if (!it) return;
-  if (it.seriesId && userSeries.some(r => r.id === it.seriesId)) openSeries(it);
+  const series = it.seriesId && userSeries.find(r => r.id === it.seriesId);
+  if (series) openSeries(spotById(it.spotId), series);
   else openRepeat(it, 'single');
 });
 
@@ -723,7 +732,7 @@ const isWeekly = r => r.kind === 'series' || r.mode === 'weekly';
 
 /* gibt es noch, worum es geht? (sonst endet die Bearbeitung) */
 const repeatAlive = () => (repeat.kind === 'series'
-  ? userSeries.includes(repeat.series)
+  ? (repeat.series ? userSeries.includes(repeat.series) : spots.includes(repeat.spot) && !repeat.spot.retired)
   : weekItems(repeat.week).some(i => i.id === repeat.item.id));
 
 /* Einstellung vollständig? (Tage gewählt, Enddatum gesetzt, Uhrzeiten da) */
@@ -764,17 +773,41 @@ function openRepeat(item, kind = 'drop') {
   renderRepeat();
 }
 
-function openSeries(item) {
+/* Serien eines Spots, die noch laufen oder kommen (nach Wochentag sortiert);
+   ist alles vorbei, die zuletzt gelaufene – zum Verlängern */
+function spotSeries(spotId) {
+  const today = dayStart(new Date());
+  const own = userSeries.filter(r => r.spotId === spotId);
+  const live = own.filter(r => !r.end || r.end >= today);
+  if (!live.length && own.length) return [own.reduce((a, b) => (b.end > a.end ? b : a))];
+  const first = r => Math.min(...r.days.map(d => DAYS.indexOf(d))) * CAL_SLOTS + Math.min(...r.slots);
+  return live.sort((a, b) => first(a) - first(b));
+}
+
+/* series null: neue Serie ab heute */
+function openSeries(spot, series = null) {
   closeRepeat();
-  const series = userSeries.find(r => r.id === item.seriesId);
-  const spot = spotById(item.spotId);
   repeat = {
-    kind: 'series', item, week: new Date(calWeekStart), spot, date: calWeekDays(calWeekStart)[item.day],
-    series, days: new Set(series.days), end: series.end ? fmtDate(series.end) : null,
-    times: [...series.slots].sort((a, b) => a - b), override: false,
+    kind: 'series', item: null, week: new Date(calWeekStart), spot, series,
+    start: series ? series.start : dayStart(new Date()),
+    days: new Set(series ? series.days : []), end: series && series.end ? fmtDate(series.end) : null,
+    times: series ? [...series.slots].sort((a, b) => a - b) : [], override: false,
   };
   enterEditing(spot);
   renderRepeat();
+}
+
+/* Auswahl, wenn ein Spot mehrere Serien hat (z. B. Mittwoch mit eigenen Zeiten) */
+function seriesPicker(r) {
+  const list = spotSeries(r.spot.id);
+  if (r.series && !list.includes(r.series)) list.push(r.series);
+  if (list.length < 2) return '';
+  const labels = list.map(x => daysLabel(x.days));
+  return `
+    <p class="cal-repeat__label">Series</p>
+    <div class="cal-chips cal-chips--flush cal-series">
+      ${list.map((x, i) => `<button class="cal-chip${x === r.series ? ' is-active' : ''}" data-series="${x.id}" type="button">${labels[i]}${labels.indexOf(labels[i]) !== i || labels.lastIndexOf(labels[i]) !== i ? ` · ${slotTime(Math.min(...x.slots))}` : ''}</button>`).join('')}
+    </div>`;
 }
 
 /* Audio des Spots zum Anhören – bei getauschtem Audio steht dessen Name dabei */
@@ -818,6 +851,8 @@ function renderRepeat() {
       <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
       <span class="card__time"></span>
     </div>
+
+    ${series ? seriesPicker(r) : ''}
 
     <p class="cal-repeat__label">Days</p>
     ${series ? `${dayChips.replace('cal-chips--days', 'cal-chips--days cal-chips--flush')}${endField}` : `
@@ -892,7 +927,7 @@ function previewCells() {
   if (!repeatValid(r)) return out;
   const items = weekItems(calWeekStart);
   const end = endOf(r);
-  const rule = { days: [...r.days], start: r.kind === 'series' ? r.series.start : dayStart(r.date), end: end ? dayStart(end) : null };
+  const rule = { days: [...r.days], start: r.kind === 'series' ? r.start : dayStart(r.date), end: end ? dayStart(end) : null };
   const slots = repeatSlots(r);
   calWeekDays(calWeekStart).forEach((date, di) => {
     const onDay = isWeekly(r) ? seriesOn(rule, date, di) : own && di === r.item.day;
@@ -901,8 +936,10 @@ function previewCells() {
     slots.forEach(slot => {
       if (slot < played) return;
       const it = items.find(i => i.day === di && i.slot === slot);
-      if (it && r.kind === 'series' && it.seriesId === r.series.id) { out.keep.push(it.id); return; }
+      if (it && r.kind === 'series' && r.series && it.seriesId === r.series.id) { out.keep.push(it.id); return; }
       if (it && r.kind !== 'series' && it.id === r.item.id) return;
+      /* derselbe Spot läuft dort schon (andere Serie) – bleibt, kein Konflikt */
+      if (it && it.spotId === r.spot.id) { out.keep.push(it.id); return; }
       if (it) { out.conflict.push(it.id); return; }
       if (cellFree(calWeekStart, di, slot)) out.place.push({ di, slot });
     });
@@ -960,6 +997,12 @@ calTraySettings.addEventListener('click', e => {
   const day = e.target.closest('[data-day]');
   const time = e.target.closest('[data-time]');
   const act = e.target.closest('[data-act]');
+  const pick = e.target.closest('[data-series]');
+  if (pick) {
+    const next = userSeries.find(x => x.id === +pick.dataset.series);
+    if (next && next !== r.series) openSeries(r.spot, next);
+    return;
+  }
   /* ohne Häkchen gilt „dieser Tag“ bzw. „einmal“ */
   if (check && check.dataset.check === 'weekly') r.mode = r.mode === 'weekly' ? 'day' : 'weekly';
   else if (check && check.dataset.check === 'repeat') r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
@@ -1008,8 +1051,11 @@ function applyRepeat() {
   const days = DAYS.filter(d => r.days.has(d));
   if (r.kind === 'series') {
     recordUndo();
-    const { skipped } = updateSeries(r.series.id, { days, slots: [...slots], end, override: r.override });
-    showToast('success', `“${r.spot.title}” now runs every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
+    const { skipped } = r.series
+      ? updateSeries(r.series.id, { days, slots: [...slots], end, override: r.override })
+      : addSeries({ spotId: r.spot.id, days, slots: [...slots], start: r.start, end, override: r.override });
+    if (!r.series) spotPlaced(r.spot);
+    showToast('success', `“${r.spot.title}” ${r.series ? 'now runs' : 'runs'} every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
     closeRepeat();
     renderCalendar();
     return;
@@ -1020,7 +1066,9 @@ function applyRepeat() {
     if (slots.length === 1) { closeRepeat(); return; }
     recordUndo();
     let skipped = 0;
-    slots.slice(1).forEach(slot => { if (!placeSpot(r.week, r.spot.id, r.item.day, slot, r.override)) skipped++; });
+    slots.slice(1).forEach(slot => {
+      if (!placeSpot(r.week, r.spot.id, r.item.day, slot, r.override) && !spotAt(r.week, r.item.day, slot, r.spot.id)) skipped++;
+    });
     showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skippedNote(skipped)}`);
   } else {
     recordUndo();

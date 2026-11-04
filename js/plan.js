@@ -358,13 +358,18 @@ BASE_PLAN.forEach(e => {
 
 /* Zelle für einen Spot freimachen (Replace taken slots): ein anderer,
    noch nicht gespielter Slot dort wird entfernt. Fixe, gesperrte und
-   gespielte Zellen bleiben, wie sie sind. */
-function clearCellFor(monday, dayI, slot) {
+   gespielte Zellen bleiben, wie sie sind – derselbe Spot auch. */
+function clearCellFor(monday, dayI, slot, spotId = null) {
   const date = weekDates(monday)[dayI];
   if (slot < playedSlots(date) || cellBlocked(date, slot) || fixedCells(monday).has(`${dayI}:${slot}`)) return;
   const items = weekItems(monday);
   const i = items.findIndex(x => x.day === dayI && x.slot === slot);
-  if (i >= 0) items.splice(i, 1);
+  if (i >= 0 && items[i].spotId !== spotId) items.splice(i, 1);
+}
+
+/* läuft der Spot dort schon (z. B. aus einer anderen seiner Serien)? */
+function spotAt(monday, dayI, slot, spotId) {
+  return weekItems(monday).some(x => x.day === dayI && x.slot === slot && x.spotId === spotId);
 }
 
 /* Serie anlegen: gilt für alle Wochen, die später zum ersten Mal geöffnet
@@ -382,11 +387,11 @@ function addSeries({ spotId, days, slots, start, end = null, override = false })
       slots.forEach(slot => {
         /* gespielt oder gesperrt (zu, Feiertag, Quiet Hour) zählt nicht als belegt */
         if (slot < playedSlots(date) || cellBlocked(date, slot)) return;
-        if (override) clearCellFor(monday, di, slot);
+        if (override) clearCellFor(monday, di, slot, spotId);
         if (cellFree(monday, di, slot)) {
           weekItems(monday).push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
           placed++;
-        } else {
+        } else if (!spotAt(monday, di, slot, spotId)) {
           skipped++;
         }
       });
@@ -418,11 +423,11 @@ function updateSeries(seriesId, { days, slots, end = null, override = false }) {
           const i = items.findIndex(x => x.seriesId === r.id && x.day === di && x.slot === slot);
           if (i >= 0) items.splice(i, 1);
         } else if (!before && after && !cellBlocked(date, slot)) {
-          if (override) clearCellFor(monday, di, slot);
+          if (override) clearCellFor(monday, di, slot, r.spotId);
           if (cellFree(monday, di, slot)) {
             weekItems(monday).push({ id: ++itemUid, spotId: r.spotId, day: di, slot, seriesId: r.id });
             placed++;
-          } else {
+          } else if (!spotAt(monday, di, slot, r.spotId)) {
             skipped++;
           }
         }
@@ -524,7 +529,7 @@ function cellFree(monday, dayI, slot, ignoreId = null) {
 }
 
 function placeSpot(monday, spotId, dayI, slot, override = false) {
-  if (override) clearCellFor(monday, dayI, slot);
+  if (override) clearCellFor(monday, dayI, slot, spotId);
   if (!cellFree(monday, dayI, slot)) return null;
   const it = { id: ++itemUid, spotId, day: dayI, slot };
   weekItems(monday).push(it);
