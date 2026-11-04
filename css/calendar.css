@@ -270,7 +270,7 @@
   right: 0;
   height: var(--slot-h);
   padding: 0 7px;
-  font-size: 10.5px;
+  font-size: var(--fs-small);
   line-height: var(--slot-h);
   letter-spacing: var(--ls-small);
   color: var(--text-80);
