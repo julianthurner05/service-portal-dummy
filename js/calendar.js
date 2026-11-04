@@ -8,8 +8,10 @@
      nach Kategorien gruppiert – Ziehen in eine andere Gruppe ändert die
      Kategorie. Frische Spots stehen unten unter „Ready for Schedule“ und
      müssen erst in eine Kategorie gezogen werden, bevor sie einplanbar sind
-   - Klick auf einen Spot der Liste: Audio austauschen oder ihn aus dem
-     Kalender nehmen (alles ab jetzt, diese Woche, ein Tag)
+   - ✕ an einem Slot: Menü – nur dieser Slot, alle an dem Tag, alle in der
+     Woche oder alle ab jetzt
+   - SpotTool-Icon an einem Spot der Liste: Audio austauschen („Choose audio“
+     mit Anhören), Slots und Serien bleiben
    - nach dem Ablegen aus der Liste färbt sich das Ready-Feld ein und zeigt
      die Einstellungen: Tage (dieser Tag / wöchentlich mit Laufzeit bis zu
      Monaten oder ohne Ende) und pro Tag einmal oder Repeat (alle N Minuten)
@@ -135,11 +137,7 @@ function renderCalendar() {
   renderNowLine();
   syncHeadHeight();
 
-  /* offene Spot-Einstellungen: seine Slots leuchten, Tage/Zahlen der Woche neu */
-  if (spotPanel) {
-    setLit(String(spotPanel.spot.id));
-    renderSpotPanel();
-  }
+  closeSlotMenu();
 }
 
 /* Tageszeile und Liste docken direkt unter der (sticky) Kopfzeile an. Sticky-
@@ -165,6 +163,7 @@ const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
 const trayItem = (s, expired) => `
   <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
+    <button class="cal-tray__audio" data-audio="${s.id}" aria-label="Change audio" type="button">${icon('wave')}</button>
   </div>`;
 
 function renderTray() {
@@ -210,17 +209,19 @@ function renderTray() {
 
 calTraySearch.addEventListener('input', renderTray);
 
-/* „Expired“ auf- und zuklappen; Klick auf einen eingeordneten Spot öffnet
-   seine Einstellungen */
+/* „Expired“ auf- und zuklappen; das SpotTool-Icon an einem Spot öffnet
+   „Choose audio“ */
 let expiredOpen = true;
 calTrayList.addEventListener('click', e => {
+  const audio = e.target.closest('.cal-tray__audio');
+  if (audio) {
+    openAudioPicker(spotById(+audio.dataset.audio));
+    return;
+  }
   if (e.target.closest('.cal-tray__toggle')) {
     expiredOpen = !expiredOpen;
     renderTray();
-    return;
   }
-  const item = e.target.closest('.cal-tray__item');
-  if (item && !item.classList.contains('is-new')) openSpotPanel(spotById(+item.dataset.spot));
 });
 
 /* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
@@ -235,11 +236,11 @@ function setLit(spotId) {
 }
 
 calGrid.addEventListener('mousemove', e => {
-  if (calDrag || spotPanel) return;
+  if (calDrag) return;
   const item = e.target.closest('.cal-item');
   setLit(item ? item.dataset.spot : null);
 });
-calGrid.addEventListener('mouseleave', () => { if (!spotPanel) setLit(null); });
+calGrid.addEventListener('mouseleave', () => setLit(null));
 calTrayList.addEventListener('mouseover', e => {
   if (calDrag) return;
   const item = e.target.closest('.cal-tray__item');
@@ -439,16 +440,156 @@ calTray.addEventListener('drop', e => {
 });
 
 /* ---------------------------------------------------------------
-   ✕ entfernt einen einzelnen Slot
+   ✕ an einem Slot: kleines Menü mit den Löschoptionen – nur dieser Slot,
+   alle dieses Spots an dem Tag, in der Woche oder ab jetzt überall.
+   Gespieltes bleibt stehen (plan.js, removeSpotSlots).
    --------------------------------------------------------------- */
+const slotMenu = document.createElement('div');
+slotMenu.className = 'context-menu cal-slot-menu';
+slotMenu.setAttribute('role', 'menu');
+slotMenu.hidden = true;
+document.body.appendChild(slotMenu);
+let slotMenuItem = null;               /* { id, spotId, day } */
+
+function closeSlotMenu() {
+  slotMenu.hidden = true;
+  slotMenuItem = null;
+  calGrid.querySelectorAll('.cal-item.is-menu').forEach(el => el.classList.remove('is-menu'));
+}
+
+function openSlotMenu(x) {
+  const it = weekItems(calWeekStart).find(i => i.id === +x.dataset.x);
+  if (!it) return;
+  closeAllMenus();
+  closeSlotMenu();
+  slotMenuItem = it;
+  slotMenu.innerHTML = [
+    ['slot', 'This slot'],
+    ['day', `All on ${DAY_NAMES[it.day]}`],
+    ['week', 'All this week'],
+    ['all', 'All from now on'],
+  ].map(([v, label]) => `<button class="context-menu__item" role="menuitem" data-remove="${v}" type="button">${label}</button>`).join('');
+  slotMenu.hidden = false;
+  x.closest('.cal-item').classList.add('is-menu');
+  /* unter dem ✕, rechtsbündig; unten zu wenig Platz → darüber */
+  const r = x.getBoundingClientRect();
+  const h = slotMenu.offsetHeight;
+  const top = r.bottom + 4 + h > window.innerHeight - 8 ? r.top - 4 - h : r.bottom + 4;
+  slotMenu.style.top = `${Math.round(top)}px`;
+  slotMenu.style.left = `${Math.round(r.right - slotMenu.offsetWidth)}px`;
+}
+
 calGrid.addEventListener('click', e => {
   const x = e.target.closest('.cal-item__x');
   if (!x) return;
   e.stopPropagation();
-  recordUndo();
-  removeItem(calWeekStart, +x.dataset.x);
-  renderCalendar();
+  if (!slotMenu.hidden && slotMenuItem && slotMenuItem.id === +x.dataset.x) closeSlotMenu();
+  else openSlotMenu(x);
 });
+
+slotMenu.addEventListener('click', e => {
+  const btn = e.target.closest('[data-remove]');
+  if (!btn || !slotMenuItem) return;
+  e.stopPropagation();
+  const { id, spotId, day } = slotMenuItem;
+  const spot = spotById(spotId);
+  const scope = btn.dataset.remove;
+  closeSlotMenu();
+  recordUndo();
+  if (scope === 'slot') {
+    removeItem(calWeekStart, id);
+    renderCalendar();
+    return;
+  }
+  const n = removeSpotSlots(spotId, scope, calWeekStart, day);
+  const slots = `${n} slot${n === 1 ? '' : 's'}`;
+  showToast('success',
+    scope === 'all' ? `“${spot.title}” removed from the calendar from now on.`
+    : scope === 'week' ? `${slots} of “${spot.title}” removed this week.`
+    : `${slots} of “${spot.title}” removed on ${longDate(calWeekDays(calWeekStart)[day])}.`);
+});
+
+/* Klick daneben, Scrollen, Esc → zu */
+document.addEventListener('click', e => { if (!slotMenu.contains(e.target)) closeSlotMenu(); });
+mainEl.addEventListener('scroll', () => { if (!slotMenu.hidden) closeSlotMenu(); }, { passive: true });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSlotMenu(); });
+
+/* ---------------------------------------------------------------
+   „Choose audio“ – wie im alten Scheduler: Lightbox mit den fertigen
+   Spots aus dem SpotTool, jeder zum Anhören. Der Spot behält Slots,
+   Serien und Kategorie, nur die Aufnahme wechselt.
+   --------------------------------------------------------------- */
+const audioPicker       = document.getElementById('audio-picker');
+const audioPickerList   = document.getElementById('audio-picker-list');
+const audioPickerSearch = document.getElementById('audio-picker-search');
+let audioSpot = null;
+
+function openAudioPicker(spot) {
+  closeRepeat();
+  audioSpot = spot;
+  audioPickerSearch.value = '';
+  renderAudioPicker();
+  audioPicker.hidden = false;
+  setTimeout(() => audioPickerSearch.focus(), 50);
+}
+
+function closeAudioPicker() {
+  if (activePlayer && audioPicker.contains(activePlayer.el)) activePlayer.stop();
+  audioPicker.hidden = true;
+  audioSpot = null;
+}
+
+function renderAudioPicker() {
+  const spot = audioSpot;
+  const q = audioPickerSearch.value.trim().toLowerCase();
+  /* Plan-Spots haben ihre eigene Aufnahme (kein SpotTool-Eintrag) – steht oben */
+  const own = spotToolAudios().some(a => a.title === spot.title)
+    ? [] : [{ title: spot.title, date: 'Original', duration: spot.duration, original: true }];
+  const list = [...own, ...spotToolAudios()].filter(a => a.title.toLowerCase().includes(q));
+  const currentTitle = spot.audio ? spot.audio.title : spot.title;
+
+  audioPickerList.innerHTML = list.length ? '' : '<p class="lightbox__empty">No spots found.</p>';
+  list.forEach(a => {
+    const current = a.title === currentTitle;
+    const row = document.createElement('div');
+    row.className = `picker-row${current ? ' is-current' : ''}`;
+    row.innerHTML = `
+      <div class="picker-row__info">
+        <p class="picker-row__title"></p>
+        <p class="picker-row__meta"></p>
+      </div>
+      <div class="picker-row__player">
+        <button class="play-btn" aria-label="Play">${icon('play', 'icon--filled')}</button>
+        <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
+        <span class="card__time"></span>
+      </div>
+      <button class="picker-row__choose" type="button">${current ? 'Selected' : 'Choose'}</button>`;
+    row.querySelector('.picker-row__title').textContent = a.title;
+    row.querySelector('.picker-row__meta').textContent = a.date;
+    createPlayer({
+      playBtn: row.querySelector('.play-btn'),
+      slider: row.querySelector('.slider'),
+      timeEl: row.querySelector('.card__time'),
+      duration: a.duration,
+      resetOnStop: true,
+    });
+    row.querySelector('.picker-row__choose').addEventListener('click', () => {
+      closeAudioPicker();
+      if (current) return;
+      recordUndo();
+      const original = a.title === spot.title;
+      setSpotAudio(spot.id, original ? null : { title: a.title });
+      if (!original) setCardScheduled(a.title);
+      showToast('success', original ? `“${spot.title}” plays its original audio again.` : `“${spot.title}” now plays “${a.title}”.`);
+    });
+    audioPickerList.appendChild(row);
+  });
+}
+
+document.getElementById('audio-picker-close').addEventListener('click', closeAudioPicker);
+audioPicker.addEventListener('click', e => { if (e.target === audioPicker) closeAudioPicker(); });
+audioPickerSearch.addEventListener('input', renderAudioPicker);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !audioPicker.hidden) closeAudioPicker(); });
 
 /* ---------------------------------------------------------------
    Einstellungen nach dem Ablegen – im Ready-Feld, das sich dafür in der
@@ -524,7 +665,6 @@ function daysLabel(days) {
 }
 
 let repeat = null;                    /* { item, week, spot, date, mode: 'day'|'weekly', days: Set, end, perDay: 'once'|'repeat', every, until } */
-let spotPanel = null;                 /* { spot, scope: null | 'all' | 'week' | 'day', day } */
 
 /* Uhrzeiten eines Tages mit der aktuellen Einstellung (Slot-Indizes) */
 function repeatSlots(r) {
@@ -537,7 +677,6 @@ function repeatSlots(r) {
 }
 
 function closeRepeat() {
-  closeSpotPanel();
   if (!repeat) return;
   clearPreview();
   repeat = null;
@@ -717,109 +856,6 @@ function applyRepeat() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRepeat(); });
-
-/* ---------------------------------------------------------------
-   Spot in der Liste anklicken – Einstellungen für den ganzen Spot im
-   Ready-Feld (eingefärbt wie nach dem Ablegen), seine Slots leuchten:
-   - Audio: andere Aufnahme aus dem SpotTool (z. B. umgetextet), alle Slots
-     und Serien bleiben, wie sie sind
-   - Remove: alles ab jetzt, nur die angezeigte Woche oder nur ein Tag davon –
-     Gespieltes bleibt stehen
-   --------------------------------------------------------------- */
-function openSpotPanel(spot) {
-  closeRepeat();
-  spotPanel = { spot, scope: null, day: null };
-  calTray.classList.add('is-editing');
-  calTray.style.cssText = catStyle(spot.category);
-  calTraySettings.hidden = false;
-  setLit(String(spot.id));
-  renderSpotPanel();
-}
-
-function closeSpotPanel() {
-  if (!spotPanel) return;
-  spotPanel = null;
-  calTraySettings.hidden = true;
-  calTraySettings.innerHTML = '';
-  calTray.classList.remove('is-editing');
-  calTray.removeAttribute('style');
-  setLit(null);
-}
-
-const SCOPES = [['all', 'All'], ['week', 'This week'], ['day', 'One day']];
-
-function renderSpotPanel() {
-  const p = spotPanel;
-  const perDay = DAYS.slice(0, CAL_DAYS).map((_, di) => spotSlotsAhead(p.spot.id, calWeekStart, di).length);
-  const inWeek = perDay.reduce((a, b) => a + b, 0);
-  const canRemove = p.scope === 'all'
-    || (p.scope === 'week' && inWeek > 0)
-    || (p.scope === 'day' && p.day !== null && perDay[p.day] > 0);
-
-  calTraySettings.innerHTML = `
-    <div class="cal-repeat__head">
-      <span class="cal-repeat__dot"></span>
-      <p class="cal-repeat__title">${escapeHtml(p.spot.title)}</p>
-      <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
-    </div>
-
-    <p class="cal-repeat__label">Audio</p>
-    <div class="dropdown cal-spot__audio" data-dd="audio"></div>
-
-    <p class="cal-repeat__label">Remove</p>
-    <div class="cal-chips cal-chips--scope">
-      ${SCOPES.map(([v, label]) => `<button class="cal-chip${p.scope === v ? ' is-active' : ''}" data-scope="${v}" type="button">${label}</button>`).join('')}
-    </div>
-    ${p.scope === 'day' ? `
-      <div class="cal-chips cal-chips--days">
-        ${DAYS.slice(0, CAL_DAYS).map((d, di) => `<button class="cal-chip cal-chip--day${p.day === di ? ' is-active' : ''}" data-pick="${di}" type="button"${perDay[di] ? '' : ' disabled'}>${d}</button>`).join('')}
-      </div>` : ''}
-    <button class="ghost-btn ghost-btn--sm ghost-btn--danger cal-spot__remove" data-act="remove-slots" type="button"${canRemove ? '' : ' disabled'}>Remove</button>`;
-
-  /* Original oder eine fertige Aufnahme aus dem SpotTool */
-  const audios = spotToolAudios().filter(a => a.title !== p.spot.title);
-  buildDropdown(calTraySettings.querySelector('[data-dd="audio"]'), {
-    options: [{ value: '', label: p.spot.title }, ...audios.map(a => ({ value: a.title, label: a.title }))],
-    value: p.spot.audio ? p.spot.audio.title : '',
-    tall: true,
-    onChange: v => {
-      recordUndo();
-      setSpotAudio(p.spot.id, v ? { title: v } : null);
-      if (v) setCardScheduled(v);
-      showToast('success', v ? `“${p.spot.title}” now plays “${v}”.` : `“${p.spot.title}” plays its original audio again.`);
-    },
-  });
-}
-
-calTraySettings.addEventListener('click', e => {
-  const p = spotPanel;
-  if (!p) return;
-  const scope = e.target.closest('[data-scope]');
-  const pick = e.target.closest('[data-pick]');
-  const act = e.target.closest('[data-act]');
-  if (act && act.dataset.act === 'close') { closeSpotPanel(); return; }
-  if (act && act.dataset.act === 'remove-slots') { removeFromSpotPanel(); return; }
-  if (scope) {
-    p.scope = scope.dataset.scope;
-    p.day = null;
-  } else if (pick) {
-    p.day = +pick.dataset.pick;
-  } else return;
-  renderSpotPanel();
-});
-
-function removeFromSpotPanel() {
-  const { spot, scope, day } = spotPanel;
-  const date = day !== null ? calWeekDays(calWeekStart)[day] : null;
-  closeSpotPanel();
-  recordUndo();
-  const n = removeSpotSlots(spot.id, scope, calWeekStart, day);
-  const slots = `${n} slot${n === 1 ? '' : 's'}`;
-  showToast('success',
-    scope === 'all' ? `“${spot.title}” removed from the calendar from now on.`
-    : scope === 'week' ? `${slots} of “${spot.title}” removed this week.`
-    : `${slots} of “${spot.title}” removed on ${longDate(date)}.`);
-}
 
 /* ---------------------------------------------------------------
    ⌘Z / Ctrl+Z: letzte Änderung im Calendar rückgängig, mit ⇧ wiederherstellen

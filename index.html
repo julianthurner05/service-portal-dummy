@@ -401,6 +401,23 @@ Lebe Smart!</textarea>
     </div>
   </div>
 
+  <!-- Calendar: Audio eines Spots austauschen (wie „Choose audio“ im alten Scheduler) -->
+  <div class="lightbox" id="audio-picker" hidden>
+    <div class="lightbox__panel" role="dialog" aria-modal="true">
+      <div class="lightbox__head">
+        <h2 class="lightbox__title">Choose audio</h2>
+        <button class="lightbox__close" id="audio-picker-close" aria-label="Close" data-tip="Close" data-tip-pos="bottom">
+          <svg class="icon"><use href="#i-x"/></svg>
+        </button>
+      </div>
+      <div class="lightbox__search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input type="text" id="audio-picker-search" placeholder="Search spots..." autocomplete="off">
+      </div>
+      <div class="lightbox__list" id="audio-picker-list"></div>
+    </div>
+  </div>
+
   <!-- Impressum / Datenschutz / Lizenzen -->
   <div class="lightbox" id="legal" hidden>
     <div class="lightbox__panel lightbox__panel--doc" role="dialog" aria-modal="true">

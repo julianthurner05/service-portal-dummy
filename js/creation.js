@@ -217,7 +217,7 @@ function toggleCardReady(card) {
 /* fertige Aufnahmen – Auswahl beim Audio-Austauschen im Calendar */
 const spotToolAudios = () => [...historyList.querySelectorAll('.card')]
   .filter(card => !['pending', 'error', 'deleted'].includes(card._state.status))
-  .map(card => ({ title: card._state.title, duration: card._state.duration }));
+  .map(card => ({ title: card._state.title, date: card.querySelector('.card__date').textContent, duration: card._state.duration }));
 
 /* Ready-Badge an allen Karten nach der Liste ausrichten */
 function syncReadyBadges() {

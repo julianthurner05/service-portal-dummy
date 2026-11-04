@@ -317,7 +317,13 @@
   pointer-events: none;
 }
 
-.cal-item:hover .cal-item__x { opacity: 1; pointer-events: auto; }
+.cal-item:hover .cal-item__x,
+.cal-item.is-menu .cal-item__x { opacity: 1; pointer-events: auto; }
+.cal-item.is-menu .cal-item__label { right: 20px; color: #ffffff; }
+.cal-item.is-menu .cal-slot__inner { background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base)); }
+
+/* Menü am ✕ – liegt über allem, an der Fensterposition des ✕ */
+.cal-slot-menu { position: fixed; top: 0; right: auto; z-index: 90; }
 .cal-item.is-dragging .cal-item__x { opacity: 0; pointer-events: none; }
 .cal-item__x:hover { background: var(--white-14); color: #ffffff; }
 .cal-item__x .icon { width: 9px; height: 9px; stroke-width: 2; }
@@ -554,6 +560,29 @@
 }
 
 .cal-tray__item .cal-item__label { height: 28px; line-height: 28px; }
+
+/* SpotTool-Icon: Audio austauschen – erscheint beim Zeigen auf den Spot */
+.cal-tray__audio {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition), background var(--transition), color var(--transition);
+}
+
+.cal-tray__item:hover .cal-tray__audio { opacity: 1; pointer-events: auto; }
+.cal-tray__item:hover .cal-item__label { right: 26px; }
+.cal-tray__audio:hover { background: var(--white-14); color: #ffffff; }
+.cal-tray__audio .icon { width: 12px; height: 12px; }
 
 /* Spot ohne Kategorie: neutral und gestrichelt, bis er eingeordnet ist */
 .cal-tray__item.is-new {
@@ -826,16 +855,7 @@
 
 .cal-tray__settings [disabled] { opacity: 0.4; pointer-events: none; }
 
-/* Spot-Einstellungen (Klick auf einen Spot der Liste) */
-.cal-spot__audio .dropdown__toggle { height: 34px; padding: 0 10px 0 12px; font-size: var(--fs-small); }
-.cal-spot__audio .dropdown__option { height: 32px; padding: 0 12px; font-size: var(--fs-small); }
-.cal-spot__audio .dropdown__value,
-.cal-spot__audio .dropdown__option > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.cal-chips--scope { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.cal-chips--scope .cal-chip { padding: 0; }
-
-.cal-spot__remove { width: 100%; justify-content: center; margin-top: 12px; }
 
 @media (max-width: 980px) {
   /* am Handy: volle Woche, seitlich scrollbar; Liste darunter – ohne
