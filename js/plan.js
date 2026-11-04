@@ -2,7 +2,7 @@
    PLAN – die eine Quelle für den Durchsagenplan
    - Kategorien, Store-Regeln (Öffnungszeiten, Quiet Hours), Slot-Raster
    - Spot-Bibliothek: Spots aus dem Plan + Spots aus dem SpotTool; was
-     „ready“ ist, steht in der Liste „Ready for Schedule“ im Calendar
+     „ready“ ist, steht in der Liste „Scheduling Spots“ im Calendar
    - Wochen im Calendar: jede Woche wird beim ersten Öffnen aus dem
      Basisplan und den Wiederholungen (Serien) befüllt, danach lebt jeder
      Slot für sich
@@ -90,7 +90,8 @@ const emitPlanChange = kind => planListeners.forEach(fn => fn(kind));
    Spot-Bibliothek
    --------------------------------------------------------------- */
 let spotUid = 0;
-const spots = [];                     /* { id, title, category (null = noch keine), duration, source: 'plan' | 'spottool', ready, retired } */
+const spots = [];                     /* { id, title, category (null = noch keine), duration, source: 'plan' | 'spottool', ready, retired,
+                                          audio (null = Original, sonst { title } aus dem SpotTool), offFrom (Basisplan ab diesem Tag aus) } */
 
 const findSpot = title => spots.find(s => s.title === title) || null;
 const spotById = id => spots.find(s => s.id === id) || null;
@@ -102,7 +103,7 @@ function addSpot({ title, category = 'standard', duration = 9, source = 'plan', 
     if (s.retired) { s.retired = false; emitPlanChange('spots'); }
     return s;
   }
-  s = { id: ++spotUid, title, category, duration, source, ready, retired: false };
+  s = { id: ++spotUid, title, category, duration, source, ready, retired: false, audio: null, offFrom: null };
   if (front) spots.unshift(s); else spots.push(s);
   emitPlanChange('spots');
   return s;
@@ -110,7 +111,7 @@ function addSpot({ title, category = 'standard', duration = 9, source = 'plan', 
 
 /* „Ready for Schedule“: der Spot steht in der Liste im Calendar.
    Frisch aus dem SpotTool hat er noch keine Kategorie (null) – er steht
-   unten unter „New“ und wird erst durch Ziehen in eine Kategorie
+   unten unter „Ready for Schedule“ und wird erst durch Ziehen in eine Kategorie
    einplanbar. Aus der Liste nehmen lässt eingeplante Slots stehen. */
 function setSpotReady(meta, ready) {
   const s = addSpot({ ...meta, ready });
@@ -162,6 +163,15 @@ function retireSpot(title) {
   emitPlanChange('spots');
   if (removed) emitPlanChange('week');
   return removed;
+}
+
+/* Audio austauschen (z. B. im SpotTool umgetextet): Slots, Serien und
+   Kategorie bleiben, nur die Aufnahme wechselt. null = wieder das Original */
+function setSpotAudio(spotId, audio) {
+  const s = spotById(spotId);
+  if (!s) return;
+  s.audio = audio;
+  emitPlanChange('spots');
 }
 
 /* ---------------------------------------------------------------
@@ -273,7 +283,7 @@ function weekItems(monday) {
   weekDates(monday).forEach((date, di) => BASE_PLAN.forEach(e => {
     if (e.fixed || !entryActive(e, date, di)) return;
     const spot = findSpot(e.spot);
-    if (!spot || spot.retired) return;
+    if (!spot || spot.retired || (spot.offFrom && date >= spot.offFrom)) return;
     e.times.forEach(time => {
       const slot = slotIndex(time);
       if (slot < 0 || slot >= CAL_SLOTS || cellBlocked(di, slot)) return;
@@ -337,6 +347,54 @@ function addSeries({ spotId, days, slots, start, end = null }) {
   });
   emitPlanChange('week');
   return { series: r, placed, skipped };
+}
+
+/* Gespielt: vergangene Tage ganz, heute alle Slots bis zur aktuellen Uhrzeit
+   (ein Slot zählt ab seiner Startzeit). Liefert die Zahl gespielter Slots. */
+function playedSlots(date, now = new Date()) {
+  if (dayStart(date) < dayStart(now)) return CAL_SLOTS;
+  if (!sameDay(date, now)) return 0;
+  const elapsed = now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60;
+  return elapsed < 0 ? 0 : Math.min(CAL_SLOTS, Math.floor(elapsed / SLOT_MIN) + 1);
+}
+
+/* noch nicht gespielte Slots eines Spots in einer Woche (optional nur an einem Tag) */
+function spotSlotsAhead(spotId, monday, day = null) {
+  const dates = weekDates(monday);
+  return weekItems(monday).filter(i =>
+    i.spotId === spotId && (day === null || i.day === day) && i.slot >= playedSlots(dates[i.day]));
+}
+
+/* Spot aus dem Kalender nehmen – nur, was noch nicht gespielt hat:
+   'all'  ab jetzt überall (Basisplan und Serien enden mit gestern),
+   'week' nur in dieser Woche, 'day' nur an einem Tag dieser Woche.
+   Liefert die Zahl der entfernten Slots in den schon geöffneten Wochen. */
+function removeSpotSlots(spotId, scope, monday, day = null) {
+  const s = spotById(spotId);
+  if (!s) return 0;
+  if (scope === 'all') {
+    const today = dayStart(new Date());
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    s.offFrom = today;
+    for (let i = userSeries.length - 1; i >= 0; i--) {
+      const r = userSeries[i];
+      if (r.spotId !== spotId) continue;
+      if (r.start >= today) userSeries.splice(i, 1);
+      else if (!r.end || r.end > yesterday) r.end = yesterday;
+    }
+  }
+  let removed = 0;
+  weeks.forEach((items, key) => {
+    const m = parseDate(key);
+    if (scope !== 'all' && !sameDay(m, monday)) return;
+    const ahead = new Set(spotSlotsAhead(spotId, m, scope === 'day' ? day : null));
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (ahead.has(items[i])) { items.splice(i, 1); removed++; }
+    }
+  });
+  emitPlanChange('week');
+  return removed;
 }
 
 /* ---------------------------------------------------------------

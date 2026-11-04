@@ -375,7 +375,7 @@
   background: #ffffff;
 }
 
-/* ---- Liste „Ready for Schedule“ rechts – bleibt beim Scrollen stehen ---- */
+/* ---- Liste „Scheduling Spots“ rechts – bleibt beim Scrollen stehen ---- */
 /* volle verfügbare Höhe; ist die Liste länger, scrollt sie innen – wie die
    Creation History */
 .cal-tray {
@@ -501,7 +501,7 @@
   color: var(--text-25);
 }
 
-/* „New“: frisch freigegeben, noch ohne Kategorie – unten, abgetrennt */
+/* „Ready for Schedule“: frisch freigegeben, noch ohne Kategorie – unten, abgetrennt */
 .cal-tray__group--new {
   margin-top: 4px;
   padding-top: 16px;
@@ -824,7 +824,18 @@
   padding-top: 22px;
 }
 
-.cal-repeat__foot [disabled] { opacity: 0.4; pointer-events: none; }
+.cal-tray__settings [disabled] { opacity: 0.4; pointer-events: none; }
+
+/* Spot-Einstellungen (Klick auf einen Spot der Liste) */
+.cal-spot__audio .dropdown__toggle { height: 34px; padding: 0 10px 0 12px; font-size: var(--fs-small); }
+.cal-spot__audio .dropdown__option { height: 32px; padding: 0 12px; font-size: var(--fs-small); }
+.cal-spot__audio .dropdown__value,
+.cal-spot__audio .dropdown__option > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cal-chips--scope { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.cal-chips--scope .cal-chip { padding: 0; }
+
+.cal-spot__remove { width: 100%; justify-content: center; margin-top: 12px; }
 
 @media (max-width: 980px) {
   /* am Handy: volle Woche, seitlich scrollbar; Liste darunter – ohne

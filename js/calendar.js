@@ -3,11 +3,13 @@
    - Woche Mo–Sa im 15-Minuten-Raster, Daten aus plan.js
    - jeder Slot lebt für sich: per Drag & Drop verschieben, über das ✕
      oder durch Ablegen in der Palette entfernen
-   - rechts die Liste „Ready for Schedule“: jeder Spot einmal, beliebig oft
+   - rechts die Liste „Scheduling Spots“: jeder Spot einmal, beliebig oft
      einplanbar (Plan-Spots + im SpotTool freigegebene Spots), mit Suche;
      nach Kategorien gruppiert – Ziehen in eine andere Gruppe ändert die
-     Kategorie. Frische Spots stehen unten unter „New“ und müssen erst in
-     eine Kategorie gezogen werden, bevor sie einplanbar sind
+     Kategorie. Frische Spots stehen unten unter „Ready for Schedule“ und
+     müssen erst in eine Kategorie gezogen werden, bevor sie einplanbar sind
+   - Klick auf einen Spot der Liste: Audio austauschen oder ihn aus dem
+     Kalender nehmen (alles ab jetzt, diese Woche, ein Tag)
    - nach dem Ablegen aus der Liste färbt sich das Ready-Feld ein und zeigt
      die Einstellungen: Tage (dieser Tag / wöchentlich mit Laufzeit bis zu
      Monaten oder ohne Ende) und pro Tag einmal oder Repeat (alle N Minuten)
@@ -46,15 +48,7 @@ function weekRangeLabel(days) {
     : `${MONTH_SHORT[first.getMonth()]} ${first.getDate()} – ${MONTH_SHORT[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
 }
 
-/* Slots, die schon gespielt haben: vergangene Tage ganz, heute alle bis
-   zur aktuellen Uhrzeit (ein Slot zählt ab seiner Startzeit als gespielt) */
-function playedSlots(date, now = new Date()) {
-  if (dayStart(date) < dayStart(now)) return CAL_SLOTS;
-  if (!sameDay(date, now)) return 0;
-  const elapsed = now.getHours() * 60 + now.getMinutes() - CAL_HOUR_START * 60;
-  return elapsed < 0 ? 0 : Math.min(CAL_SLOTS, Math.floor(elapsed / SLOT_MIN) + 1);
-}
-
+/* Slots, die schon gespielt haben (playedSlots, plan.js), sind nur noch zum Nachsehen */
 let playedMark = '';                   /* Stand beim letzten Aufbau – ändert er sich, neu zeichnen */
 
 function renderCalendar() {
@@ -140,6 +134,12 @@ function renderCalendar() {
   renderTray();
   renderNowLine();
   syncHeadHeight();
+
+  /* offene Spot-Einstellungen: seine Slots leuchten, Tage/Zahlen der Woche neu */
+  if (spotPanel) {
+    setLit(String(spotPanel.spot.id));
+    renderSpotPanel();
+  }
 }
 
 /* Tageszeile und Liste docken direkt unter der (sticky) Kopfzeile an. Sticky-
@@ -156,10 +156,10 @@ function syncHeadHeight() {
 }
 window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeight(); });
 
-/* ---- Liste „Ready for Schedule“ ----
+/* ---- Liste „Scheduling Spots“ ----
    Gruppen je Kategorie (Opening/Closing vergibt sounddna – keine Gruppe),
-   darunter „New“ für frisch freigegebene Spots ohne Kategorie und ganz
-   unten „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
+   darunter „Ready for Schedule“ für frisch freigegebene Spots ohne Kategorie
+   und ganz unten „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
 const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
 
 const trayItem = (s, expired) => `
@@ -190,7 +190,7 @@ function renderTray() {
   if (fresh.length) {
     html += `
       <div class="cal-tray__group cal-tray__group--new">
-        <p class="cal-tray__cat">New<span class="cal-tray__count">${fresh.length}</span></p>
+        <p class="cal-tray__cat">Ready for Schedule<span class="cal-tray__count">${fresh.length}</span></p>
         ${fresh.map(s => trayItem(s)).join('')}
       </div>`;
   }
@@ -210,12 +210,17 @@ function renderTray() {
 
 calTraySearch.addEventListener('input', renderTray);
 
-/* „Expired“ auf- und zuklappen */
+/* „Expired“ auf- und zuklappen; Klick auf einen eingeordneten Spot öffnet
+   seine Einstellungen */
 let expiredOpen = true;
 calTrayList.addEventListener('click', e => {
-  if (!e.target.closest('.cal-tray__toggle')) return;
-  expiredOpen = !expiredOpen;
-  renderTray();
+  if (e.target.closest('.cal-tray__toggle')) {
+    expiredOpen = !expiredOpen;
+    renderTray();
+    return;
+  }
+  const item = e.target.closest('.cal-tray__item');
+  if (item && !item.classList.contains('is-new')) openSpotPanel(spotById(+item.dataset.spot));
 });
 
 /* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
@@ -230,11 +235,11 @@ function setLit(spotId) {
 }
 
 calGrid.addEventListener('mousemove', e => {
-  if (calDrag) return;
+  if (calDrag || spotPanel) return;
   const item = e.target.closest('.cal-item');
   setLit(item ? item.dataset.spot : null);
 });
-calGrid.addEventListener('mouseleave', () => setLit(null));
+calGrid.addEventListener('mouseleave', () => { if (!spotPanel) setLit(null); });
 calTrayList.addEventListener('mouseover', e => {
   if (calDrag) return;
   const item = e.target.closest('.cal-tray__item');
@@ -301,7 +306,7 @@ function clearDropMarks() {
   calTray.classList.remove('is-drop');
 }
 
-/* Spot aus „New“ (noch ohne Kategorie): erst in eine Kategorie ziehen */
+/* Spot aus „Ready for Schedule“ (noch ohne Kategorie): erst in eine Kategorie ziehen */
 const dragIsNew = () => calDrag && calDrag.from === 'palette' && !spotById(calDrag.spotId).category;
 
 /* Eigenes Drag-Bild: eine saubere Titel-Pille statt des Browser-Schnappschusses
@@ -519,6 +524,7 @@ function daysLabel(days) {
 }
 
 let repeat = null;                    /* { item, week, spot, date, mode: 'day'|'weekly', days: Set, end, perDay: 'once'|'repeat', every, until } */
+let spotPanel = null;                 /* { spot, scope: null | 'all' | 'week' | 'day', day } */
 
 /* Uhrzeiten eines Tages mit der aktuellen Einstellung (Slot-Indizes) */
 function repeatSlots(r) {
@@ -531,6 +537,7 @@ function repeatSlots(r) {
 }
 
 function closeRepeat() {
+  closeSpotPanel();
   if (!repeat) return;
   clearPreview();
   repeat = null;
@@ -710,6 +717,109 @@ function applyRepeat() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRepeat(); });
+
+/* ---------------------------------------------------------------
+   Spot in der Liste anklicken – Einstellungen für den ganzen Spot im
+   Ready-Feld (eingefärbt wie nach dem Ablegen), seine Slots leuchten:
+   - Audio: andere Aufnahme aus dem SpotTool (z. B. umgetextet), alle Slots
+     und Serien bleiben, wie sie sind
+   - Remove: alles ab jetzt, nur die angezeigte Woche oder nur ein Tag davon –
+     Gespieltes bleibt stehen
+   --------------------------------------------------------------- */
+function openSpotPanel(spot) {
+  closeRepeat();
+  spotPanel = { spot, scope: null, day: null };
+  calTray.classList.add('is-editing');
+  calTray.style.cssText = catStyle(spot.category);
+  calTraySettings.hidden = false;
+  setLit(String(spot.id));
+  renderSpotPanel();
+}
+
+function closeSpotPanel() {
+  if (!spotPanel) return;
+  spotPanel = null;
+  calTraySettings.hidden = true;
+  calTraySettings.innerHTML = '';
+  calTray.classList.remove('is-editing');
+  calTray.removeAttribute('style');
+  setLit(null);
+}
+
+const SCOPES = [['all', 'All'], ['week', 'This week'], ['day', 'One day']];
+
+function renderSpotPanel() {
+  const p = spotPanel;
+  const perDay = DAYS.slice(0, CAL_DAYS).map((_, di) => spotSlotsAhead(p.spot.id, calWeekStart, di).length);
+  const inWeek = perDay.reduce((a, b) => a + b, 0);
+  const canRemove = p.scope === 'all'
+    || (p.scope === 'week' && inWeek > 0)
+    || (p.scope === 'day' && p.day !== null && perDay[p.day] > 0);
+
+  calTraySettings.innerHTML = `
+    <div class="cal-repeat__head">
+      <span class="cal-repeat__dot"></span>
+      <p class="cal-repeat__title">${escapeHtml(p.spot.title)}</p>
+      <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
+    </div>
+
+    <p class="cal-repeat__label">Audio</p>
+    <div class="dropdown cal-spot__audio" data-dd="audio"></div>
+
+    <p class="cal-repeat__label">Remove</p>
+    <div class="cal-chips cal-chips--scope">
+      ${SCOPES.map(([v, label]) => `<button class="cal-chip${p.scope === v ? ' is-active' : ''}" data-scope="${v}" type="button">${label}</button>`).join('')}
+    </div>
+    ${p.scope === 'day' ? `
+      <div class="cal-chips cal-chips--days">
+        ${DAYS.slice(0, CAL_DAYS).map((d, di) => `<button class="cal-chip cal-chip--day${p.day === di ? ' is-active' : ''}" data-pick="${di}" type="button"${perDay[di] ? '' : ' disabled'}>${d}</button>`).join('')}
+      </div>` : ''}
+    <button class="ghost-btn ghost-btn--sm ghost-btn--danger cal-spot__remove" data-act="remove-slots" type="button"${canRemove ? '' : ' disabled'}>Remove</button>`;
+
+  /* Original oder eine fertige Aufnahme aus dem SpotTool */
+  const audios = spotToolAudios().filter(a => a.title !== p.spot.title);
+  buildDropdown(calTraySettings.querySelector('[data-dd="audio"]'), {
+    options: [{ value: '', label: p.spot.title }, ...audios.map(a => ({ value: a.title, label: a.title }))],
+    value: p.spot.audio ? p.spot.audio.title : '',
+    tall: true,
+    onChange: v => {
+      recordUndo();
+      setSpotAudio(p.spot.id, v ? { title: v } : null);
+      if (v) setCardScheduled(v);
+      showToast('success', v ? `“${p.spot.title}” now plays “${v}”.` : `“${p.spot.title}” plays its original audio again.`);
+    },
+  });
+}
+
+calTraySettings.addEventListener('click', e => {
+  const p = spotPanel;
+  if (!p) return;
+  const scope = e.target.closest('[data-scope]');
+  const pick = e.target.closest('[data-pick]');
+  const act = e.target.closest('[data-act]');
+  if (act && act.dataset.act === 'close') { closeSpotPanel(); return; }
+  if (act && act.dataset.act === 'remove-slots') { removeFromSpotPanel(); return; }
+  if (scope) {
+    p.scope = scope.dataset.scope;
+    p.day = null;
+  } else if (pick) {
+    p.day = +pick.dataset.pick;
+  } else return;
+  renderSpotPanel();
+});
+
+function removeFromSpotPanel() {
+  const { spot, scope, day } = spotPanel;
+  const date = day !== null ? calWeekDays(calWeekStart)[day] : null;
+  closeSpotPanel();
+  recordUndo();
+  const n = removeSpotSlots(spot.id, scope, calWeekStart, day);
+  const slots = `${n} slot${n === 1 ? '' : 's'}`;
+  showToast('success',
+    scope === 'all' ? `“${spot.title}” removed from the calendar from now on.`
+    : scope === 'week' ? `${slots} of “${spot.title}” removed this week.`
+    : `${slots} of “${spot.title}” removed on ${longDate(date)}.`);
+}
 
 /* ---------------------------------------------------------------
    ⌘Z / Ctrl+Z: letzte Änderung im Calendar rückgängig, mit ⇧ wiederherstellen

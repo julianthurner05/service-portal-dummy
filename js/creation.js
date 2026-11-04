@@ -157,7 +157,7 @@ function wireCardMenu(card) {
     closeAllMenus();
     if (willOpen) {
       menu.querySelector('[data-action="ready"] .context-menu__label').textContent =
-        isSpotReady(card._state.title) ? 'Remove from Ready for Schedule' : 'Ready for Schedule';
+        isSpotReady(card._state.title) ? 'Remove from Scheduling Spots' : 'Ready for Schedule';
       menu.hidden = false;
       kebab.classList.add('is-open');
     }
@@ -211,8 +211,13 @@ function toggleCardReady(card) {
   setSpotReady({ title, category: null, duration, source: 'spottool' }, ready);
   clearPlanHistory();
   syncReadyBadges();
-  showToast('success', ready ? `“${title}” is ready – drag it into a category in the calendar.` : `“${title}” removed from Ready for Schedule.`);
+  showToast('success', ready ? `“${title}” is ready – drag it into a category in the calendar.` : `“${title}” removed from Scheduling Spots.`);
 }
+
+/* fertige Aufnahmen – Auswahl beim Audio-Austauschen im Calendar */
+const spotToolAudios = () => [...historyList.querySelectorAll('.card')]
+  .filter(card => !['pending', 'error', 'deleted'].includes(card._state.status))
+  .map(card => ({ title: card._state.title, duration: card._state.duration }));
 
 /* Ready-Badge an allen Karten nach der Liste ausrichten */
 function syncReadyBadges() {
