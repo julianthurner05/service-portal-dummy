@@ -212,6 +212,8 @@ const MO_FR = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
 const MO_TH = ['Mo', 'Tu', 'We', 'Th'];
 const MO_SA = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille Stunde 16–18 → eigene Variante */
+/* Varianten, die sich nur durch gesperrte Zeiten unterscheiden (Stille Stunde,
+   Samstag bis 18 Uhr), werden beim Laden zu einer Serie zusammengelegt */
 
 [
   { title: 'Weihnachtsöffnungszeiten Hinweis', category: 'special' },
@@ -356,6 +358,44 @@ BASE_PLAN.forEach(e => {
   });
 });
 
+/* an einem Wochentag grundsätzlich nicht zu vergeben: zu, Stille Stunde
+   oder fix von sounddna belegt */
+function weekdayBlocked(dayI, slot) {
+  const t = slotTime(slot);
+  const h = STORE_HOURS[dayI];
+  if (!h || minutesOf(t) < minutesOf(h[0]) || minutesOf(t) >= minutesOf(h[1]) || isQuiet(dayI, t)) return true;
+  return BASE_PLAN.some(e => e.fixed && e.days.includes(DAYS[dayI]) && e.times.some(x => slotIndex(x) === slot));
+}
+
+/* Serien eines Spots zusammenlegen, die an ihren Tagen dieselben Uhrzeiten
+   haben – eine Uhrzeit, die an einem Tag ohnehin gesperrt ist, zählt dabei
+   als gleich (Mo–Sa 10, 13, 16, 19 Uhr statt Mo–Fr / Mi / Sa). Eine eigene
+   Serie bleibt nur ein Tag, der wirklich anders läuft. Gleicher Zeitraum
+   und gleiches „Replace“ sind Voraussetzung. */
+function mergeSeries(spotId) {
+  const eff = (slots, day) => slots.filter(x => !weekdayBlocked(DAYS.indexOf(day), x)).sort((a, b) => a - b).join();
+  for (let changed = true; changed;) {
+    changed = false;
+    const own = userSeries.filter(r => r.spotId === spotId);
+    for (let i = 0; i < own.length && !changed; i++) {
+      for (let j = i + 1; j < own.length && !changed; j++) {
+        const a = own[i], b = own[j];
+        if (+a.start !== +b.start || +(a.end || 0) !== +(b.end || 0) || a.override !== b.override) continue;
+        if (a.days.some(d => b.days.includes(d))) continue;
+        const u = [...new Set([...a.slots, ...b.slots])].sort((x, y) => x - y);
+        if (![a, b].every(r => r.days.every(d => eff(r.slots, d) === eff(u, d)))) continue;
+        a.days = DAYS.filter(d => a.days.includes(d) || b.days.includes(d));
+        a.slots = u;
+        userSeries.splice(userSeries.indexOf(b), 1);
+        weeks.forEach(items => items.forEach(it => { if (it.seriesId === b.id) it.seriesId = a.id; }));
+        changed = true;
+      }
+    }
+  }
+}
+
+spots.forEach(sp => mergeSeries(sp.id));
+
 /* Zelle für einen Spot freimachen (Replace taken slots): ein anderer,
    noch nicht gespielter Slot dort wird entfernt. Fixe, gesperrte und
    gespielte Zellen bleiben, wie sie sind – derselbe Spot auch. */
@@ -397,8 +437,9 @@ function addSeries({ spotId, days, slots, start, end = null, override = false })
       });
     });
   });
+  mergeSeries(spotId);
   emitPlanChange('week');
-  return { series: r, placed, skipped };
+  return { placed, skipped };
 }
 
 /* Serie bearbeiten (Tage, Uhrzeiten, Ende) – gilt ab jetzt: Gespieltes bleibt,
@@ -434,6 +475,7 @@ function updateSeries(seriesId, { days, slots, end = null, override = false }) {
       });
     });
   });
+  mergeSeries(r.spotId);
   emitPlanChange('week');
   return { placed, skipped };
 }
@@ -638,7 +680,7 @@ function clearPlanHistory() {
    PLAN_VERSION hochzählen, wenn sich der Basisplan im Code ändert.
    --------------------------------------------------------------- */
 const PLAN_KEY = 'sounddna-plan';
-const PLAN_VERSION = 1;
+const PLAN_VERSION = 2;
 
 function savePlan() {
   try {

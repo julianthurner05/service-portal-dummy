@@ -866,7 +866,11 @@ function renderRepeat() {
     ${series ? `
       <p class="cal-repeat__label">Times</p>
       <div class="cal-times">
-        ${r.times.map(s => `<button class="cal-chip cal-chip--time" data-time="${s}" type="button"${r.times.length > 1 ? '' : ' disabled'}>${slotTime(s)}${icon('x')}</button>`).join('')}
+        ${r.times.map(s => `
+          <div class="cal-tchip">
+            <div class="dropdown" data-dd="time" data-slot="${s}"></div>
+            ${r.times.length > 1 ? `<button class="cal-tchip__x" data-time-x="${s}" type="button" aria-label="Remove ${slotTime(s)}">${icon('x')}</button>` : ''}
+          </div>`).join('')}
         <div class="dropdown cal-times__add" data-dd="add-time"></div>
       </div>` : `
       <p class="cal-repeat__label">Times per day</p>
@@ -893,6 +897,17 @@ function renderRepeat() {
   });
 
   if (series) {
+    /* Klick auf eine Uhrzeit: auf eine andere ändern */
+    const free = keep => [...Array(CAL_SLOTS).keys()].filter(s => s === keep || !r.times.includes(s)).map(s => ({ value: slotTime(s), label: slotTime(s) }));
+    calTraySettings.querySelectorAll('[data-dd="time"]').forEach(dd => {
+      const cur = +dd.dataset.slot;
+      buildDropdown(dd, {
+        options: free(cur),
+        value: slotTime(cur),
+        tall: true,
+        onChange: v => { r.times = r.times.map(s => (s === cur ? slotIndex(v) : s)).sort((a, b) => a - b); renderRepeat(); },
+      });
+    });
     buildDropdown(calTraySettings.querySelector('[data-dd="add-time"]'), {
       options: [...Array(CAL_SLOTS).keys()].filter(s => !r.times.includes(s)).map(s => ({ value: slotTime(s), label: slotTime(s) })),
       placeholder: 'Add',
@@ -924,6 +939,7 @@ function renderRepeat() {
               schon gespielten Zellen nur zum Ansehen (ausgegraut) – dort
               kommt nichts dazu
    remove   – Slots der Serie, die mit der Änderung wegfallen: Zelle steht leer
+              (gespielte nur in der Vorschau)
    conflict – belegt von einem anderen Spot: rot umrandet, mit „Replace
               taken slots“ steht dort stattdessen der neue Spot */
 function previewCells() {
@@ -936,9 +952,7 @@ function previewCells() {
   const ours = it => r.kind === 'series' && r.series && it.seriesId === r.series.id;
   if (!repeatValid(r)) {
     /* ohne Tage fällt die ganze Serie weg, sonst (z. B. Enddatum fehlt) bleibt sie */
-    items.forEach(it => {
-      if (ours(it) && it.slot >= playedSlots(dates[it.day])) (r.days.size ? out.keep : out.remove).push(it.id);
-    });
+    items.forEach(it => { if (ours(it)) (r.days.size ? out.keep : out.remove).push(it.id); });
     return out;
   }
   const end = endOf(r);
@@ -950,8 +964,9 @@ function previewCells() {
     const played = playedSlots(date);
     const on = isWeekly(r) ? seriesOn(rule, date, di) : own && di === r.item.day;
     const onPast = isWeekly(r) ? seriesOn(pastRule, date, di) : on;
+    /* auch Gespieltes verschwindet in der Vorschau – nur zum Ansehen, es bleibt */
     items.forEach(it => {
-      if (it.day === di && ours(it) && it.slot >= played && !(on && slots.includes(it.slot))) out.remove.push(it.id);
+      if (it.day === di && ours(it) && !((it.slot < played ? onPast : on) && slots.includes(it.slot))) out.remove.push(it.id);
     });
     slots.forEach(slot => {
       const it = items.find(i => i.day === di && i.slot === slot);
@@ -1022,7 +1037,7 @@ calTraySettings.addEventListener('click', e => {
   if (!r) return;
   const check = e.target.closest('[data-check]');
   const day = e.target.closest('[data-day]');
-  const time = e.target.closest('[data-time]');
+  const time = e.target.closest('[data-time-x]');
   const act = e.target.closest('[data-act]');
   const pick = e.target.closest('[data-series]');
   if (pick) {
@@ -1035,7 +1050,7 @@ calTraySettings.addEventListener('click', e => {
   else if (check && check.dataset.check === 'repeat') r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
   else if (check && check.dataset.check === 'override') r.override = !r.override;
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
-  else if (time) r.times = r.times.filter(s => s !== +time.dataset.time);
+  else if (time) r.times = r.times.filter(s => s !== +time.dataset.timeX);
   else if (act && act.dataset.act === 'end') {
     e.stopPropagation();
     const today = dayStart(new Date());

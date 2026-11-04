@@ -265,7 +265,7 @@
 .cal-cell.is-preview .cal-item__label { color: #ffffff; }
 
 /* fällt mit der Änderung weg: die Zelle steht leer */
-.calendar-view.is-editing .cal-item.is-removed { opacity: 1; }
+.calendar-view.is-editing .cal-item.is-removed:not(.is-past) { opacity: 1; }
 .cal-item.is-removed .cal-slot__inner { background: var(--white-3); }
 .cal-item.is-removed .cal-item__label,
 .cal-item.is-removed .cal-item__x { visibility: hidden; }
@@ -934,10 +934,22 @@
 /* Serie: Wochentage direkt unter dem Label, Uhrzeiten als Chips + „Add“ */
 .cal-chips--flush { margin-top: 0; }
 .cal-times { display: flex; flex-wrap: wrap; gap: 6px; }
-.cal-chip--time { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; }
-.cal-chip--time .icon { width: 9px; height: 9px; stroke-width: 2; opacity: 0.6; }
-.cal-chip--time[disabled] { opacity: 1; }
-.cal-chip--time[disabled] .icon { display: none; }
+
+/* Uhrzeit: Klick öffnet die Auswahl zum Ändern, ✕ nimmt sie raus */
+.cal-tchip { display: inline-flex; align-items: center; height: 28px; border-radius: 7px; transition: background var(--transition); }
+.cal-tray.is-editing .cal-tchip { background: var(--edit-field); }
+.cal-tray.is-editing .cal-tchip:hover,
+.cal-tray.is-editing .cal-tchip:has(.dropdown.is-open) { background: var(--edit-field-hover); }
+.cal-tray.is-editing .cal-tchip .dropdown__toggle,
+.cal-tray.is-editing .cal-tchip .dropdown__toggle:hover,
+.cal-tray.is-editing .cal-tchip .dropdown.is-open .dropdown__toggle { background: none; }
+.cal-tchip .dropdown__toggle { width: auto; height: 28px; padding: 0 10px; font-size: var(--fs-small); letter-spacing: var(--ls-small); }
+.cal-tchip:has(.cal-tchip__x) .dropdown__toggle { padding-right: 2px; }
+.cal-tchip .dropdown__chevron { display: none; }
+.cal-tchip .dropdown__menu { min-width: 96px; }
+.cal-tchip__x { display: grid; place-items: center; height: 28px; padding: 0 8px 0 4px; color: var(--text-80); }
+.cal-tchip__x .icon { width: 9px; height: 9px; stroke-width: 2; opacity: 0.6; transition: opacity var(--transition); }
+.cal-tchip__x:hover .icon { opacity: 1; }
 .cal-times__add .dropdown__toggle { height: 28px; padding: 0 8px 0 10px; gap: 6px; font-size: var(--fs-small); }
 .cal-times__add .dropdown__menu { min-width: 96px; }
 
