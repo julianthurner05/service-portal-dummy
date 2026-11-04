@@ -134,13 +134,17 @@
 }
 
 .cal-col--time { border-left: none; padding: 0; }
+.cal-col--time .cal-col__head { margin: 0; }
 
-/* Tageszeile – bleibt unter der Kopfzeile stehen, Slots laufen darunter durch */
+/* Tageszeile – bleibt unter der Kopfzeile stehen, Slots laufen darunter durch.
+   Sie reicht über den Innenabstand der Spalte, damit auch Punkt und Enden der
+   Jetzt-Linie darunter verschwinden */
 .cal-col__head {
   position: sticky;
   top: var(--head-h);
   z-index: 55;
   height: 52px;
+  margin: 0 -9px;
   display: flex;
   align-items: center;
   justify-content: center;
