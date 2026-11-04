@@ -252,6 +252,11 @@
 /* schon gespielt (vergangene Tage, heute bis jetzt): ausgegraut wie im
    Bearbeitungsmodus, nichts mehr anfassbar */
 .cal-col__body > .is-past { opacity: 0.5; pointer-events: none; }
+
+/* im Bearbeitungsmodus kein Unterschied zwischen gespielt und offen:
+   Vorschau und Ziel überall voll, alles andere tritt gleich weit zurück */
+.calendar-view.is-editing .cal-col__body > .cal-cell.is-past,
+.calendar-view.is-editing .cal-col__body > .cal-item.is-past.is-target { opacity: 1; }
 .cal-col--past .cal-col__head { color: var(--text-40); }
 .cal-col--past .cal-col__date { color: var(--text-25); }
 
@@ -265,7 +270,7 @@
 .cal-cell.is-preview .cal-item__label { color: #ffffff; }
 
 /* fällt mit der Änderung weg: die Zelle steht leer */
-.calendar-view.is-editing .cal-item.is-removed:not(.is-past) { opacity: 1; }
+.calendar-view.is-editing .cal-item.is-removed { opacity: 1; }
 .cal-item.is-removed .cal-slot__inner { background: var(--white-3); }
 .cal-item.is-removed .cal-item__label,
 .cal-item.is-removed .cal-item__x { visibility: hidden; }
