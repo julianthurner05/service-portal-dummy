@@ -12,6 +12,11 @@
      Woche oder alle ab jetzt
    - SpotTool-Icon an einem Spot der Liste: Audio austauschen („Choose audio“
      mit Anhören), Slots und Serien bleiben
+   - Klick auf einen Slot: seine Serie bearbeiten (Tage, Laufzeit, Uhrzeiten)
+     bzw. einen einzelnen Slot wiederholen; Audio anhören; belegte Slots
+     werden in der Vorschau rot markiert und lassen sich ersetzen
+   - Feiertage / Sonderöffnungszeiten als gesperrte Blöcke, Klick auf die
+     Woche unten springt zu einem Datum
    - nach dem Ablegen aus der Liste färbt sich das Ready-Feld ein und zeigt
      die Einstellungen: Tage (dieser Tag / wöchentlich mit Laufzeit bis zu
      Monaten oder ohne Ende) und pro Tag einmal oder Repeat (alle N Minuten)
@@ -74,9 +79,29 @@ function renderCalendar() {
       <div class="cal-col__head">${DAY_NAMES[di].slice(0, 3)}<span class="cal-col__date">${date.getDate()}</span></div>
       <div class="cal-col__body">`;
 
+    /* Feiertag / Sonderöffnungszeit: ab Ladenschluss (nach den Schluss-
+       durchsagen) ein gesperrter Block mit dem Namen des Tages */
+    const sp = specialDay(date);
+    let closedFrom = CAL_SLOTS;
+    if (sp) {
+      closedFrom = sp.hours ? slotIndex(sp.hours[1]) : 0;
+      fixed.forEach((_, key) => {
+        const [d, s] = key.split(':').map(Number);
+        if (d === di && s >= closedFrom) closedFrom = s + 1;
+      });
+    }
+
     for (let s = 0; s < CAL_SLOTS; s++) {
       const past = s < played;
       const pastCls = past ? ' is-past' : '';
+      if (s >= closedFrom) {
+        const n = CAL_SLOTS - s;
+        const meta = sp.hours ? `Open ${parseInt(sp.hours[0], 10)}–${parseInt(sp.hours[1], 10)}` : 'Closed';
+        html += `<div class="cal-closed${pastCls}" data-rows="${n}" style="height: calc(${n} * var(--slot-h) + ${n - 1} * var(--slot-gap))">
+            <span class="cal-closed__name">${escapeHtml(sp.name)}</span><span class="cal-closed__meta">${meta}</span>
+          </div>`;
+        break;
+      }
       /* fix von sounddna – mehrere in einem Slot werden zusammengefasst */
       const f = fixed.get(`${di}:${s}`);
       if (f) {
@@ -110,7 +135,7 @@ function renderCalendar() {
         continue;
       }
 
-      const closed = !isOpen(di, slotTime(s));
+      const closed = !isOpen(date, slotTime(s));
       html += `<div class="cal-slot cal-cell${closed ? ' cal-slot--closed' : ''}${pastCls}" data-day="${di}" data-slot="${s}">
           <div class="cal-slot__inner"></div>
         </div>`;
@@ -122,15 +147,11 @@ function renderCalendar() {
   calGrid.innerHTML = html;
 
   /* Bearbeitungsmodus übersteht den Wochenwechsel; er endet erst, wenn der
-     abgelegte Slot weg ist (Cancel, Undo …). Ziel und Vorschau gleich mit
-     aufbauen, bevor irgendetwas gemessen wird – sonst blenden sie ein. */
+     Slot bzw. die Serie weg ist (Cancel, Undo …). Ziel und Vorschau gleich
+     mit aufbauen, bevor irgendetwas gemessen wird – sonst blenden sie ein. */
   if (repeat) {
-    if (weekItems(repeat.week).some(i => i.id === repeat.item.id)) {
-      calGrid.querySelector(`.cal-item[data-id="${repeat.item.id}"]`)?.classList.add('is-target');
-      paintPreview();
-    } else {
-      closeRepeat();
-    }
+    if (repeatAlive()) renderRepeat();
+    else closeRepeat();
   }
 
   renderTray();
@@ -160,11 +181,17 @@ window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeig
    und ganz unten „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
 const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
 
-const trayItem = (s, expired) => `
-  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
+/* zeitlich begrenzt: Enddatum rechts, gelb, wenn es in den nächsten Tagen ausläuft */
+function trayItem(s, expired) {
+  const end = expired ? null : spotEnd(s);
+  const until = end ? `<span class="cal-tray__end${spotEndsSoon(s) ? ' is-soon' : ''}">until ${end.getDate()} ${MONTH_SHORT[end.getMonth()]}</span>` : '';
+  return `
+  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
+    ${until}
     <button class="cal-tray__audio" data-audio="${s.id}" aria-label="Change audio" type="button">${icon('wave')}</button>
   </div>`;
+}
 
 function renderTray() {
   const all = paletteSpots();
@@ -259,7 +286,7 @@ function renderNowLine() {
   const body = col.querySelector('.cal-col__body');
   /* Zeilen-Elemente decken die Reihen ab (Quiet-Blöcke mehrere) – Position aus dem DOM */
   let row = 0;
-  for (const el of body.querySelectorAll('.cal-slot, .cal-quiet')) {
+  for (const el of body.querySelectorAll('.cal-slot, .cal-quiet, .cal-closed')) {
     const span = parseInt(el.dataset.rows, 10) || 1;
     if (Math.floor(s) < row + span) {
       const line = document.createElement('div');
@@ -481,10 +508,19 @@ function openSlotMenu(x) {
 
 calGrid.addEventListener('click', e => {
   const x = e.target.closest('.cal-item__x');
-  if (!x) return;
-  e.stopPropagation();
-  if (!slotMenu.hidden && slotMenuItem && slotMenuItem.id === +x.dataset.x) closeSlotMenu();
-  else openSlotMenu(x);
+  if (x) {
+    e.stopPropagation();
+    if (!slotMenu.hidden && slotMenuItem && slotMenuItem.id === +x.dataset.x) closeSlotMenu();
+    else openSlotMenu(x);
+    return;
+  }
+  /* Klick auf einen Slot: Serie bearbeiten bzw. einzelnen Slot wiederholen */
+  const el = e.target.closest('.cal-item[draggable="true"]');
+  if (!el || calendarView.classList.contains('is-editing')) return;
+  const it = weekItems(calWeekStart).find(i => i.id === +el.dataset.id);
+  if (!it) return;
+  if (it.seriesId && userSeries.some(r => r.id === it.seriesId)) openSeries(it);
+  else openRepeat(it, 'single');
 });
 
 slotMenu.addEventListener('click', e => {
@@ -664,10 +700,17 @@ function daysLabel(days) {
   return run ? `${DAYS[idx[0]]}–${DAYS[idx[idx.length - 1]]}` : idx.map(i => DAYS[i]).join(', ');
 }
 
-let repeat = null;                    /* { item, week, spot, date, mode: 'day'|'weekly', days: Set, end, perDay: 'once'|'repeat', every, until } */
+/* Einstellungen im Ready-Feld – drei Fälle:
+   'drop'   gerade aus der Liste abgelegt (Cancel nimmt den Slot wieder raus)
+   'single' Klick auf einen einzelnen Slot (Cancel schließt nur)
+   'series' Klick auf einen Slot einer Serie: Tage, Laufzeit, Uhrzeiten */
+let repeat = null;                    /* { kind, item, week, spot, date, days: Set, end, override,
+                                          drop/single: mode 'day'|'weekly', perDay 'once'|'repeat', every, until,
+                                          series: series, times: [slot, …] } */
 
 /* Uhrzeiten eines Tages mit der aktuellen Einstellung (Slot-Indizes) */
 function repeatSlots(r) {
+  if (r.kind === 'series') return r.times;
   if (r.perDay === 'once') return [r.item.slot];
   const step = r.every / SLOT_MIN;
   const last = slotIndex(r.until);
@@ -676,8 +719,23 @@ function repeatSlots(r) {
   return list;
 }
 
+const isWeekly = r => r.kind === 'series' || r.mode === 'weekly';
+
+/* gibt es noch, worum es geht? (sonst endet die Bearbeitung) */
+const repeatAlive = () => (repeat.kind === 'series'
+  ? userSeries.includes(repeat.series)
+  : weekItems(repeat.week).some(i => i.id === repeat.item.id));
+
+/* Einstellung vollständig? (Tage gewählt, Enddatum gesetzt, Uhrzeiten da) */
+const repeatValid = r => !(isWeekly(r) && (!r.days.size || r.end === '')) && repeatSlots(r).length > 0;
+
+function stopPanelAudio() {
+  if (activePlayer && calTraySettings.contains(activePlayer.el)) activePlayer.stop();
+}
+
 function closeRepeat() {
   if (!repeat) return;
+  stopPanelAudio();
   clearPreview();
   repeat = null;
   calTraySettings.hidden = true;
@@ -685,29 +743,66 @@ function closeRepeat() {
   calTray.classList.remove('is-editing');
   calTray.removeAttribute('style');
   calendarView.classList.remove('is-editing');
-  calGrid.querySelectorAll('.cal-item.is-target').forEach(el => el.classList.remove('is-target'));
 }
 
-function openRepeat(item) {
+function enterEditing(spot) {
+  calTray.classList.add('is-editing');
+  calTray.style.cssText = catStyle(spot.category);
+  calTraySettings.hidden = false;
+  /* Bearbeitungsmodus: bestehende Slots treten zurück, die betroffenen bleiben */
+  calendarView.classList.add('is-editing');
+}
+
+function openRepeat(item, kind = 'drop') {
   closeRepeat();
   const spot = spotById(item.spotId);
   const date = calWeekDays(calWeekStart)[item.day];
   const lastStart = slotTime(CAL_SLOTS - 1);
   const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
-  repeat = { item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until };
-  calTray.classList.add('is-editing');
-  calTray.style.cssText = catStyle(spot.category);
-  calTraySettings.hidden = false;
-  /* Bearbeitungsmodus: bestehende Slots treten zurück, der abgelegte bleibt */
-  calendarView.classList.add('is-editing');
-  calGrid.querySelector(`.cal-item[data-id="${item.id}"]`)?.classList.add('is-target');
+  repeat = { kind, item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until, override: false };
+  enterEditing(spot);
   renderRepeat();
+}
+
+function openSeries(item) {
+  closeRepeat();
+  const series = userSeries.find(r => r.id === item.seriesId);
+  const spot = spotById(item.spotId);
+  repeat = {
+    kind: 'series', item, week: new Date(calWeekStart), spot, date: calWeekDays(calWeekStart)[item.day],
+    series, days: new Set(series.days), end: series.end ? fmtDate(series.end) : null,
+    times: [...series.slots].sort((a, b) => a - b), override: false,
+  };
+  enterEditing(spot);
+  renderRepeat();
+}
+
+/* Audio des Spots zum Anhören – bei getauschtem Audio steht dessen Name dabei */
+function audioOf(spot) {
+  const swapped = spot.audio ? spotToolAudios().find(a => a.title === spot.audio.title) : null;
+  return { title: spot.audio ? spot.audio.title : null, duration: swapped ? swapped.duration : spot.duration };
 }
 
 function renderRepeat() {
   const r = repeat;
-  const weekly = r.mode === 'weekly';
+  const series = r.kind === 'series';
+  const weekly = isWeekly(r);
   const repeating = r.perDay === 'repeat';
+  const audio = audioOf(r.spot);
+  const conflicts = previewCells().conflict.length;
+  stopPanelAudio();
+
+  const endField = `
+      <p class="cal-repeat__label">Runs until</p>
+      <div class="field field--date">
+        <button class="field__btn" data-act="end" type="button"><span class="${r.end === '' ? 'is-placeholder' : ''}">${r.end === null ? 'infinite' : (r.end || 'Select end date')}</span></button>
+        <button class="field__aux" data-act="end-aux" type="button" aria-label="${r.end === null ? 'Remove infinite' : 'Set to infinite'}">${icon(r.end === null ? 'x' : 'infinity')}</button>
+      </div>`;
+  const dayChips = `
+      <div class="cal-chips cal-chips--days">
+        ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
+      </div>`;
+  const check = (key, on, label) => `<button class="cal-check${on ? ' is-on' : ''}" data-check="${key}" type="button" aria-pressed="${on}"><span class="cal-check__box">${icon('check')}</span>${label}</button>`;
 
   calTraySettings.innerHTML = `
     <div class="cal-repeat__head">
@@ -716,32 +811,56 @@ function renderRepeat() {
       <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
     </div>
 
-    <p class="cal-repeat__label">Days</p>
-    <button class="cal-check${weekly ? ' is-on' : ''}" data-check="weekly" type="button" aria-pressed="${weekly}"><span class="cal-check__box">${icon('check')}</span>Weekly</button>
-    ${weekly ? `
-      <div class="cal-chips cal-chips--days">
-        ${DAYS.slice(0, CAL_DAYS).map(d => `<button class="cal-chip cal-chip--day${r.days.has(d) ? ' is-active' : ''}" data-day="${d}" type="button">${d}</button>`).join('')}
-      </div>
-      <p class="cal-repeat__label">Runs until</p>
-      <div class="field field--date">
-        <button class="field__btn" data-act="end" type="button"><span class="${r.end === '' ? 'is-placeholder' : ''}">${r.end === null ? 'infinite' : (r.end || 'Select end date')}</span></button>
-        <button class="field__aux" data-act="end-aux" type="button" aria-label="${r.end === null ? 'Remove infinite' : 'Set to infinite'}">${icon(r.end === null ? 'x' : 'infinity')}</button>
-      </div>` : ''}
+    <p class="cal-repeat__label">Audio</p>
+    ${audio.title ? `<p class="cal-audio__name">${escapeHtml(audio.title)}</p>` : ''}
+    <div class="cal-audio">
+      <button class="play-btn" aria-label="Play" type="button">${icon('play', 'icon--filled')}</button>
+      <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
+      <span class="card__time"></span>
+    </div>
 
-    <p class="cal-repeat__label">Times per day</p>
-    <button class="cal-check${repeating ? ' is-on' : ''}" data-check="repeat" type="button" aria-pressed="${repeating}"><span class="cal-check__box">${icon('check')}</span>Repeat</button>
-    ${repeating ? `
-      <div class="cal-repeat__fields">
-        <label class="cal-repeat__field"><span>Every</span><div class="dropdown" data-dd="every"></div></label>
-        <label class="cal-repeat__field"><span>Until</span><div class="dropdown" data-dd="until"></div></label>
-      </div>` : ''}
+    <p class="cal-repeat__label">Days</p>
+    ${series ? `${dayChips.replace('cal-chips--days', 'cal-chips--days cal-chips--flush')}${endField}` : `
+      ${check('weekly', weekly, 'Weekly')}
+      ${weekly ? `${dayChips}${endField}` : ''}`}
+
+    ${series ? `
+      <p class="cal-repeat__label">Times</p>
+      <div class="cal-times">
+        ${r.times.map(s => `<button class="cal-chip cal-chip--time" data-time="${s}" type="button"${r.times.length > 1 ? '' : ' disabled'}>${slotTime(s)}${icon('x')}</button>`).join('')}
+        <div class="dropdown cal-times__add" data-dd="add-time"></div>
+      </div>` : `
+      <p class="cal-repeat__label">Times per day</p>
+      ${check('repeat', repeating, 'Repeat')}
+      ${repeating ? `
+        <div class="cal-repeat__fields">
+          <label class="cal-repeat__field"><span>Every</span><div class="dropdown" data-dd="every"></div></label>
+          <label class="cal-repeat__field"><span>Until</span><div class="dropdown" data-dd="until"></div></label>
+        </div>` : ''}`}
+
+    ${conflicts || r.override ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
 
     <div class="cal-repeat__foot">
       <button class="ghost-btn ghost-btn--sm" data-act="cancel" type="button">Cancel</button>
-      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${weekly && (!r.days.size || r.end === '') ? ' disabled' : ''}>Done</button>
+      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${repeatValid(r) ? '' : ' disabled'}>Done</button>
     </div>`;
 
-  if (repeating) {
+  createPlayer({
+    playBtn: calTraySettings.querySelector('.cal-audio .play-btn'),
+    slider: calTraySettings.querySelector('.cal-audio .slider'),
+    timeEl: calTraySettings.querySelector('.cal-audio .card__time'),
+    duration: audio.duration,
+    resetOnStop: true,
+  });
+
+  if (series) {
+    buildDropdown(calTraySettings.querySelector('[data-dd="add-time"]'), {
+      options: [...Array(CAL_SLOTS).keys()].filter(s => !r.times.includes(s)).map(s => ({ value: slotTime(s), label: slotTime(s) })),
+      placeholder: 'Add',
+      tall: true,
+      onChange: v => { r.times = [...r.times, slotIndex(v)].sort((a, b) => a - b); renderRepeat(); },
+    });
+  } else if (repeating) {
     buildDropdown(calTraySettings.querySelector('[data-dd="every"]'), {
       options: EVERY.map(m => ({ value: String(m), label: `${m} min` })),
       value: String(r.every),
@@ -760,36 +879,77 @@ function renderRepeat() {
   paintPreview();
 }
 
-/* Vorschau: in diesen freien Zellen der angezeigten Woche landet der Spot mit
-   der aktuellen Einstellung – leicht angedeutet, bevor man „Done“ drückt.
-   Auch in anderen Wochen, solange die Bearbeitung offen ist. */
+/* Vorschau in der angezeigten Woche (auch beim Wochenwechsel):
+   keep     – Slots, die bleiben bzw. neu sind (hell)
+   place    – freie Zellen, in die der Spot neu kommt (hell angedeutet)
+   conflict – belegt von einem anderen Spot: rot umrandet, mit „Replace
+              taken slots“ steht dort stattdessen der neue Spot */
+function previewCells() {
+  const r = repeat;
+  const out = { keep: [], place: [], conflict: [] };
+  const own = sameDay(calWeekStart, r.week);
+  if (r.kind !== 'series' && own) out.keep.push(r.item.id);
+  if (!repeatValid(r)) return out;
+  const items = weekItems(calWeekStart);
+  const end = endOf(r);
+  const rule = { days: [...r.days], start: r.kind === 'series' ? r.series.start : dayStart(r.date), end: end ? dayStart(end) : null };
+  const slots = repeatSlots(r);
+  calWeekDays(calWeekStart).forEach((date, di) => {
+    const onDay = isWeekly(r) ? seriesOn(rule, date, di) : own && di === r.item.day;
+    if (!onDay) return;
+    const played = playedSlots(date);
+    slots.forEach(slot => {
+      if (slot < played) return;
+      const it = items.find(i => i.day === di && i.slot === slot);
+      if (it && r.kind === 'series' && it.seriesId === r.series.id) { out.keep.push(it.id); return; }
+      if (it && r.kind !== 'series' && it.id === r.item.id) return;
+      if (it) { out.conflict.push(it.id); return; }
+      if (cellFree(calWeekStart, di, slot)) out.place.push({ di, slot });
+    });
+  });
+  return out;
+}
+
 function clearPreview() {
   calGrid.querySelectorAll('.cal-cell.is-preview').forEach(cell => {
     cell.classList.remove('is-preview');
     cell.removeAttribute('style');
     cell.querySelector('.cal-item__label')?.remove();
   });
+  calGrid.querySelectorAll('.cal-item.is-target').forEach(el => el.classList.remove('is-target'));
+  calGrid.querySelectorAll('.cal-item.is-conflict').forEach(el => {
+    if (el.classList.contains('is-replace')) {
+      el.setAttribute('style', el.dataset.origStyle);
+      const label = el.querySelector('.cal-item__label');
+      label.textContent = label.dataset.orig;
+    }
+    el.classList.remove('is-conflict', 'is-replace');
+  });
 }
 
 function paintPreview() {
   clearPreview();
   const r = repeat;
-  if (r.mode === 'weekly' && (!r.days.size || r.end === '')) return;
-  const end = endOf(r);
-  const rule = { days: [...r.days], start: dayStart(r.date), end: end ? dayStart(end) : null };
-  const slots = repeatSlots(r);
-  const own = sameDay(calWeekStart, r.week);
-  calWeekDays(calWeekStart).forEach((date, di) => {
-    const onDay = r.mode === 'weekly' ? seriesOn(rule, date, di) : own && di === r.item.day;
-    if (!onDay) return;
-    slots.forEach(slot => {
-      if (own && di === r.item.day && slot === r.item.slot) return;
-      const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]:not(.cal-slot--closed, .is-past)`);
-      if (!cell) return;                         /* belegt, Quiet Hour oder geschlossen → wird übersprungen */
-      cell.classList.add('is-preview');
-      cell.setAttribute('style', catStyle(r.spot.category));
-      cell.insertAdjacentHTML('beforeend', `<span class="cal-item__label">${escapeHtml(r.spot.title)}</span>`);
-    });
+  const p = previewCells();
+  p.keep.forEach(id => calGrid.querySelector(`.cal-item[data-id="${id}"]`)?.classList.add('is-target'));
+  p.place.forEach(({ di, slot }) => {
+    const cell = calGrid.querySelector(`.cal-cell[data-day="${di}"][data-slot="${slot}"]`);
+    if (!cell) return;
+    cell.classList.add('is-preview');
+    cell.setAttribute('style', catStyle(r.spot.category));
+    cell.insertAdjacentHTML('beforeend', `<span class="cal-item__label">${escapeHtml(r.spot.title)}</span>`);
+  });
+  p.conflict.forEach(id => {
+    const el = calGrid.querySelector(`.cal-item[data-id="${id}"]`);
+    if (!el) return;
+    el.classList.add('is-conflict');
+    if (!r.override) return;
+    el.classList.add('is-replace');
+    el.dataset.origStyle = el.getAttribute('style') || '';
+    el.setAttribute('style', catStyle(r.spot.category));
+    const label = el.querySelector('.cal-item__label');
+    label.dataset.orig = label.textContent;
+    label.textContent = r.spot.title;
   });
 }
 
@@ -798,16 +958,20 @@ calTraySettings.addEventListener('click', e => {
   if (!r) return;
   const check = e.target.closest('[data-check]');
   const day = e.target.closest('[data-day]');
+  const time = e.target.closest('[data-time]');
   const act = e.target.closest('[data-act]');
   /* ohne Häkchen gilt „dieser Tag“ bzw. „einmal“ */
   if (check && check.dataset.check === 'weekly') r.mode = r.mode === 'weekly' ? 'day' : 'weekly';
-  else if (check) r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
+  else if (check && check.dataset.check === 'repeat') r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
+  else if (check && check.dataset.check === 'override') r.override = !r.override;
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
+  else if (time) r.times = r.times.filter(s => s !== +time.dataset.time);
   else if (act && act.dataset.act === 'end') {
     e.stopPropagation();
+    const today = dayStart(new Date());
     openDatepicker(act.closest('.field--date'), {
-      value: r.end || fmtDate(r.date),
-      min: dayStart(r.date),
+      value: r.end || fmtDate(r.kind === 'series' ? today : r.date),
+      min: r.kind === 'series' ? today : dayStart(r.date),
       allowInfinite: true,
       onSelect: d => { r.end = d; renderRepeat(); },
       onInfinite: () => { r.end = null; renderRepeat(); },
@@ -818,11 +982,14 @@ calTraySettings.addEventListener('click', e => {
   else if (act && act.dataset.act === 'end-aux') r.end = r.end === null ? '' : null;
   else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
   else if (act && act.dataset.act === 'cancel') {
-    /* Ablegen rückgängig: der Slot verschwindet, ohne Spur im Verlauf */
+    const dropped = r.kind === 'drop';
     closeRepeat();
-    discardPlanStep();
-    syncReadyBadges();
-    renderCalendar();
+    if (dropped) {
+      /* Ablegen rückgängig: der Slot verschwindet, ohne Spur im Verlauf */
+      discardPlanStep();
+      syncReadyBadges();
+      renderCalendar();
+    }
     return;
   } else if (act && act.dataset.act === 'done') {
     applyRepeat();
@@ -831,25 +998,36 @@ calTraySettings.addEventListener('click', e => {
   renderRepeat();
 });
 
+const timesLabel = slots => (slots.length > 4 ? `${slots.length} times a day` : `at ${slots.map(slotTime).join(', ')}`);
+const skippedNote = n => (n ? ` ${n} taken slot${n === 1 ? '' : 's'} skipped.` : '');
+
 function applyRepeat() {
   const r = repeat;
   const slots = repeatSlots(r);
+  const end = endOf(r);
+  const days = DAYS.filter(d => r.days.has(d));
+  if (r.kind === 'series') {
+    recordUndo();
+    const { skipped } = updateSeries(r.series.id, { days, slots: [...slots], end, override: r.override });
+    showToast('success', `“${r.spot.title}” now runs every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
+    closeRepeat();
+    renderCalendar();
+    return;
+  }
   const time = slotTime(r.item.slot);
   const perDay = slots.length > 1 ? `every ${r.every} min from ${time} to ${slotTime(slots[slots.length - 1])}` : `at ${time}`;
   if (r.mode === 'day') {
     if (slots.length === 1) { closeRepeat(); return; }
     recordUndo();
     let skipped = 0;
-    slots.slice(1).forEach(slot => { if (!placeSpot(r.week, r.spot.id, r.item.day, slot)) skipped++; });
-    showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+    slots.slice(1).forEach(slot => { if (!placeSpot(r.week, r.spot.id, r.item.day, slot, r.override)) skipped++; });
+    showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skippedNote(skipped)}`);
   } else {
-    const days = DAYS.filter(d => r.days.has(d));
-    const end = endOf(r);
     recordUndo();
-    /* der abgelegte Slot geht in der Serie auf */
+    /* der Slot geht in der Serie auf */
     removeItem(r.week, r.item.id);
-    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: r.date, end });
-    showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skipped ? ` ${skipped} taken slot${skipped === 1 ? '' : 's'} skipped.` : ''}`);
+    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: r.date, end, override: r.override });
+    showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
   }
   closeRepeat();
   renderCalendar();
@@ -885,6 +1063,17 @@ const calNext = document.getElementById('cal-next');
 calPrev.addEventListener('click', () => { calWeekStart.setDate(calWeekStart.getDate() - 7); renderCalendar(); });
 calNext.addEventListener('click', () => { calWeekStart.setDate(calWeekStart.getDate() + 7); renderCalendar(); });
 document.getElementById('cal-today').addEventListener('click', () => { calWeekStart = mondayOf(new Date()); renderCalendar(); });
+
+/* Klick auf die Woche: Datum wählen, der Kalender springt in dessen Woche */
+calRange.addEventListener('click', e => {
+  e.stopPropagation();
+  const wrap = calRange.parentElement;
+  if (wrap.querySelector('.datepicker')) { closeAllMenus(); return; }
+  openDatepicker(wrap, {
+    value: fmtDate(calWeekStart),
+    onSelect: d => { calWeekStart = mondayOf(parseDate(d)); renderCalendar(); },
+  });
+});
 
 document.addEventListener('keydown', e => {
   if (calendarView.hidden || (e.target instanceof Element && e.target.closest('input, textarea'))) return;

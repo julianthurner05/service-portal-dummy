@@ -3,9 +3,11 @@
    - Kategorien, Store-Regeln (Öffnungszeiten, Quiet Hours), Slot-Raster
    - Spot-Bibliothek: Spots aus dem Plan + Spots aus dem SpotTool; was
      „ready“ ist, steht in der Liste „Scheduling Spots“ im Calendar
-   - Wochen im Calendar: jede Woche wird beim ersten Öffnen aus dem
-     Basisplan und den Wiederholungen (Serien) befüllt, danach lebt jeder
-     Slot für sich
+   - Wochen im Calendar: jede Woche wird beim ersten Öffnen aus den Serien
+     befüllt (Basisplan + im Calendar angelegte), danach lebt jeder Slot
+     für sich; Serien lassen sich nachträglich bearbeiten
+   - Feiertage / Sonderöffnungszeiten, Ersetzen belegter Slots
+   - der ganze Plan bleibt im Browser gespeichert (?reset setzt zurück)
    - fixe Slots (Opening/Closing) vergibt sounddna – sie kommen jede Woche
      aus dem Basisplan und sind nicht verschieb- oder löschbar
    SpotTool, Calendar und Home lesen und schreiben nur hierüber.
@@ -52,8 +54,32 @@ function storeHoursLabel() {
   return parts.map(p => `${DAYS[p.from]}${p.to > p.from ? `–${DAYS[p.to]}` : ''} ${parseInt(p.h[0], 10)}–${parseInt(p.h[1], 10)}`).join(' · ');
 }
 
-function isOpen(dayI, time) {
-  const h = STORE_HOURS[dayI];
+/* Feiertage und Sonderöffnungszeiten (Beispiel Österreich) – hours null = geschlossen */
+const SPECIAL_DAYS = [
+  { date: '26.10.2026', name: 'National Day',           hours: null },
+  { date: '08.12.2026', name: 'Immaculate Conception',  hours: ['10:00', '18:00'] },
+  { date: '24.12.2026', name: 'Christmas Eve',          hours: ['09:00', '14:00'] },
+  { date: '25.12.2026', name: 'Christmas Day',          hours: null },
+  { date: '26.12.2026', name: 'St. Stephen’s Day',      hours: null },
+  { date: '31.12.2026', name: 'New Year’s Eve',         hours: ['09:00', '16:00'] },
+  { date: '01.01.2027', name: 'New Year’s Day',         hours: null },
+  { date: '06.01.2027', name: 'Epiphany',               hours: null },
+  { date: '29.03.2027', name: 'Easter Monday',          hours: null },
+  { date: '01.05.2027', name: 'Labour Day',             hours: null },
+  { date: '06.05.2027', name: 'Ascension Day',          hours: null },
+  { date: '17.05.2027', name: 'Whit Monday',            hours: null },
+  { date: '27.05.2027', name: 'Corpus Christi',         hours: null },
+];
+const specialDay = date => SPECIAL_DAYS.find(s => s.date === fmtDate(date)) || null;
+
+/* Öffnungszeit an einem bestimmten Tag – Feiertage gehen vor */
+function hoursOn(date) {
+  const sp = specialDay(date);
+  return sp ? sp.hours : STORE_HOURS[dayIdx(date)];
+}
+
+function isOpen(date, time) {
+  const h = hoursOn(date);
   return !!h && minutesOf(time) >= minutesOf(h[0]) && minutesOf(time) < minutesOf(h[1]);
 }
 
@@ -77,7 +103,7 @@ const weekDates = monday => [...Array(7)].map((_, i) => { const d = new Date(mon
 const calWeekDays = monday => weekDates(monday).slice(0, CAL_DAYS);
 
 /* frei bespielbar: offen und keine Quiet Hour */
-const cellBlocked = (dayI, slot) => !isOpen(dayI, slotTime(slot)) || isQuiet(dayI, slotTime(slot));
+const cellBlocked = (date, slot) => !isOpen(date, slotTime(slot)) || isQuiet(dayIdx(date), slotTime(slot));
 
 /* ---------------------------------------------------------------
    Änderungen melden – Calendar, Home und SpotTool hören mit
@@ -91,7 +117,7 @@ const emitPlanChange = kind => planListeners.forEach(fn => fn(kind));
    --------------------------------------------------------------- */
 let spotUid = 0;
 const spots = [];                     /* { id, title, category (null = noch keine), duration, source: 'plan' | 'spottool', ready, retired,
-                                          audio (null = Original, sonst { title } aus dem SpotTool), offFrom (Basisplan ab diesem Tag aus) } */
+                                          audio (null = Original, sonst { title } aus dem SpotTool) } */
 
 const findSpot = title => spots.find(s => s.title === title) || null;
 const spotById = id => spots.find(s => s.id === id) || null;
@@ -103,7 +129,7 @@ function addSpot({ title, category = 'standard', duration = 9, source = 'plan', 
     if (s.retired) { s.retired = false; emitPlanChange('spots'); }
     return s;
   }
-  s = { id: ++spotUid, title, category, duration, source, ready, retired: false, audio: null, offFrom: null };
+  s = { id: ++spotUid, title, category, duration, source, ready, retired: false, audio: null };
   if (front) spots.unshift(s); else spots.push(s);
   emitPlanChange('spots');
   return s;
@@ -256,12 +282,18 @@ const weeks = new Map();              /* Montag 'dd.mm.yyyy' → [{ id, spotId, 
 /* fixe Slots einer Woche: 'day:slot' → [{ spot, time }] (mehrere Schlussdurchsagen
    können sich einen 15-Minuten-Slot teilen). Eine Durchsage genau auf der
    Rasterkante (Fr 21:00) kommt in den letzten Slot, statt zu verschwinden. */
+const CLOSING_OFFSETS = [30, 15, 5, 0];         /* 1.–4. Schlussdurchsage: Minuten vor Ladenschluss */
+
 function fixedCells(monday) {
   const cells = new Map();
   weekDates(monday).forEach((date, di) => BASE_PLAN.forEach(e => {
     if (!e.fixed || !entryActive(e, date, di)) return;
+    const sp = specialDay(date);
+    if (sp && !sp.hours) return;                   /* Feiertag: geschlossen, keine Durchsagen */
     const spot = findSpot(e.spot);
-    e.times.forEach(time => {
+    /* Sonderöffnungszeit: Schlussdurchsagen rücken an die frühere Schließzeit */
+    const times = sp ? [hhmm(minutesOf(sp.hours[1]) - CLOSING_OFFSETS[parseInt(e.spot, 10) - 1])] : e.times;
+    times.forEach(time => {
       const slot = minutesOf(time) === CAL_HOUR_END * 60 ? CAL_SLOTS - 1 : slotIndex(time);
       if (slot < 0 || slot >= CAL_SLOTS) return;
       const key = `${di}:${slot}`;
@@ -273,32 +305,22 @@ function fixedCells(monday) {
   return cells;
 }
 
-/* Slots einer Woche – beim ersten Zugriff aus dem Basisplan befüllt */
+/* Slots einer Woche – beim ersten Zugriff aus den Serien befüllt, in ihrer
+   Reihenfolge (Basisplan zuerst, zeitlich begrenzte Aktionen vorne); Serien
+   mit „Replace taken slots“ gehen allen vor */
 function weekItems(monday) {
   const key = fmtDate(monday);
   if (weeks.has(key)) return weeks.get(key);
 
   const taken = new Set(fixedCells(monday).keys());
   const items = [];
-  weekDates(monday).forEach((date, di) => BASE_PLAN.forEach(e => {
-    if (e.fixed || !entryActive(e, date, di)) return;
-    const spot = findSpot(e.spot);
-    if (!spot || spot.retired || (spot.offFrom && date >= spot.offFrom)) return;
-    e.times.forEach(time => {
-      const slot = slotIndex(time);
-      if (slot < 0 || slot >= CAL_SLOTS || cellBlocked(di, slot)) return;
-      const cell = `${di}:${slot}`;
-      if (taken.has(cell)) return;
-      taken.add(cell);
-      items.push({ id: ++itemUid, spotId: spot.id, day: di, slot });
-    });
-  }));
-  /* danach die Wiederholungen aus dem Calendar – nur in freie Zellen */
-  weekDates(monday).forEach((date, di) => userSeries.forEach(r => {
-    if (!seriesOn(r, date, di)) return;
+  const order = [...userSeries.filter(r => r.override), ...userSeries.filter(r => !r.override)];
+  weekDates(monday).forEach((date, di) => order.forEach(r => {
+    const spot = spotById(r.spotId);
+    if (!spot || spot.retired || !seriesOn(r, date, di)) return;
     r.slots.forEach(slot => {
       const cell = `${di}:${slot}`;
-      if (taken.has(cell) || cellBlocked(di, slot)) return;
+      if (slot < 0 || slot >= CAL_SLOTS || taken.has(cell) || cellBlocked(date, slot)) return;
       taken.add(cell);
       items.push({ id: ++itemUid, spotId: r.spotId, day: di, slot, seriesId: r.id });
     });
@@ -314,7 +336,7 @@ function weekItems(monday) {
    oder ohne Ende
    --------------------------------------------------------------- */
 let seriesUid = 0;
-const userSeries = [];                /* { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null } */
+const userSeries = [];                /* alle Serien: { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null, override } */
 
 const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -324,11 +346,33 @@ function seriesOn(r, date, dayI) {
   return d >= r.start && (!r.end || d <= r.end);
 }
 
+/* der Basisplan wird zu ganz normalen Serien – damit ist jeder Slot im
+   Calendar bearbeitbar (fixe Schlussdurchsagen bleiben im Basisplan) */
+BASE_PLAN.forEach(e => {
+  if (e.fixed) return;
+  userSeries.push({
+    id: ++seriesUid, spotId: findSpot(e.spot).id, days: [...e.days], slots: e.times.map(slotIndex),
+    start: parseDate(e.start || PLAN_START), end: e.end ? parseDate(e.end) : null, override: false,
+  });
+});
+
+/* Zelle für einen Spot freimachen (Replace taken slots): ein anderer,
+   noch nicht gespielter Slot dort wird entfernt. Fixe, gesperrte und
+   gespielte Zellen bleiben, wie sie sind. */
+function clearCellFor(monday, dayI, slot) {
+  const date = weekDates(monday)[dayI];
+  if (slot < playedSlots(date) || cellBlocked(date, slot) || fixedCells(monday).has(`${dayI}:${slot}`)) return;
+  const items = weekItems(monday);
+  const i = items.findIndex(x => x.day === dayI && x.slot === slot);
+  if (i >= 0) items.splice(i, 1);
+}
+
 /* Serie anlegen: gilt für alle Wochen, die später zum ersten Mal geöffnet
    werden, und wird sofort in die schon geöffneten Wochen eingetragen.
+   override: belegte Slots werden ersetzt statt übersprungen.
    Liefert { placed, skipped } für die schon geöffneten Wochen. */
-function addSeries({ spotId, days, slots, start, end = null }) {
-  const r = { id: ++seriesUid, spotId, days, slots, start: dayStart(start), end: end ? dayStart(end) : null };
+function addSeries({ spotId, days, slots, start, end = null, override = false }) {
+  const r = { id: ++seriesUid, spotId, days, slots, start: dayStart(start), end: end ? dayStart(end) : null, override };
   userSeries.push(r);
   let placed = 0, skipped = 0;
   weeks.forEach((items, key) => {
@@ -336,8 +380,11 @@ function addSeries({ spotId, days, slots, start, end = null }) {
     weekDates(monday).forEach((date, di) => {
       if (!seriesOn(r, date, di)) return;
       slots.forEach(slot => {
+        /* gespielt oder gesperrt (zu, Feiertag, Quiet Hour) zählt nicht als belegt */
+        if (slot < playedSlots(date) || cellBlocked(date, slot)) return;
+        if (override) clearCellFor(monday, di, slot);
         if (cellFree(monday, di, slot)) {
-          items.push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
+          weekItems(monday).push({ id: ++itemUid, spotId, day: di, slot, seriesId: r.id });
           placed++;
         } else {
           skipped++;
@@ -347,6 +394,43 @@ function addSeries({ spotId, days, slots, start, end = null }) {
   });
   emitPlanChange('week');
   return { series: r, placed, skipped };
+}
+
+/* Serie bearbeiten (Tage, Uhrzeiten, Ende) – gilt ab jetzt: Gespieltes bleibt,
+   in den geöffneten Wochen kommt nur der Unterschied dazu bzw. weg, einzeln
+   gelöschte oder verschobene Slots bleiben also, wie sie sind. */
+function updateSeries(seriesId, { days, slots, end = null, override = false }) {
+  const r = userSeries.find(x => x.id === seriesId);
+  if (!r) return { placed: 0, skipped: 0 };
+  const old = { ...r, days: [...r.days], slots: [...r.slots] };
+  Object.assign(r, { days, slots, end: end ? dayStart(end) : null, override: r.override || override });
+  let placed = 0, skipped = 0;
+  weeks.forEach((items, key) => {
+    const monday = parseDate(key);
+    weekDates(monday).forEach((date, di) => {
+      const played = playedSlots(date);
+      const wasOn = seriesOn(old, date, di), isOn = seriesOn(r, date, di);
+      new Set([...old.slots, ...r.slots]).forEach(slot => {
+        if (slot < played) return;
+        const before = wasOn && old.slots.includes(slot);
+        const after = isOn && r.slots.includes(slot);
+        if (before && !after) {
+          const i = items.findIndex(x => x.seriesId === r.id && x.day === di && x.slot === slot);
+          if (i >= 0) items.splice(i, 1);
+        } else if (!before && after && !cellBlocked(date, slot)) {
+          if (override) clearCellFor(monday, di, slot);
+          if (cellFree(monday, di, slot)) {
+            weekItems(monday).push({ id: ++itemUid, spotId: r.spotId, day: di, slot, seriesId: r.id });
+            placed++;
+          } else {
+            skipped++;
+          }
+        }
+      });
+    });
+  });
+  emitPlanChange('week');
+  return { placed, skipped };
 }
 
 /* Gespielt: vergangene Tage ganz, heute alle Slots bis zur aktuellen Uhrzeit
@@ -366,7 +450,7 @@ function spotSlotsAhead(spotId, monday, day = null) {
 }
 
 /* Spot aus dem Kalender nehmen – nur, was noch nicht gespielt hat:
-   'all'  ab jetzt überall (Basisplan und Serien enden mit gestern),
+   'all'  ab jetzt überall (seine Serien enden mit gestern),
    'week' nur in dieser Woche, 'day' nur an einem Tag dieser Woche.
    Liefert die Zahl der entfernten Slots in den schon geöffneten Wochen. */
 function removeSpotSlots(spotId, scope, monday, day = null) {
@@ -376,7 +460,6 @@ function removeSpotSlots(spotId, scope, monday, day = null) {
     const today = dayStart(new Date());
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    s.offFrom = today;
     for (let i = userSeries.length - 1; i >= 0; i--) {
       const r = userSeries[i];
       if (r.spotId !== spotId) continue;
@@ -398,17 +481,13 @@ function removeSpotSlots(spotId, scope, monday, day = null) {
 }
 
 /* ---------------------------------------------------------------
-   Abgelaufen: ein Spot war nur zeitlich begrenzt geplant (Basisplan mit
-   Enddatum bzw. Serien mit „Runs until“), alle Zeiträume sind vorbei und
-   er hat in dieser und den kommenden Wochen keine Slots mehr
+   Abgelaufen: ein Spot war nur zeitlich begrenzt geplant (alle seine Serien
+   haben ein Ende), alle Zeiträume sind vorbei und er hat in dieser und den
+   kommenden Wochen keine Slots mehr
    --------------------------------------------------------------- */
 function spotEnd(spot) {
   const ends = [];
   let open = false;
-  BASE_PLAN.forEach(e => {
-    if (e.fixed || e.spot !== spot.title) return;
-    if (e.end) ends.push(parseDate(e.end)); else open = true;
-  });
   userSeries.forEach(r => {
     if (r.spotId !== spot.id) return;
     if (r.end) ends.push(r.end); else open = true;
@@ -428,14 +507,24 @@ function isSpotExpired(spot) {
   return true;
 }
 
+/* läuft in den nächsten Tagen aus (für einen Hinweis in der Liste) */
+const ENDS_SOON_DAYS = 7;
+function spotEndsSoon(spot) {
+  const end = spotEnd(spot);
+  if (!end) return false;
+  const today = dayStart(new Date());
+  return end >= today && (end - today) / 864e5 <= ENDS_SOON_DAYS;
+}
+
 /* frei für einen Spot: offen, keine Quiet Hour, kein fixer und kein anderer Slot */
 function cellFree(monday, dayI, slot, ignoreId = null) {
-  if (dayI < 0 || dayI >= CAL_DAYS || slot < 0 || slot >= CAL_SLOTS || cellBlocked(dayI, slot)) return false;
+  if (dayI < 0 || dayI >= CAL_DAYS || slot < 0 || slot >= CAL_SLOTS || cellBlocked(weekDates(monday)[dayI], slot)) return false;
   if (fixedCells(monday).has(`${dayI}:${slot}`)) return false;
   return !weekItems(monday).some(i => i.id !== ignoreId && i.day === dayI && i.slot === slot);
 }
 
-function placeSpot(monday, spotId, dayI, slot) {
+function placeSpot(monday, spotId, dayI, slot, override = false) {
+  if (override) clearCellFor(monday, dayI, slot);
   if (!cellFree(monday, dayI, slot)) return null;
   const it = { id: ++itemUid, spotId, day: dayI, slot };
   weekItems(monday).push(it);
@@ -537,3 +626,32 @@ function clearPlanHistory() {
   undoStack.length = 0;
   redoStack.length = 0;
 }
+
+/* ---------------------------------------------------------------
+   Speichern: der ganze Plan (Wochen, Serien, Spots) liegt im Browser und
+   übersteht ein Neuladen. ?reset in der Adresse startet wieder beim Basisplan.
+   PLAN_VERSION hochzählen, wenn sich der Basisplan im Code ändert.
+   --------------------------------------------------------------- */
+const PLAN_KEY = 'sounddna-plan';
+const PLAN_VERSION = 1;
+
+function savePlan() {
+  try {
+    localStorage.setItem(PLAN_KEY, JSON.stringify({ v: PLAN_VERSION, ...snapshotPlan(), uids: { spotUid, itemUid, seriesUid } }));
+  } catch { /* privat / voll – dann eben ohne Speichern */ }
+}
+
+function loadPlan() {
+  try {
+    if (new URLSearchParams(location.search).has('reset')) { localStorage.removeItem(PLAN_KEY); return; }
+    const data = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+    if (!data || data.v !== PLAN_VERSION) return;
+    data.series.forEach(r => { r.start = new Date(r.start); r.end = r.end ? new Date(r.end) : null; });
+    ({ spotUid, itemUid, seriesUid } = data.uids);
+    restorePlan(data);
+  } catch { /* kaputt – Basisplan bleibt */ }
+}
+
+loadPlan();
+let saveTimer = null;
+onPlanChange(() => { clearTimeout(saveTimer); saveTimer = setTimeout(savePlan, 150); });

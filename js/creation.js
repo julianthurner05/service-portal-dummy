@@ -335,3 +335,4 @@ demoSpots.forEach(spot => {
     })
   );
 });
+syncReadyBadges();                       /* gespeicherter Plan: Ready-Badges wie zuletzt */
