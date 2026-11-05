@@ -11,7 +11,7 @@
   --main-pad: 34px;              /* oberer Innenabstand des Scrollbereichs (aus calendar.js) */
   --top-gap: var(--main-pad);    /* Abstand des Kalenders zur Oberkante – rundum gleich */
   --main-pad-b: 56px;            /* unterer Innenabstand des Scrollbereichs (aus calendar.js) */
-  --tray-w: 240px;               /* Breite der Liste rechts */
+  --tray-w: 360px;               /* Breite der Liste rechts */
   --layout-gap: 18px;            /* Abstand Raster ↔ Liste */
   position: relative;            /* Bezug für das Wiederholen-Fenster */
   width: 100%;
