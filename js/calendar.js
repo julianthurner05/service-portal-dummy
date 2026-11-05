@@ -189,7 +189,6 @@ function trayItem(s, expired) {
   <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
     ${until}
-    <button class="cal-tray__audio" data-audio="${s.id}" aria-label="Change audio" type="button">${icon('wave')}</button>
   </div>`;
 }
 
@@ -236,15 +235,9 @@ function renderTray() {
 
 calTraySearch.addEventListener('input', renderTray);
 
-/* „Expired“ auf- und zuklappen; das SpotTool-Icon an einem Spot öffnet
-   „Choose audio“ */
+/* „Expired“ auf- und zuklappen */
 let expiredOpen = true;
 calTrayList.addEventListener('click', e => {
-  const audio = e.target.closest('.cal-tray__audio');
-  if (audio) {
-    openAudioPicker(spotById(+audio.dataset.audio));
-    return;
-  }
   if (e.target.closest('.cal-tray__toggle')) {
     expiredOpen = !expiredOpen;
     renderTray();
@@ -476,7 +469,7 @@ calTray.addEventListener('drop', e => {
 
 /* ---------------------------------------------------------------
    ✕ an einem Slot: kleines Menü mit den Löschoptionen – nur dieser Slot,
-   alle dieses Spots an dem Tag, in der Woche oder ab jetzt überall.
+   alle dieses Spots an dem Tag, in der Woche oder ab diesem Slot überall.
    Gespieltes bleibt stehen (plan.js, removeSpotSlots).
    --------------------------------------------------------------- */
 const slotMenu = document.createElement('div');
@@ -502,7 +495,7 @@ function openSlotMenu(x) {
     ['slot', 'This slot'],
     ['day', `All on ${DAY_NAMES[it.day]}`],
     ['week', 'All this week'],
-    ['all', 'All from now on'],
+    ['from', 'All from here on'],
   ].map(([v, label]) => `<button class="context-menu__item" role="menuitem" data-remove="${v}" type="button">${label}</button>`).join('');
   slotMenu.hidden = false;
   x.closest('.cal-item').classList.add('is-menu');
@@ -536,7 +529,7 @@ slotMenu.addEventListener('click', e => {
   const btn = e.target.closest('[data-remove]');
   if (!btn || !slotMenuItem) return;
   e.stopPropagation();
-  const { id, spotId, day } = slotMenuItem;
+  const { id, spotId, day, slot } = slotMenuItem;
   const spot = spotById(spotId);
   const scope = btn.dataset.remove;
   closeSlotMenu();
@@ -546,10 +539,10 @@ slotMenu.addEventListener('click', e => {
     renderCalendar();
     return;
   }
-  const n = removeSpotSlots(spotId, scope, calWeekStart, day);
+  const n = removeSpotSlots(spotId, scope, calWeekStart, day, slot);
   const slots = `${n} slot${n === 1 ? '' : 's'}`;
   showToast('success',
-    scope === 'all' ? `“${spot.title}” removed from the calendar from now on.`
+    scope === 'from' ? `“${spot.title}” removed from ${longDate(calWeekDays(calWeekStart)[day])}, ${slotTime(slot)} on.`
     : scope === 'week' ? `${slots} of “${spot.title}” removed this week.`
     : `${slots} of “${spot.title}” removed on ${longDate(calWeekDays(calWeekStart)[day])}.`);
 });
@@ -570,7 +563,7 @@ const audioPickerSearch = document.getElementById('audio-picker-search');
 let audioSpot = null;
 
 function openAudioPicker(spot) {
-  closeRepeat();
+  stopPanelAudio();
   audioSpot = spot;
   audioPickerSearch.value = '';
   renderAudioPicker();
@@ -625,6 +618,7 @@ function renderAudioPicker() {
       const original = a.title === spot.title;
       setSpotAudio(spot.id, original ? null : { title: a.title });
       if (!original) setCardScheduled(a.title);
+      if (repeat && repeat.spot.id === spot.id) renderRepeat();
       showToast('success', original ? `“${spot.title}” plays its original audio again.` : `“${spot.title}” now plays “${a.title}”.`);
     });
     audioPickerList.appendChild(row);
@@ -634,7 +628,12 @@ function renderAudioPicker() {
 document.getElementById('audio-picker-close').addEventListener('click', closeAudioPicker);
 audioPicker.addEventListener('click', e => { if (e.target === audioPicker) closeAudioPicker(); });
 audioPickerSearch.addEventListener('input', renderAudioPicker);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !audioPicker.hidden) closeAudioPicker(); });
+/* Esc schließt nur die Lightbox – das Bearbeitungsfeld dahinter bleibt offen */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || audioPicker.hidden) return;
+  e.stopImmediatePropagation();
+  closeAudioPicker();
+});
 
 /* ---------------------------------------------------------------
    Einstellungen nach dem Ablegen – im Ready-Feld, das sich dafür in der
@@ -772,7 +771,7 @@ function openRepeat(item, kind = 'drop') {
   const date = calWeekDays(calWeekStart)[item.day];
   const lastStart = slotTime(CAL_SLOTS - 1);
   const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
-  repeat = { kind, item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until, override: false };
+  repeat = { kind, item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until, override: false, steps: undoStack.length };
   enterEditing(spot);
   renderRepeat();
 }
@@ -855,6 +854,7 @@ function renderRepeat() {
       <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
       <span class="card__time"></span>
     </div>
+    <button class="cal-chip cal-audio__change" data-act="audio" type="button">Change audio</button>
 
     ${series ? seriesPicker(r) : ''}
 
@@ -1066,12 +1066,25 @@ calTraySettings.addEventListener('click', e => {
   /* ✕ nimmt „infinite“ weg (Feld wird leer), ∞ setzt es wieder */
   else if (act && act.dataset.act === 'end-aux') r.end = r.end === null ? '' : null;
   else if (act && act.dataset.act === 'close') { closeRepeat(); return; }
+  else if (act && act.dataset.act === 'audio') { openAudioPicker(r.spot); return; }
   else if (act && act.dataset.act === 'cancel') {
     const dropped = r.kind === 'drop';
     closeRepeat();
     if (dropped) {
-      /* Ablegen rückgängig: der Slot verschwindet, ohne Spur im Verlauf */
-      discardPlanStep();
+      /* Ablegen rückgängig: der Slot verschwindet, ohne Spur im Verlauf –
+         kam seither etwas dazu (Audio getauscht), nur der Slot */
+      if (undoStack.length === r.steps) discardPlanStep();
+      else {
+        /* … und auch aus dem Verlauf: Schritt des Ablegens raus, in den
+           späteren Ständen fehlt der Slot */
+        const key = fmtDate(r.week);
+        undoStack.splice(r.steps - 1, 1);
+        undoStack.slice(r.steps - 1).forEach(snap => {
+          const w = snap.weeks.find(([k]) => k === key);
+          if (w) w[1] = w[1].filter(i => i.id !== r.item.id);
+        });
+        removeItem(r.week, r.item.id);
+      }
       syncReadyBadges();
       renderCalendar();
     }

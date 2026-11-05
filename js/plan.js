@@ -497,30 +497,39 @@ function spotSlotsAhead(spotId, monday, day = null) {
 }
 
 /* Spot aus dem Kalender nehmen – nur, was noch nicht gespielt hat:
-   'all'  ab jetzt überall (seine Serien enden mit gestern),
+   'from' ab dem angeklickten Slot (Tag + Uhrzeit) überall: seine Serien
+          enden mit dem Vortag, was an dem Tag davor liegt, bleibt,
    'week' nur in dieser Woche, 'day' nur an einem Tag dieser Woche.
    Liefert die Zahl der entfernten Slots in den schon geöffneten Wochen. */
-function removeSpotSlots(spotId, scope, monday, day = null) {
+function removeSpotSlots(spotId, scope, monday, day = null, slot = 0) {
   const s = spotById(spotId);
   if (!s) return 0;
-  if (scope === 'all') {
-    const today = dayStart(new Date());
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+  const from = scope === 'from' ? weekDates(monday)[day] : null;
+  const cut = new Set();
+  if (from) {
+    const before = new Date(from);
+    before.setDate(from.getDate() - 1);
     for (let i = userSeries.length - 1; i >= 0; i--) {
       const r = userSeries[i];
       if (r.spotId !== spotId) continue;
-      if (r.start >= today) userSeries.splice(i, 1);
-      else if (!r.end || r.end > yesterday) r.end = yesterday;
+      if (r.start >= from) { cut.add(r.id); userSeries.splice(i, 1); }
+      else if (!r.end || r.end > before) { cut.add(r.id); r.end = before; }
     }
+    /* was an dem Tag vor dem Slot bleibt, gehört zu keiner Serie mehr */
+    weekItems(monday).forEach(it => { if (it.day === day && cut.has(it.seriesId)) delete it.seriesId; });
   }
   let removed = 0;
   weeks.forEach((items, key) => {
     const m = parseDate(key);
-    if (scope !== 'all' && !sameDay(m, monday)) return;
+    if (!from && !sameDay(m, monday)) return;
+    const dates = weekDates(m);
     const ahead = new Set(spotSlotsAhead(spotId, m, scope === 'day' ? day : null));
     for (let i = items.length - 1; i >= 0; i--) {
-      if (ahead.has(items[i])) { items.splice(i, 1); removed++; }
+      const it = items[i];
+      if (!ahead.has(it)) continue;
+      if (from && (dates[it.day] < from || (sameDay(dates[it.day], from) && it.slot < slot))) continue;
+      items.splice(i, 1);
+      removed++;
     }
   });
   emitPlanChange('week');

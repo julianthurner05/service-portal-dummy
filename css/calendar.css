@@ -611,27 +611,6 @@
 
 .cal-tray__item .cal-item__label { height: 28px; line-height: 28px; }
 
-/* SpotTool-Icon: Audio austauschen – erscheint beim Zeigen auf den Spot */
-.cal-tray__audio {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  color: var(--text-55);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--transition), background var(--transition), color var(--transition);
-}
-
-.cal-tray__item:hover .cal-tray__audio { opacity: 1; pointer-events: auto; }
-.cal-tray__item:hover .cal-item__label { right: 26px; }
-
 /* zeitlich begrenzt: Enddatum rechts im Spot, gelb kurz vor dem Ende */
 .cal-tray__item.has-end .cal-item__label { right: 66px; }
 .cal-tray__end {
@@ -647,9 +626,6 @@
 }
 
 .cal-tray__end.is-soon { color: var(--gelb-soft); }
-.cal-tray__item:hover .cal-tray__end { opacity: 0; }
-.cal-tray__audio:hover { background: var(--white-14); color: #ffffff; }
-.cal-tray__audio .icon { width: 12px; height: 12px; }
 
 /* Spot ohne Kategorie: neutral und gestrichelt, bis er eingeordnet ist */
 .cal-tray__item.is-new {
@@ -926,6 +902,7 @@
 .cal-audio { display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 12px; border-radius: 9px; background: var(--edit-field); }
 .cal-audio .play-btn .icon { width: 14px; height: 14px; }
 .cal-audio .card__time { min-width: 32px; font-size: var(--fs-small); color: var(--text-66); }
+.cal-audio__change { margin-top: 8px; }
 .cal-audio__name {
   margin: -2px 0 8px;
   font-size: var(--fs-small);
