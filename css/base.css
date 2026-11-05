@@ -23,11 +23,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   display: grid;
-  grid-template-columns: 196px minmax(0, 1fr) 430px;
+  grid-template-columns: 232px minmax(0, 1fr) 430px;
   overflow: hidden;
 }
 
-body.no-history { grid-template-columns: 196px minmax(0, 1fr); }
+body.no-history { grid-template-columns: 232px minmax(0, 1fr); }
 body.no-history .history { display: none; }
 
 button {
@@ -957,8 +957,8 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    RESPONSIVE (Layout-Ebene)
    ================================================================ */
 @media (max-width: 1520px) {
-  body { grid-template-columns: 188px minmax(0, 1fr) 400px; }
-  body.no-history { grid-template-columns: 188px minmax(0, 1fr); }
+  body { grid-template-columns: 216px minmax(0, 1fr) 400px; }
+  body.no-history { grid-template-columns: 216px minmax(0, 1fr); }
 }
 
 /* Ab hier kein Icon-Zwischenzustand mehr: das Menü wird sofort zum Drawer
