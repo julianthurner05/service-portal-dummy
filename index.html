@@ -235,28 +235,29 @@ Lebe Smart!</textarea>
       <div class="cal-layout">
         <div class="cal-main">
           <div class="cal-grid" id="cal-grid"></div>
-          <!-- Woche wechseln: kleine Leiste unten mittig über dem Kalender -->
-          <div class="cal-weekbar">
-            <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
-              <svg class="icon"><use href="#i-chevron-left"/></svg>
-            </button>
-            <div class="cal-week__jump field--date">
-              <button class="cal-week__label" id="cal-range" type="button" aria-label="Jump to date"></button>
-            </div>
-            <button class="cal-week__nav" id="cal-next" aria-label="Next week" data-tip="Next week">
-              <svg class="icon"><use href="#i-chevron-right"/></svg>
-            </button>
-            <span class="cal-weekbar__divider"></span>
-            <button class="cal-today" id="cal-today">Today</button>
-            <!-- ungespeicherte Änderungen: klappt rechts an die Leiste an -->
+          <!-- unten mittig über dem Kalender: Woche wechseln, darüber bei
+               ungespeicherten Änderungen eine eigene Leiste -->
+          <div class="cal-bars">
             <div class="cal-unsaved" id="cal-unsaved" aria-hidden="true">
-              <div class="cal-unsaved__inner">
-                <span class="cal-weekbar__divider"></span>
+              <div class="cal-unsaved__bar">
                 <svg class="icon cal-unsaved__icon"><use href="#i-alert"/></svg>
                 <span class="cal-unsaved__text">Unsaved changes</span>
-                <button class="cal-unsaved__btn cal-unsaved__btn--discard" id="cal-discard" type="button" tabindex="-1">Discard</button>
-                <button class="cal-unsaved__btn cal-unsaved__btn--save" id="cal-save" type="button" tabindex="-1">Save</button>
+                <button class="ghost-btn ghost-btn--sm cal-unsaved__discard" id="cal-discard" type="button" tabindex="-1">Discard</button>
+                <button class="ghost-btn ghost-btn--sm ghost-btn--invert" id="cal-save" type="button" tabindex="-1">Save</button>
               </div>
+            </div>
+            <div class="cal-weekbar">
+              <button class="cal-week__nav" id="cal-prev" aria-label="Previous week" data-tip="Previous week">
+                <svg class="icon"><use href="#i-chevron-left"/></svg>
+              </button>
+              <div class="cal-week__jump field--date">
+                <button class="cal-week__label" id="cal-range" type="button" aria-label="Jump to date"></button>
+              </div>
+              <button class="cal-week__nav" id="cal-next" aria-label="Next week" data-tip="Next week">
+                <svg class="icon"><use href="#i-chevron-right"/></svg>
+              </button>
+              <span class="cal-weekbar__divider"></span>
+              <button class="cal-today" id="cal-today">Today</button>
             </div>
           </div>
         </div>
