@@ -23,7 +23,9 @@
    - ⌘Z / ⇧⌘Z: letzte Änderung im Calendar rückgängig / wiederherstellen
    - Save (oder ⌘S): erst dann gelten die Änderungen; bis dahin trägt der
      Menüpunkt Calendar einen Punkt
-   - wer alle Stores sieht: Store-Auswahl oben in der Liste
+   - Rollen (plan.js): was man nicht ändern darf, hat ein Schloss und öffnet
+     nur zum Ansehen; Head Office: Store-Auswahl oben in der Liste, sperren,
+     neue Serien in alle Stores
    - Hover: alle Slots desselben Spots leuchten auf
    - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
    - Kopfzeile, Tageszeile und Liste bleiben beim Scrollen stehen
@@ -101,10 +103,13 @@ function renderCalendar() {
       const it = items.find(i => i.day === di && i.slot === s);
       if (it) {
         const spot = spotById(it.spotId);
-        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}"${past ? '' : ' draggable="true"'} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
+        /* nicht änderbar (Rolle, gesperrt): Schloss, kein Ziehen, kein ✕ */
+        const editable = !past && canEditItem(it);
+        const locked = !past && !editable && canEdit();
+        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}${locked ? ' is-locked' : ''}"${editable ? ' draggable="true"' : ''} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
-            ${past ? '' : `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>`}
+            ${editable ? `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>` : locked ? icon('lock', 'cal-item__lock') : ''}
           </div>`;
         continue;
       }
@@ -169,7 +174,7 @@ function trayItem(s, expired) {
   const end = expired ? null : spotEnd(s);
   const until = end ? `<span class="cal-tray__end${spotEndsSoon(s) ? ' is-soon' : ''}">until ${end.getDate()} ${MONTH_SHORT[end.getMonth()]}</span>` : '';
   return `
-  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="true" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
+  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="${(s.category ? canPlaceSpot(s) : canManage()) ? 'true' : 'false'}" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
     ${until}
   </div>`;
@@ -231,8 +236,10 @@ calTrayList.addEventListener('click', e => {
   const item = e.target.closest('.cal-tray__item');
   const spot = item && spotById(+item.dataset.spot);
   if (!spot || !spot.category) return;
+  const series = spotSeries(spot.id)[0] || null;
+  if (!series && !canPlaceSpot(spot)) return;
   setLit(null);
-  openSeries(spot, spotSeries(spot.id)[0] || null);
+  openSeries(spot, series);
 });
 
 /* ---- Hover: alle Slots desselben Spots leuchten auf – auch beim Zeigen
@@ -337,7 +344,7 @@ function setDragImage(e, el, spot) {
 }
 
 calendarView.addEventListener('dragstart', e => {
-  const el = e.target.closest('.cal-item[draggable="true"], .cal-tray__item');
+  const el = e.target.closest('.cal-item[draggable="true"], .cal-tray__item[draggable="true"]');
   if (!el) return;
   closeRepeat();
   setLit(null);
@@ -410,6 +417,7 @@ calGrid.addEventListener('drop', e => {
    - Spot aus der Liste in eine andere Kategorie-Gruppe → Kategorie (und
      Farbe überall) ändert sich */
 const targetGroup = e => {
+  if (!canManage()) return null;
   const g = e.target.closest('.cal-tray__group[data-cat]');
   return g && g.dataset.cat !== spotById(calDrag.spotId).category ? g : null;
 };
@@ -498,8 +506,9 @@ calGrid.addEventListener('click', e => {
     else openSlotMenu(x);
     return;
   }
-  /* Klick auf einen Slot: Serie bearbeiten bzw. einzelnen Slot wiederholen */
-  const el = e.target.closest('.cal-item[draggable="true"]');
+  /* Klick auf einen Slot: Serie bearbeiten bzw. einzelnen Slot wiederholen –
+     ohne Recht dazu nur ansehen */
+  const el = e.target.closest('.cal-item[data-id]:not(.is-past)');
   if (!el || calendarView.classList.contains('is-editing')) return;
   const it = weekItems(calWeekStart).find(i => i.id === +el.dataset.id);
   if (!it) return;
@@ -712,6 +721,9 @@ function repeatSlots(r) {
 
 const isWeekly = r => r.kind === 'series' || r.mode === 'weekly';
 
+/* legt „Done“ eine neue Serie an? (dann auch in alle Stores möglich) */
+const isNewSeries = r => (r.kind === 'series' ? !r.series : r.mode === 'weekly');
+
 /* Serienbeginn: bestehende Serie wie gehabt; neue Serien gelten ab dem
    Montag ihrer Woche (Gespieltes wird beim Eintragen übersprungen) */
 const repeatStart = r => (r.kind === 'series' ? r.start : mondayOf(r.date));
@@ -754,7 +766,8 @@ function openRepeat(item, kind = 'drop') {
   const date = calWeekDays(calWeekStart)[item.day];
   const lastStart = slotTime(CAL_SLOTS - 1);
   const until = minutesOf(slotTime(item.slot)) < minutesOf('18:00') ? '18:00' : lastStart;
-  repeat = { kind, item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until, override: false, steps: undoStack.length };
+  repeat = { kind, item, week: new Date(calWeekStart), spot, date, mode: 'day', days: new Set([DAYS[item.day]]), end: null, perDay: 'once', every: 60, until, override: false, steps: undoStack.length,
+             readonly: kind === 'single' && !canEditItem(item), locked: !!item.locked, allStores: false };
   enterEditing(spot);
   renderRepeat();
 }
@@ -778,6 +791,7 @@ function openSeries(spot, series = null) {
     start: series ? series.start : mondayOf(new Date()),
     days: new Set(series ? series.days : []), end: series && series.end ? fmtDate(series.end) : null,
     times: series ? [...series.slots].sort((a, b) => a - b) : [], override: false,
+    readonly: series ? !canEditEntry(series, spot) : !canPlaceSpot(spot), locked: !!(series && series.locked), allStores: false,
   };
   enterEditing(spot);
   renderRepeat();
@@ -799,10 +813,15 @@ function seriesPicker(r) {
 /* Audio des Spots zum Anhören – bei getauschtem Audio steht dessen Name dabei */
 /* wer es eingeplant hat: an der Serie bzw. am einzelnen Slot */
 function byLine(r) {
-  const info = r.kind === 'series' ? (r.series && r.series.by ? { by: r.series.by, at: r.series.at } : null) : scheduledBy(r.item);
+  const src = r.kind === 'series' ? r.series : r.item;
+  const info = src && (r.kind === 'series' ? (src.by ? { by: src.by, role: src.role, at: src.at, locked: !!src.locked } : null) : scheduledBy(src));
   if (!info) return '';
-  const when = info.at ? (sameDay(info.at, new Date()) ? 'Today' : `${info.at.getDate()} ${MONTH_SHORT[info.at.getMonth()]} ${info.at.getFullYear()}`) : '';
-  return `<p class="cal-repeat__by">Scheduled by ${escapeHtml(info.by)}${when ? ` · ${when}` : ''}</p>`;
+  const now = new Date();
+  const when = !info.at ? '' : sameDay(info.at, now) ? 'Today'
+    : `${info.at.getDate()} ${MONTH_SHORT[info.at.getMonth()]}${info.at.getFullYear() === now.getFullYear() ? '' : ` ${info.at.getFullYear()}`}`;
+  const role = info.by !== 'sounddna' && info.role ? `, ${roleLabel(info.role)}` : '';
+  const text = `Scheduled by ${info.by}${role}${when ? ` · ${when}` : ''}`;
+  return `<p class="cal-repeat__by" title="${escapeHtml(text)}">${info.locked ? icon('lock', 'cal-repeat__lock') : ''}<span>${escapeHtml(text)}</span></p>`;
 }
 
 function audioOf(spot) {
@@ -823,7 +842,7 @@ function renderRepeat() {
       <p class="cal-repeat__label">Runs until</p>
       <div class="field field--date">
         <button class="field__btn" data-act="end" type="button"><span class="${r.end === '' ? 'is-placeholder' : ''}">${r.end === null ? 'infinite' : (r.end || 'Select end date')}</span></button>
-        <button class="field__aux" data-act="end-aux" type="button" aria-label="${r.end === null ? 'Remove infinite' : 'Set to infinite'}">${icon(r.end === null ? 'x' : 'infinity')}</button>
+        ${r.readonly ? '' : `<button class="field__aux" data-act="end-aux" type="button" aria-label="${r.end === null ? 'Remove infinite' : 'Set to infinite'}">${icon(r.end === null ? 'x' : 'infinity')}</button>`}
       </div>`;
   const dayChips = `
       <div class="cal-chips cal-chips--days">
@@ -846,10 +865,11 @@ function renderRepeat() {
       <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
       <span class="card__time"></span>
     </div>
-    <button class="cal-chip cal-audio__change" data-act="audio" type="button">Change audio</button>
+    ${canManage() && !r.readonly ? '<button class="cal-chip cal-audio__change" data-act="audio" type="button">Change audio</button>' : ''}
 
     ${series ? seriesPicker(r) : ''}
 
+    <div class="cal-repeat__body"${r.readonly ? ' inert' : ''}>
     <p class="cal-repeat__label">Days</p>
     ${series ? `${dayChips.replace('cal-chips--days', 'cal-chips--days cal-chips--flush')}${endField}` : `
       ${check('weekly', weekly, 'Weekly')}
@@ -861,9 +881,9 @@ function renderRepeat() {
         ${r.times.map(s => `
           <div class="cal-tchip">
             <div class="dropdown" data-dd="time" data-slot="${s}"></div>
-            ${r.times.length > 1 ? `<button class="cal-tchip__x" data-time-x="${s}" type="button" aria-label="Remove ${slotTime(s)}">${icon('x')}</button>` : ''}
+            ${r.times.length > 1 && !r.readonly ? `<button class="cal-tchip__x" data-time-x="${s}" type="button" aria-label="Remove ${slotTime(s)}">${icon('x')}</button>` : ''}
           </div>`).join('')}
-        <div class="dropdown cal-times__add" data-dd="add-time"></div>
+        ${r.readonly ? '' : '<div class="dropdown cal-times__add" data-dd="add-time"></div>'}
       </div>` : `
       <p class="cal-repeat__label">Times per day</p>
       ${check('repeat', repeating, 'Repeat')}
@@ -873,11 +893,19 @@ function renderRepeat() {
           <label class="cal-repeat__field"><span>Until</span><div class="dropdown" data-dd="until"></div></label>
         </div>` : ''}`}
 
-    ${conflicts || r.override ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
+    ${canManage() && !r.readonly && (conflicts || r.override) ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
+
+    ${isHeadOffice() ? `
+      <div class="cal-repeat__head-office">
+        ${check('lock', r.locked, 'Lock for stores')}
+        ${isNewSeries(r) ? check('allstores', r.allStores, 'All stores') : ''}
+      </div>` : ''}
+    </div>
 
     <div class="cal-repeat__foot">
+      ${r.readonly ? `<button class="ghost-btn ghost-btn--sm" data-act="close" type="button">Close</button>` : `
       <button class="ghost-btn ghost-btn--sm" data-act="cancel" type="button">Cancel</button>
-      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${repeatValid(r) ? '' : ' disabled'}>Done</button>
+      <button class="ghost-btn ghost-btn--sm ghost-btn--invert" data-act="done" type="button"${repeatValid(r) ? '' : ' disabled'}>Done</button>`}
     </div>`;
 
   createPlayer({
@@ -900,7 +928,8 @@ function renderRepeat() {
         onChange: v => { r.times = r.times.map(s => (s === cur ? slotIndex(v) : s)).sort((a, b) => a - b); renderRepeat(); },
       });
     });
-    buildDropdown(calTraySettings.querySelector('[data-dd="add-time"]'), {
+    const addTime = calTraySettings.querySelector('[data-dd="add-time"]');
+    if (addTime) buildDropdown(addTime, {
       options: [...Array(CAL_SLOTS).keys()].filter(s => !r.times.includes(s)).map(s => ({ value: slotTime(s), label: slotTime(s) })),
       placeholder: 'Add',
       tall: true,
@@ -1014,7 +1043,8 @@ function paintPreview() {
     const el = calGrid.querySelector(`.cal-item[data-id="${id}"]`);
     if (!el) return;
     el.classList.add('is-conflict');
-    if (!r.override) return;
+    const it = weekItems(calWeekStart).find(i => i.id === id);
+    if (!r.override || !it || !canEditItem(it)) return;
     el.classList.add('is-replace');
     el.dataset.origStyle = el.getAttribute('style') || '';
     el.setAttribute('style', catStyle(r.spot.category));
@@ -1041,6 +1071,8 @@ calTraySettings.addEventListener('click', e => {
   if (check && check.dataset.check === 'weekly') r.mode = r.mode === 'weekly' ? 'day' : 'weekly';
   else if (check && check.dataset.check === 'repeat') r.perDay = r.perDay === 'repeat' ? 'once' : 'repeat';
   else if (check && check.dataset.check === 'override') r.override = !r.override;
+  else if (check && check.dataset.check === 'lock') r.locked = !r.locked;
+  else if (check && check.dataset.check === 'allstores') r.allStores = !r.allStores;
   else if (day) r.days.has(day.dataset.day) ? r.days.delete(day.dataset.day) : r.days.add(day.dataset.day);
   else if (time) r.times = r.times.filter(s => s !== +time.dataset.timeX);
   else if (act && act.dataset.act === 'end') {
@@ -1096,13 +1128,16 @@ function applyRepeat() {
   const slots = repeatSlots(r);
   const end = endOf(r);
   const days = DAYS.filter(d => r.days.has(d));
+  const locked = isHeadOffice() ? r.locked : false;
   if (r.kind === 'series') {
     recordUndo();
+    const def = { days, slots: [...slots], start: r.start, end, override: r.override, locked };
     const { skipped } = r.series
-      ? updateSeries(r.series.id, { days, slots: [...slots], end, override: r.override })
-      : addSeries({ spotId: r.spot.id, days, slots: [...slots], start: r.start, end, override: r.override });
+      ? updateSeries(r.series.id, { ...def, locked: isHeadOffice() ? r.locked : null })
+      : addSeries({ ...def, spotId: r.spot.id });
     if (!r.series) spotPlaced(r.spot);
-    showToast('success', `“${r.spot.title}” ${r.series ? 'now runs' : 'runs'} every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
+    const stores = !r.series && isHeadOffice() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
+    showToast('success', `“${r.spot.title}” ${r.series ? 'now runs' : 'runs'} every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}${stores ? ` in all ${stores + 1} stores` : ''}.${skippedNote(skipped)}`);
     closeRepeat();
     renderCalendar();
     return;
@@ -1110,19 +1145,26 @@ function applyRepeat() {
   const time = slotTime(r.item.slot);
   const perDay = slots.length > 1 ? `every ${r.every} min from ${time} to ${slotTime(slots[slots.length - 1])}` : `at ${time}`;
   if (r.mode === 'day') {
-    if (slots.length === 1) { closeRepeat(); return; }
+    const lockChanged = locked !== !!r.item.locked;
+    if (slots.length === 1 && !lockChanged) { closeRepeat(); return; }
     recordUndo();
+    r.item.locked = locked;
     let skipped = 0;
     slots.slice(1).forEach(slot => {
-      if (!placeSpot(r.week, r.spot.id, r.item.day, slot, r.override) && !spotAt(r.week, r.item.day, slot, r.spot.id)) skipped++;
+      const it = placeSpot(r.week, r.spot.id, r.item.day, slot, r.override);
+      if (it) it.locked = locked;
+      else if (!spotAt(r.week, r.item.day, slot, r.spot.id)) skipped++;
     });
-    showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skippedNote(skipped)}`);
+    if (slots.length > 1) showToast('success', `“${r.spot.title}” runs ${perDay} on ${longDate(r.date)}.${skippedNote(skipped)}`);
+    else emitPlanChange('week');
   } else {
     recordUndo();
     /* der Slot geht in der Serie auf */
     removeItem(r.week, r.item.id);
-    const { skipped } = addSeries({ spotId: r.spot.id, days, slots, start: repeatStart(r), end, override: r.override });
-    showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}.${skippedNote(skipped)}`);
+    const def = { days, slots, start: repeatStart(r), end, override: r.override, locked };
+    const { skipped } = addSeries({ ...def, spotId: r.spot.id });
+    const stores = isHeadOffice() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
+    showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}${stores ? ` in all ${stores + 1} stores` : ''}.${skippedNote(skipped)}`);
   }
   closeRepeat();
   renderCalendar();
@@ -1158,7 +1200,10 @@ onPlanChange(kind => {
    solange irgendein Store ungespeicherte Änderungen hat
    --------------------------------------------------------------- */
 function syncSaveState() {
-  const dirty = planDirty();
+  const dirty = anyUnsaved();
+  const n = unsavedList().length;
+  calUnsaved.querySelector('.cal-unsaved__text').textContent =
+    n > 1 || (n === 1 && !planDirty()) ? `Unsaved changes in ${n} store${n === 1 ? '' : 's'}` : 'Unsaved changes';
   calUnsaved.classList.toggle('is-open', dirty);
   calUnsaved.setAttribute('aria-hidden', String(!dirty));
   calUnsaved.querySelectorAll('button').forEach(b => { b.tabIndex = dirty ? 0 : -1; });
@@ -1166,19 +1211,24 @@ function syncSaveState() {
   calStore.querySelectorAll('.dropdown__option').forEach(o => o.classList.toggle('is-unsaved', storeUnsaved(o.dataset.value)));
 }
 
+/* Head Office: Save und Discard gelten für alle Stores mit Änderungen */
+const storesNote = n => (n > 1 ? ` in ${n} stores` : '');
+
 function savePlanNow() {
-  if (!planDirty()) return;
+  if (!anyUnsaved()) return;
   closeRepeat();
-  commitPlan();
-  showToast('success', storeAccess === 'all' ? `Changes to ${currentStore.name} saved.` : 'Changes saved.');
+  const n = commitAll();
+  showToast('success', `Changes${storesNote(n)} saved.`);
 }
 
 document.getElementById('cal-save').addEventListener('click', savePlanNow);
 document.getElementById('cal-discard').addEventListener('click', () => {
+  if (!anyUnsaved()) return;
   closeRepeat();
-  if (!discardPlan()) return;
+  const n = discardAll();
   syncReadyBadges();
-  showToast('success', 'Changes discarded.');
+  renderCalendar();
+  showToast('success', `Changes${storesNote(n)} discarded.`);
 });
 document.addEventListener('keydown', e => {
   if (calendarView.hidden || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return;
@@ -1186,9 +1236,9 @@ document.addEventListener('keydown', e => {
   savePlanNow();
 });
 
-/* ---- Store-Auswahl (nur wer alle Stores sieht) ---- */
+/* ---- Store-Auswahl (Head Office) ---- */
 function renderStorePicker() {
-  calStore.hidden = storeAccess !== 'all';
+  calStore.hidden = !isHeadOffice();
   if (calStore.hidden) { calStore.innerHTML = ''; return; }
   buildDropdown(calStore, {
     options: accessibleStores().map(st => ({ value: st.id, label: st.name })),
@@ -1200,6 +1250,11 @@ function renderStorePicker() {
 
 onPlanChange(kind => {
   if (kind === 'store') syncReadyBadges();
+  if (kind === 'access') {
+    /* andere Rolle: andere Rechte – neu zeichnen */
+    closeRepeat();
+    if (!calendarView.hidden) renderCalendar();
+  }
   if (kind === 'access' || kind === 'store') renderStorePicker();
   syncSaveState();
 });

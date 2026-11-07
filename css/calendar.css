@@ -336,6 +336,8 @@
 
 .cal-item { cursor: grab; }
 .cal-item:active { cursor: grabbing; }
+.cal-item:not([draggable="true"]) { cursor: pointer; }   /* nur ansehen */
+.cal-item.is-past { cursor: default; }
 .cal-item.is-dragging { opacity: 0.35; }
 .cal-item:hover { z-index: 5; }
 
@@ -366,6 +368,19 @@
 }
 
 .cal-item:hover .cal-item__label { right: 20px; color: #ffffff; }
+
+/* nicht änderbar (Rolle, von Head Office gesperrt): Schloss rechts */
+.cal-item.is-locked .cal-item__label { right: 18px; }
+.cal-item__lock {
+  position: absolute;
+  top: calc(var(--slot-h) / 2);
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  transform: translateY(-50%);
+  color: var(--text-40);
+  pointer-events: none;
+}
 
 /* ✕ (Slot entfernen) rechts im Slot */
 .cal-item__x {
@@ -652,6 +667,7 @@
 }
 
 .cal-tray__item:active { cursor: grabbing; }
+.cal-tray__item[draggable="false"] { cursor: pointer; }
 
 .cal-tray__item:hover {
   background: color-mix(in srgb, var(--cat) var(--cat-tint-strong), var(--cat-base));
@@ -716,16 +732,23 @@
   text-overflow: ellipsis;
 }
 
-/* wer den Spot eingeplant hat */
+/* wer den Spot eingeplant hat – gesperrt mit Schloss davor */
 .cal-repeat__by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 6px 0 0 17px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
   color: var(--text-55);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
+.cal-repeat__by span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cal-repeat__lock { flex: none; width: 10px; height: 10px; }
+
+/* Head Office: sperren, in alle Stores */
+.cal-repeat__head-office { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 
 .cal-repeat__label {
   margin: 18px 0 8px;

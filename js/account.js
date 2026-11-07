@@ -5,11 +5,12 @@
 /* Letzter Login: heute, ein paar Stunden her */
 document.getElementById('acc-last-login').textContent = 'Today, 08:14';
 
-/* ---- Access: nur der eigene Store oder alle (dann Store-Auswahl im Calendar) ---- */
-buildDropdown(document.getElementById('acc-access'), {
-  options: [{ value: 'store', label: HOME_STORE.name }, { value: 'all', label: 'All stores' }],
-  value: storeAccess,
-  onChange: setStoreAccess,
+/* ---- Role: was man im Calendar darf (Head Office: alle Stores) ---- */
+buildDropdown(document.getElementById('acc-role'), {
+  options: ROLES.map(r => ({ value: r.value, label: r.label })),
+  value: currentRole,
+  tall: true,
+  onChange: setRole,
 });
 
 /* ---- Log out ---- */
