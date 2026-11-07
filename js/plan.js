@@ -731,7 +731,8 @@ const PLAN_VERSION = 3;
 const UNSAVED_KEY = 'sounddna-unsaved';
 const ACCESS_KEY = 'sounddna-access';
 const STORE_KEY = 'sounddna-store';
-const planKey = id => `${PLAN_KEY}:${id}`;
+const planKey  = id => `${PLAN_KEY}:${id}`;        /* Entwurf (was gerade zu sehen ist) */
+const savedKey = id => `${PLAN_KEY}-saved:${id}`;  /* zuletzt gespeicherter Stand – für „Discard“ */
 
 function readLocal(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
@@ -753,20 +754,53 @@ function savePlan() {
   writeLocal(UNSAVED_KEY, [...unsavedStores]);
 }
 
+const writeSaved = () => writeLocal(savedKey(currentStore.id), { v: PLAN_VERSION, ...snapshotPlan() });
+
 /* „Save“: der Entwurf gilt */
 function commitPlan() {
   savedRev = planRev;
   clearTimeout(saveTimer);
   savePlan();
+  writeSaved();
   emitPlanChange('saved');
+}
+
+/* „Discard“: zurück auf den gespeicherten Stand. Was das SpotTool seither
+   geändert hat (neue Spots, Ready, gelöscht), bleibt – das braucht ja kein
+   Save. Mit ⌘Z lässt sich das Verwerfen zurücknehmen. */
+function discardPlan() {
+  const saved = readLocal(savedKey(currentStore.id), null);
+  if (!planDirty() || !saved || saved.v !== PLAN_VERSION) return false;
+  reviveSnapshot(saved);
+  const now = spots.map(sp => ({ ...sp }));
+  recordUndo();
+  planMuted = true;
+  restorePlan(saved);
+  now.forEach(c => {
+    const sp = spotById(c.id);
+    if (!sp) { spots.push(c); return; }
+    sp.ready = c.ready;
+    if (c.retired && !sp.retired) retireSpot(sp.title);
+  });
+  planRev = savedRev;
+  planMuted = false;
+  emitPlanChange('spots');
+  emitPlanChange('week');
+  emitPlanChange('saved');
+  return true;
+}
+
+/* Datumsangaben aus dem Speicher wieder zu Dates */
+function reviveSnapshot(data) {
+  data.series.forEach(r => { r.start = new Date(r.start); r.end = r.end ? new Date(r.end) : null; r.at = r.at ? new Date(r.at) : null; });
+  data.weeks.forEach(([, items]) => items.forEach(i => { if (i.at) i.at = new Date(i.at); }));
 }
 
 function loadPlan() {
   const data = readLocal(planKey(currentStore.id), null);
   if (!data || data.v !== PLAN_VERSION) return false;
   try {
-    data.series.forEach(r => { r.start = new Date(r.start); r.end = r.end ? new Date(r.end) : null; r.at = r.at ? new Date(r.at) : null; });
-    data.weeks.forEach(([, items]) => items.forEach(i => { if (i.at) i.at = new Date(i.at); }));
+    reviveSnapshot(data);
     ({ spotUid, itemUid, seriesUid, revUid } = data.uids);
     savedRev = data.savedRev;
     restorePlan(data);
@@ -789,6 +823,8 @@ function openStore(store) {
   writeLocal(STORE_KEY, store.id);
   planMuted = true;
   seedPlan(store);
+  /* noch nie gespeichert: der Basisplan ist der gespeicherte Stand */
+  try { if (!localStorage.getItem(savedKey(store.id))) writeSaved(); } catch { /* ohne Speicher */ }
   loadPlan();
   planMuted = false;
 }
@@ -815,7 +851,7 @@ function setStoreAccess(access) {
 
 try {
   if (new URLSearchParams(location.search).has('reset')) {
-    Object.keys(localStorage).filter(k => k.startsWith(`${PLAN_KEY}:`)).forEach(k => localStorage.removeItem(k));
+    Object.keys(localStorage).filter(k => k.startsWith(PLAN_KEY)).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem(UNSAVED_KEY);
     unsavedStores.clear();
   }

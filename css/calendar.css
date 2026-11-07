@@ -72,7 +72,61 @@
 .cal-weekbar .cal-week__nav:hover,
 .cal-weekbar .cal-today:hover { background: var(--white-14); color: var(--text-100); }
 
-.cal-weekbar__divider { width: 1px; height: 18px; margin: 0 4px; background: var(--white-25); }
+.cal-weekbar__divider { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--white-25); }
+
+/* ungespeicherte Änderungen: klappt rechts an die Leiste an (0fr → 1fr),
+   die Woche rückt dabei mit zur Seite. Discard hell, Save blau. */
+.cal-unsaved {
+  display: grid;
+  grid-template-columns: 0fr;
+  margin-right: -4px;              /* zu: kein Rest-Abstand zur Kante */
+  transition: grid-template-columns var(--dur) var(--ease), margin var(--dur) var(--ease);
+}
+
+.cal-unsaved.is-open { grid-template-columns: 1fr; margin-right: 0; }
+
+.cal-unsaved__inner {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.cal-unsaved.is-open .cal-unsaved__inner { opacity: 1; transition-delay: 80ms; }
+
+.cal-unsaved__icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0 8px 0 6px;
+  color: color-mix(in srgb, var(--blau) 70%, #ffffff);
+}
+
+.cal-unsaved__text { margin-right: 14px; font-size: var(--fs-menu); color: var(--text-100); }
+
+/* knapper Kalender (Sidebar + Liste daneben): nur das Icon */
+@media (min-width: 1241px) and (max-width: 1340px) {
+  .cal-unsaved__text { display: none; }
+  .cal-unsaved__icon { margin-right: 10px; }
+}
+
+.cal-unsaved__btn {
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: var(--fs-menu);
+  transition: background var(--transition);
+}
+
+.cal-unsaved__btn--discard { background: var(--nav-active); color: var(--text-inverse); }
+.cal-unsaved__btn--discard:hover { background: #ffffff; }
+.cal-unsaved__btn--save { margin-left: 2px; background: var(--blau); color: #ffffff; }
+.cal-unsaved__btn--save:hover { background: color-mix(in srgb, var(--blau) 85%, #ffffff); }
 
 .cal-weekbar .cal-today {
   height: 30px;
@@ -490,21 +544,6 @@
   border-radius: 50%;
   background: var(--text-66);
 }
-
-/* Save: erst damit gelten die Änderungen */
-.cal-save {
-  flex: none;
-  height: 38px;
-  margin-top: 14px;
-  border-radius: var(--radius-md);
-  background: var(--nav-active);
-  color: var(--text-inverse);
-  font-size: var(--fs-menu);
-  transition: background var(--transition), color var(--transition);
-}
-
-.cal-save:hover { background: #ffffff; }
-.cal-save:disabled { background: var(--white-6); color: var(--text-40); cursor: default; }
 
 .cal-tray__title {
   margin-bottom: 16px;

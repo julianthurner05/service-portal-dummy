@@ -37,7 +37,7 @@ const calTraySearch = document.getElementById('cal-tray-search');
 const calTrayEmpty = document.getElementById('cal-tray-empty');
 const calTraySettings = document.getElementById('cal-tray-settings');
 const calStore     = document.getElementById('cal-store');
-const calSave      = document.getElementById('cal-save');
+const calUnsaved   = document.getElementById('cal-unsaved');
 
 let calWeekStart = mondayOf(new Date());
 
@@ -1153,11 +1153,15 @@ onPlanChange(kind => {
 });
 
 /* ---------------------------------------------------------------
-   Save – Button unten in der Liste, ⌘S; Punkt am Menüpunkt Calendar,
+   Ungespeichert: rechts an der Leiste unten klappt „Unsaved changes“ mit
+   Discard und Save an (⌘S speichert auch); Punkt am Menüpunkt Calendar,
    solange irgendein Store ungespeicherte Änderungen hat
    --------------------------------------------------------------- */
 function syncSaveState() {
-  calSave.disabled = !planDirty();
+  const dirty = planDirty();
+  calUnsaved.classList.toggle('is-open', dirty);
+  calUnsaved.setAttribute('aria-hidden', String(!dirty));
+  calUnsaved.querySelectorAll('button').forEach(b => { b.tabIndex = dirty ? 0 : -1; });
   setDraftDot('calendar', anyUnsaved());
   calStore.querySelectorAll('.dropdown__option').forEach(o => o.classList.toggle('is-unsaved', storeUnsaved(o.dataset.value)));
 }
@@ -1169,7 +1173,13 @@ function savePlanNow() {
   showToast('success', storeAccess === 'all' ? `Changes to ${currentStore.name} saved.` : 'Changes saved.');
 }
 
-calSave.addEventListener('click', savePlanNow);
+document.getElementById('cal-save').addEventListener('click', savePlanNow);
+document.getElementById('cal-discard').addEventListener('click', () => {
+  closeRepeat();
+  if (!discardPlan()) return;
+  syncReadyBadges();
+  showToast('success', 'Changes discarded.');
+});
 document.addEventListener('keydown', e => {
   if (calendarView.hidden || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return;
   e.preventDefault();

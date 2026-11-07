@@ -248,6 +248,16 @@ Lebe Smart!</textarea>
             </button>
             <span class="cal-weekbar__divider"></span>
             <button class="cal-today" id="cal-today">Today</button>
+            <!-- ungespeicherte Änderungen: klappt rechts an die Leiste an -->
+            <div class="cal-unsaved" id="cal-unsaved" aria-hidden="true">
+              <div class="cal-unsaved__inner">
+                <span class="cal-weekbar__divider"></span>
+                <svg class="icon cal-unsaved__icon"><use href="#i-alert"/></svg>
+                <span class="cal-unsaved__text">Unsaved changes</span>
+                <button class="cal-unsaved__btn cal-unsaved__btn--discard" id="cal-discard" type="button" tabindex="-1">Discard</button>
+                <button class="cal-unsaved__btn cal-unsaved__btn--save" id="cal-save" type="button" tabindex="-1">Save</button>
+              </div>
+            </div>
           </div>
         </div>
         <aside class="cal-tray" id="cal-tray">
@@ -260,7 +270,6 @@ Lebe Smart!</textarea>
           <div class="cal-tray__list" id="cal-tray-list"></div>
           <p class="cal-tray__empty" id="cal-tray-empty" hidden></p>
           <div class="cal-tray__settings" id="cal-tray-settings" hidden></div>
-          <button class="cal-save" id="cal-save" type="button" disabled>Save</button>
         </aside>
       </div>
     </section>
