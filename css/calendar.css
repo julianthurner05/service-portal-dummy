@@ -11,7 +11,7 @@
   --main-pad: 34px;              /* oberer Innenabstand des Scrollbereichs (aus calendar.js) */
   --top-gap: var(--main-pad);    /* Abstand des Kalenders zur Oberkante – rundum gleich */
   --main-pad-b: 56px;            /* unterer Innenabstand des Scrollbereichs (aus calendar.js) */
-  --tray-w: 360px;               /* Breite der Liste rechts */
+  --tray-w: 300px;               /* Breite der Liste rechts */
   --layout-gap: 18px;            /* Abstand Raster ↔ Liste */
   position: relative;            /* Bezug für das Wiederholen-Fenster */
   width: 100%;
@@ -289,7 +289,6 @@
 
 .cal-item { cursor: grab; }
 .cal-item:active { cursor: grabbing; }
-.cal-item.is-fixed { cursor: default; }
 .cal-item.is-dragging { opacity: 0.35; }
 .cal-item:hover { z-index: 5; }
 
@@ -320,17 +319,12 @@
 }
 
 .cal-item:hover .cal-item__label { right: 20px; color: #ffffff; }
-.cal-item.is-fixed .cal-item__label { right: 20px; }
 
-/* ✕ (Slot entfernen) und Schloss (fix von sounddna) rechts im Slot */
-.cal-item__x,
-.cal-item__lock {
+/* ✕ (Slot entfernen) rechts im Slot */
+.cal-item__x {
   position: absolute;
   top: calc(var(--slot-h) / 2);
   transform: translateY(-50%);
-}
-
-.cal-item__x {
   right: 2px;
   display: flex;
   align-items: center;
@@ -342,14 +336,6 @@
   opacity: 0;
   pointer-events: none;            /* unsichtbar ⇒ nicht klickbar, sonst löschen Streuklicks */
   transition: opacity var(--transition), background var(--transition), color var(--transition);
-}
-
-.cal-item__lock {
-  right: 6px;
-  width: 10px;
-  height: 10px;
-  color: var(--text-40);
-  pointer-events: none;
 }
 
 .cal-item:hover .cal-item__x,
@@ -489,6 +475,36 @@
 
 .cal-tray.is-editing .dropdown__menu { background: var(--edit-pop); }
 .cal-tray.is-editing .ghost-btn--invert { color: var(--edit-on-ink); }
+
+/* Store-Auswahl (wer alle Stores sieht) – ungespeicherte Stores mit Punkt */
+.cal-store { margin-bottom: 18px; }
+.cal-store .dropdown__toggle { height: 38px; padding: 0 13px 0 14px; background: var(--white-6); font-size: var(--fs-menu); }
+.cal-store .dropdown__toggle:hover,
+.cal-store.is-open .dropdown__toggle { background: var(--white-10); }
+.cal-store .dropdown__menu--tall { max-height: 320px; }
+.cal-store .dropdown__option.is-unsaved::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--text-66);
+}
+
+/* Save: erst damit gelten die Änderungen */
+.cal-save {
+  flex: none;
+  height: 38px;
+  margin-top: 14px;
+  border-radius: var(--radius-md);
+  background: var(--nav-active);
+  color: var(--text-inverse);
+  font-size: var(--fs-menu);
+  transition: background var(--transition), color var(--transition);
+}
+
+.cal-save:hover { background: #ffffff; }
+.cal-save:disabled { background: var(--white-6); color: var(--text-40); cursor: default; }
 
 .cal-tray__title {
   margin-bottom: 16px;
@@ -663,6 +679,17 @@
   min-width: 0;
   font-size: var(--fs-base);
   color: var(--text-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* wer den Spot eingeplant hat */
+.cal-repeat__by {
+  margin: 6px 0 0 17px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

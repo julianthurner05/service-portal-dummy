@@ -14,8 +14,6 @@ const SPOTS_BASELINE = 140;    /* bereits vor dem Dummy generierte Spots */
 const PLAN_SPOTS_PER_MONTH = 100;
 const PLAN_USED_BEFORE = 31;   /* in diesem Monat vor dem Dummy schon generiert */
 
-document.getElementById('home-hours').textContent = storeHoursLabel();
-document.getElementById('home-quiet').textContent = quietHoursLabel();
 
 let homePlayer = null;         /* Player für den letzten Spot (Dummy, wie in der History) */
 
@@ -25,6 +23,11 @@ function renderHome() {
 
   homeDate.textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  /* ---- gewählter Store ---- */
+  document.getElementById('home-location').textContent = currentStore.name;
+  document.getElementById('home-hours').textContent = storeHoursLabel();
+  document.getElementById('home-quiet').textContent = quietHoursLabel();
+
   /* ---- Woche & heute – alles aus dem Calendar ---- */
   const week = weekDates(mondayOf(now));
   const perDayList = week.map(date => announcementsOn(date));
@@ -32,7 +35,6 @@ function renderHome() {
   const weekTotal = perDay.reduce((a, b) => a + b, 0);
   const todayIdx = dayIdx(now);
   const spotsOnAir = new Set(perDayList.flat().map(x => x.spot.id)).size;
-  const fixedThisWeek = perDayList.flat().filter(x => x.fixed).length;
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const todayAll = perDayList[todayIdx];
@@ -48,7 +50,7 @@ function renderHome() {
   homeStats.innerHTML = [
     { label: 'Spots left this month', value: left, hint: `of ${PLAN_SPOTS_PER_MONTH} in your plan · resets ${MONTH_SHORT[resetDate.getMonth()]} 1`, bar: usedThisMonth / PLAN_SPOTS_PER_MONTH },
     { label: 'Spots generated', value: generated, hint: `${usedThisMonth} this month` },
-    { label: 'Spots on air', value: spotsOnAir, hint: `this week · ${fixedThisWeek} fixed by sounddna` },
+    { label: 'Spots on air', value: spotsOnAir, hint: 'this week' },
     { label: 'Announcements this week', value: weekTotal, hint: `${perDay[todayIdx]} today` },
   ].map(s => `
     <div class="home-stat">

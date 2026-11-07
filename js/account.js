@@ -5,6 +5,13 @@
 /* Letzter Login: heute, ein paar Stunden her */
 document.getElementById('acc-last-login').textContent = 'Today, 08:14';
 
+/* ---- Access: nur der eigene Store oder alle (dann Store-Auswahl im Calendar) ---- */
+buildDropdown(document.getElementById('acc-access'), {
+  options: [{ value: 'store', label: HOME_STORE.name }, { value: 'all', label: 'All stores' }],
+  value: storeAccess,
+  onChange: setStoreAccess,
+});
+
 /* ---- Log out ---- */
 document.getElementById('acc-logout').addEventListener('click', async () => {
   const ok = await confirmDialog({ title: 'Log out?', text: 'You will need to sign in again to access the SpotTool.', confirmLabel: 'Log out' });

@@ -35,13 +35,41 @@ function catStyle(id) {
   return Object.entries(v).map(([k, val]) => `${k}:${val};`).join('');
 }
 
-/* ---- Store-Regeln (Beispiel IKEA Vösendorf) – Index 0 = Montag ---- */
-const STORE_HOURS = [['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '20:00'], ['09:00', '21:00'], ['09:00', '18:00'], null];
-const QUIET_HOURS = [{ day: 2, from: '16:00', to: '18:00' }];
+/* ---- Stores – Öffnungszeiten, Stille Stunde, Team; jeder Store hat seinen
+   eigenen Plan. Wer alle Stores sieht (Account → Access), schaltet im
+   Calendar zwischen ihnen um. shift: der Basisplan läuft dort um so viele
+   Minuten versetzt. Index 0 = Montag ---- */
+const weekHours = (wd, fr, sa) => [wd, wd, wd, wd, fr, sa, null];
+const STORES = [
+  { id: 'voesendorf',  name: 'IKEA Vösendorf',        hours: weekHours(['09:00', '20:00'], ['09:00', '21:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '16:00', to: '18:00' }], shift: 0,   team: ['Lisa Berger', 'Markus Hofer', 'Julian Thurner'] },
+  { id: 'wien-nord',   name: 'IKEA Wien Nord',        hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '15:00', to: '17:00' }], shift: 30,  team: ['Sarah Gruber', 'Tobias Wagner'] },
+  { id: 'westbahnhof', name: 'IKEA Wien Westbahnhof', hours: weekHours(['09:00', '21:00'], ['09:00', '21:00'], ['09:00', '20:00']), quiet: [{ day: 3, from: '14:00', to: '16:00' }], shift: 15,  team: ['Elena Novak', 'David Pichler'] },
+  { id: 'graz',        name: 'IKEA Graz',             hours: weekHours(['09:30', '19:30'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '17:00', to: '19:00' }], shift: -15, team: ['Katharina Mayer', 'Florian Steiner'] },
+  { id: 'haid',        name: 'IKEA Haid',             hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 0, from: '16:00', to: '18:00' }], shift: 45,  team: ['Johanna Leitner', 'Stefan Huber'] },
+  { id: 'salzburg',    name: 'IKEA Salzburg',         hours: weekHours(['09:30', '19:00'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 3, from: '16:00', to: '18:00' }], shift: 15,  team: ['Anna Fuchs', 'Lukas Eder'] },
+  { id: 'innsbruck',   name: 'IKEA Innsbruck',        hours: weekHours(['10:00', '19:00'], ['10:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '16:00', to: '18:00' }], shift: 30,  team: ['Marie Hofmann', 'Jakob Brunner'] },
+  { id: 'klagenfurt',  name: 'IKEA Klagenfurt',       hours: weekHours(['09:00', '19:00'], ['09:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 4, from: '15:00', to: '17:00' }], shift: 0,   team: ['Laura Wieser', 'Simon Moser'] },
+];
+const HOME_STORE = STORES[0];          /* der eigene Store des eingeloggten Users */
+const CURRENT_USER = 'Julian Thurner';
+
+/* Regeln des gerade gewählten Stores */
+const STORE_HOURS = [];
+const QUIET_HOURS = [];
+let currentStore = HOME_STORE;
+
+function applyStore(store) {
+  currentStore = store;
+  STORE_HOURS.splice(0, STORE_HOURS.length, ...store.hours);
+  QUIET_HOURS.splice(0, QUIET_HOURS.length, ...store.quiet);
+}
+
+/* "9" bzw. "9:30" */
+const hourLabel = t => (t.endsWith(':00') ? String(parseInt(t, 10)) : t.replace(/^0/, ''));
 
 /* "Wednesday 16–18" bzw. "Mo–Th 9–20 · Fr 9–21 · Sa 9–18" */
 const quietHoursLabel = () =>
-  QUIET_HOURS.map(q => `${DAY_NAMES[q.day]} ${parseInt(q.from, 10)}–${parseInt(q.to, 10)}`).join(', ');
+  QUIET_HOURS.map(q => `${DAY_NAMES[q.day]} ${hourLabel(q.from)}–${hourLabel(q.to)}`).join(', ');
 
 function storeHoursLabel() {
   const parts = [];
@@ -51,7 +79,7 @@ function storeHoursLabel() {
     if (last && last.h[0] === h[0] && last.h[1] === h[1] && last.to === i - 1) { last.to = i; return; }
     parts.push({ from: i, to: i, h });
   });
-  return parts.map(p => `${DAYS[p.from]}${p.to > p.from ? `–${DAYS[p.to]}` : ''} ${parseInt(p.h[0], 10)}–${parseInt(p.h[1], 10)}`).join(' · ');
+  return parts.map(p => `${DAYS[p.from]}${p.to > p.from ? `–${DAYS[p.to]}` : ''} ${hourLabel(p.h[0])}–${hourLabel(p.h[1])}`).join(' · ');
 }
 
 /* Feiertage und Sonderöffnungszeiten (Beispiel Österreich) – hours null = geschlossen */
@@ -110,7 +138,8 @@ const cellBlocked = (date, slot) => !isOpen(date, slotTime(slot)) || isQuiet(day
    --------------------------------------------------------------- */
 const planListeners = new Set();
 const onPlanChange  = fn => planListeners.add(fn);
-const emitPlanChange = kind => planListeners.forEach(fn => fn(kind));
+let planMuted = false;                /* beim Aufsetzen eines Plans still */
+const emitPlanChange = kind => { if (!planMuted) planListeners.forEach(fn => fn(kind)); };
 
 /* ---------------------------------------------------------------
    Spot-Bibliothek
@@ -167,8 +196,7 @@ function setSpotCategory(spotId, category) {
 
 const isSpotReady = title => { const s = findSpot(title); return !!s && s.ready && !s.retired; };
 
-/* Opening/Closing vergibt sounddna – nie in der Liste */
-const paletteSpots = () => spots.filter(s => s.ready && !s.retired && s.category !== 'closing');
+const paletteSpots = () => spots.filter(s => s.ready && !s.retired);
 
 /* Spot gelöscht: aus der Palette nehmen und aus dieser und allen kommenden
    Wochen entfernen. Liefert die Zahl der entfernten Slots. */
@@ -202,20 +230,20 @@ function setSpotAudio(spotId, audio) {
 
 /* ---------------------------------------------------------------
    Basisplan – IKEA Vösendorf, Durchsagenplan aus der Excel-Vorlage
-   (Woche 21.–26.09.2026), läuft ab 31.08.2026 jede Woche weiter.
+   (Woche 21.–26.09.2026), läuft ab 31.08.2026 jede Woche weiter; die
+   anderen Stores bekommen ihn um ihren shift versetzt.
    Ein Spot pro Slot, nichts in der Stillen Stunde, nichts außerhalb der
    Öffnungszeit. Zeitlich begrenzte Aktionen stehen vorne und haben damit
    in ihrem Zeitraum Vorrang vor den Dauerbrennern.
    --------------------------------------------------------------- */
 const PLAN_START = '31.08.2026';
 const MO_FR = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
-const MO_TH = ['Mo', 'Tu', 'We', 'Th'];
 const MO_SA = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille Stunde 16–18 → eigene Variante */
 /* Varianten, die sich nur durch gesperrte Zeiten unterscheiden (Stille Stunde,
    Samstag bis 18 Uhr), werden beim Laden zu einer Serie zusammengelegt */
 
-[
+const SPOT_LIBRARY = [
   { title: 'Weihnachtsöffnungszeiten Hinweis', category: 'special' },
   { title: 'IKEA Family Punkte Aktion Juli',   category: 'commercial' },
   { title: 'IKEA FOOD Frühstücksangebot',      category: 'commercial' },
@@ -231,14 +259,16 @@ const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille 
   { title: '2. Schlussdurchsage',              category: 'closing' },
   { title: '3. Schlussdurchsage',              category: 'closing' },
   { title: '4. Schlussdurchsage',              category: 'closing' },
-].forEach(s => addSpot(s));
+];
 
+/* 19:00 bzw. 17:10 der Vorlage liegen jetzt eine Spur früher – die letzte
+   Stunde vor Ladenschluss gehört den Schlussdurchsagen */
 const BASE_PLAN = [
   { spot: 'Weihnachtsöffnungszeiten Hinweis', days: MO_SA, times: ['11:00', '17:00'], start: '01.12.2026', end: '23.12.2026' },
   { spot: 'IKEA Family Punkte Aktion Juli',   days: MO_SA, times: ['10:00', '15:00'], start: '01.07.2026', end: '31.07.2026' },
   { spot: 'IKEA FOOD Frühstücksangebot',      days: MO_SA, times: ['09:00', '09:45'] },
-  { spot: 'IKEA FAMILY Durchsage',            days: NO_WE, times: ['10:00', '13:00', '16:00', '19:00'] },
-  { spot: 'IKEA FAMILY Durchsage',            days: ['We'], times: ['10:00', '13:00', '19:00'] },
+  { spot: 'IKEA FAMILY Durchsage',            days: NO_WE, times: ['10:00', '13:00', '16:00', '18:45'] },
+  { spot: 'IKEA FAMILY Durchsage',            days: ['We'], times: ['10:00', '13:00', '18:45'] },
   { spot: 'IKEA FAMILY Durchsage',            days: ['Sa'], times: ['10:00', '13:00', '16:00'] },
   { spot: 'SCAN & PAY Durchsage',             days: NO_WE, times: ['10:30', '12:30', '15:30', '17:30'] },
   { spot: 'SCAN & PAY Durchsage',             days: ['We'], times: ['10:30', '12:30'] },
@@ -251,70 +281,45 @@ const BASE_PLAN = [
   { spot: 'ZLS Durchsage',                    days: ['Sa'], times: ['12:00', '15:00'] },
   { spot: 'SMÅLAND Kipa Durchsage',           days: ['Fr'], times: ['13:30'] },
   { spot: 'SMÅLAND Kipa Durchsage',           days: ['Sa'], times: ['10:30'] },
-  { spot: 'Stille Stunde Durchsage',          days: ['We'], times: ['15:45'] },
-  { spot: 'Café Bar Schlussdurchsage',        days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
-
-  /* fix – von sounddna vergeben, dürfen bis zur Schließzeit laufen */
-  { spot: '1. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:30'] },
-  { spot: '2. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:45'] },
-  { spot: '3. Schlussdurchsage', fixed: true, days: MO_TH, times: ['19:55'] },
-  { spot: '4. Schlussdurchsage', fixed: true, days: MO_TH, times: ['20:00'] },
-  { spot: '1. Schlussdurchsage', fixed: true, days: ['Fr'], times: ['20:30'] },
-  { spot: '2. Schlussdurchsage', fixed: true, days: ['Fr'], times: ['20:45'] },
-  { spot: '3. Schlussdurchsage', fixed: true, days: ['Fr'], times: ['20:55'] },
-  { spot: '4. Schlussdurchsage', fixed: true, days: ['Fr'], times: ['21:00'] },
-  { spot: '1. Schlussdurchsage', fixed: true, days: ['Sa'], times: ['17:30'] },
-  { spot: '2. Schlussdurchsage', fixed: true, days: ['Sa'], times: ['17:45'] },
-  { spot: '3. Schlussdurchsage', fixed: true, days: ['Sa'], times: ['17:55'] },
-  { spot: '4. Schlussdurchsage', fixed: true, days: ['Sa'], times: ['18:00'] },
+  { spot: 'Café Bar Schlussdurchsage',        days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['16:45'] },
 ];
 
-function entryActive(e, date, dayI) {
-  if (!e.days.includes(DAYS[dayI])) return false;
-  if (date < parseDate(e.start || PLAN_START)) return false;
-  return !(e.end && date > parseDate(e.end));
+/* Schlussdurchsagen: die vier Slots vor Ladenschluss – je Schließzeit eine
+   Serie. Ganz normale Slots: verschieben, löschen, Serie bearbeiten */
+const CLOSINGS = ['1. Schlussdurchsage', '2. Schlussdurchsage', '3. Schlussdurchsage', '4. Schlussdurchsage'];
+
+function closingPlan() {
+  const byClose = new Map();
+  STORE_HOURS.forEach((h, i) => {
+    if (!h || i >= CAL_DAYS) return;
+    if (!byClose.has(h[1])) byClose.set(h[1], []);
+    byClose.get(h[1]).push(DAYS[i]);
+  });
+  const out = [];
+  byClose.forEach((days, close) => CLOSINGS.forEach((spot, k) =>
+    out.push({ spot, days, times: [hhmm(minutesOf(close) - (CLOSINGS.length - k) * SLOT_MIN)], by: 'sounddna' })));
+  return out;
 }
+
+/* Stille Stunde: Hinweis im Slot davor */
+const quietPlan = () => QUIET_HOURS.map(q =>
+  ({ spot: 'Stille Stunde Durchsage', days: [DAYS[q.day]], times: [hhmm(minutesOf(q.from) - SLOT_MIN)] }));
 
 /* ---------------------------------------------------------------
    Wochen
    --------------------------------------------------------------- */
 let itemUid = 0;
-const weeks = new Map();              /* Montag 'dd.mm.yyyy' → [{ id, spotId, day, slot }] */
-
-/* fixe Slots einer Woche: 'day:slot' → [{ spot, time }] (mehrere Schlussdurchsagen
-   können sich einen 15-Minuten-Slot teilen). Eine Durchsage genau auf der
-   Rasterkante (Fr 21:00) kommt in den letzten Slot, statt zu verschwinden. */
-const CLOSING_OFFSETS = [30, 15, 5, 0];         /* 1.–4. Schlussdurchsage: Minuten vor Ladenschluss */
-
-function fixedCells(monday) {
-  const cells = new Map();
-  weekDates(monday).forEach((date, di) => BASE_PLAN.forEach(e => {
-    if (!e.fixed || !entryActive(e, date, di)) return;
-    const sp = specialDay(date);
-    if (sp && !sp.hours) return;                   /* Feiertag: geschlossen, keine Durchsagen */
-    const spot = findSpot(e.spot);
-    /* Sonderöffnungszeit: Schlussdurchsagen rücken an die frühere Schließzeit */
-    const times = sp ? [hhmm(minutesOf(sp.hours[1]) - CLOSING_OFFSETS[parseInt(e.spot, 10) - 1])] : e.times;
-    times.forEach(time => {
-      const slot = minutesOf(time) === CAL_HOUR_END * 60 ? CAL_SLOTS - 1 : slotIndex(time);
-      if (slot < 0 || slot >= CAL_SLOTS) return;
-      const key = `${di}:${slot}`;
-      if (!cells.has(key)) cells.set(key, []);
-      cells.get(key).push({ spot, time });
-    });
-  }));
-  cells.forEach(list => list.sort((a, b) => minutesOf(a.time) - minutesOf(b.time)));
-  return cells;
-}
+const weeks = new Map();              /* Montag 'dd.mm.yyyy' → [{ id, spotId, day, slot, seriesId?, by?, at? }]
+                                         by/at nur bei Slots ohne Serie – sonst steht es an der Serie */
 
 /* Slots einer Woche – beim ersten Zugriff aus den Serien befüllt, in ihrer
-   Reihenfolge (Basisplan zuerst, zeitlich begrenzte Aktionen vorne); Serien
-   mit „Replace taken slots“ gehen allen vor */
+   Reihenfolge (Schlussdurchsagen zuerst, zeitlich begrenzte Aktionen vorne);
+   Serien mit „Replace taken slots“ gehen allen vor */
 function weekItems(monday) {
   const key = fmtDate(monday);
   if (weeks.has(key)) return weeks.get(key);
 
-  const taken = new Set(fixedCells(monday).keys());
+  const taken = new Set();
   const items = [];
   const order = [...userSeries.filter(r => r.override), ...userSeries.filter(r => !r.override)];
   weekDates(monday).forEach((date, di) => order.forEach(r => {
@@ -338,7 +343,8 @@ function weekItems(monday) {
    oder ohne Ende
    --------------------------------------------------------------- */
 let seriesUid = 0;
-const userSeries = [];                /* alle Serien: { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null, override } */
+const userSeries = [];                /* alle Serien: { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null, override,
+                                          by: wer sie eingeplant hat, at: Date } */
 
 const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -348,30 +354,18 @@ function seriesOn(r, date, dayI) {
   return d >= r.start && (!r.end || d <= r.end);
 }
 
-/* der Basisplan wird zu ganz normalen Serien – damit ist jeder Slot im
-   Calendar bearbeitbar (fixe Schlussdurchsagen bleiben im Basisplan) */
-BASE_PLAN.forEach(e => {
-  if (e.fixed) return;
-  userSeries.push({
-    id: ++seriesUid, spotId: findSpot(e.spot).id, days: [...e.days], slots: e.times.map(slotIndex),
-    start: parseDate(e.start || PLAN_START), end: e.end ? parseDate(e.end) : null, override: false,
-  });
-});
-
-/* an einem Wochentag grundsätzlich nicht zu vergeben: zu, Stille Stunde
-   oder fix von sounddna belegt */
+/* an einem Wochentag grundsätzlich nicht zu vergeben: zu oder Stille Stunde */
 function weekdayBlocked(dayI, slot) {
   const t = slotTime(slot);
   const h = STORE_HOURS[dayI];
-  if (!h || minutesOf(t) < minutesOf(h[0]) || minutesOf(t) >= minutesOf(h[1]) || isQuiet(dayI, t)) return true;
-  return BASE_PLAN.some(e => e.fixed && e.days.includes(DAYS[dayI]) && e.times.some(x => slotIndex(x) === slot));
+  return !h || minutesOf(t) < minutesOf(h[0]) || minutesOf(t) >= minutesOf(h[1]) || isQuiet(dayI, t);
 }
 
 /* Serien eines Spots zusammenlegen, die an ihren Tagen dieselben Uhrzeiten
    haben – eine Uhrzeit, die an einem Tag ohnehin gesperrt ist, zählt dabei
    als gleich (Mo–Sa 10, 13, 16, 19 Uhr statt Mo–Fr / Mi / Sa). Eine eigene
-   Serie bleibt nur ein Tag, der wirklich anders läuft. Gleicher Zeitraum
-   und gleiches „Replace“ sind Voraussetzung. */
+   Serie bleibt nur ein Tag, der wirklich anders läuft. Gleicher Zeitraum,
+   gleiches „Replace“ und dieselbe Person sind Voraussetzung. */
 function mergeSeries(spotId) {
   const eff = (slots, day) => slots.filter(x => !weekdayBlocked(DAYS.indexOf(day), x)).sort((a, b) => a - b).join();
   for (let changed = true; changed;) {
@@ -380,7 +374,7 @@ function mergeSeries(spotId) {
     for (let i = 0; i < own.length && !changed; i++) {
       for (let j = i + 1; j < own.length && !changed; j++) {
         const a = own[i], b = own[j];
-        if (+a.start !== +b.start || +(a.end || 0) !== +(b.end || 0) || a.override !== b.override) continue;
+        if (+a.start !== +b.start || +(a.end || 0) !== +(b.end || 0) || a.override !== b.override || a.by !== b.by) continue;
         if (a.days.some(d => b.days.includes(d))) continue;
         const u = [...new Set([...a.slots, ...b.slots])].sort((x, y) => x - y);
         if (![a, b].every(r => r.days.every(d => eff(r.slots, d) === eff(u, d)))) continue;
@@ -394,14 +388,40 @@ function mergeSeries(spotId) {
   }
 }
 
-spots.forEach(sp => mergeSeries(sp.id));
+/* Plan eines Stores neu aufsetzen: Spot-Bibliothek, dann Schlussdurchsagen,
+   Stille Stunde und Basisplan als ganz normale Serien – jeder Slot ist im
+   Calendar bearbeitbar. Eingeplant hat sie das Team des Stores (die
+   Schlussdurchsagen sounddna), ein paar Tage vor dem Start. */
+function seedPlan(store) {
+  spots.length = 0;
+  userSeries.length = 0;
+  weeks.clear();
+  spotUid = itemUid = seriesUid = 0;
+  SPOT_LIBRARY.forEach(s => addSpot(s));
+  const shifted = t => hhmm(minutesOf(t) + store.shift);
+  [...closingPlan(), ...quietPlan(), ...BASE_PLAN.map(e => ({ ...e, times: e.times.map(shifted) }))].forEach(e => {
+    const slots = e.times.map(slotIndex).filter(s => s >= 0 && s < CAL_SLOTS);
+    if (!slots.length) return;
+    const n = SPOT_LIBRARY.findIndex(s => s.title === e.spot);
+    const start = parseDate(e.start || PLAN_START);
+    const at = new Date(Math.min(start, parseDate(PLAN_START)));
+    at.setDate(at.getDate() - 2 - n % 5);
+    userSeries.push({
+      id: ++seriesUid, spotId: findSpot(e.spot).id, days: [...e.days], slots,
+      start, end: e.end ? parseDate(e.end) : null, override: false,
+      by: e.by || store.team[n % store.team.length], at,
+    });
+  });
+  spots.forEach(sp => mergeSeries(sp.id));
+  planRev = savedRev = revUid = 0;
+}
 
 /* Zelle für einen Spot freimachen (Replace taken slots): ein anderer,
-   noch nicht gespielter Slot dort wird entfernt. Fixe, gesperrte und
-   gespielte Zellen bleiben, wie sie sind – derselbe Spot auch. */
+   noch nicht gespielter Slot dort wird entfernt. Gesperrte und gespielte
+   Zellen bleiben, wie sie sind – derselbe Spot auch. */
 function clearCellFor(monday, dayI, slot, spotId = null) {
   const date = weekDates(monday)[dayI];
-  if (slot < playedSlots(date) || cellBlocked(date, slot) || fixedCells(monday).has(`${dayI}:${slot}`)) return;
+  if (slot < playedSlots(date) || cellBlocked(date, slot)) return;
   const items = weekItems(monday);
   const i = items.findIndex(x => x.day === dayI && x.slot === slot);
   if (i >= 0 && items[i].spotId !== spotId) items.splice(i, 1);
@@ -417,7 +437,7 @@ function spotAt(monday, dayI, slot, spotId) {
    override: belegte Slots werden ersetzt statt übersprungen.
    Liefert { placed, skipped } für die schon geöffneten Wochen. */
 function addSeries({ spotId, days, slots, start, end = null, override = false }) {
-  const r = { id: ++seriesUid, spotId, days, slots, start: dayStart(start), end: end ? dayStart(end) : null, override };
+  const r = { id: ++seriesUid, spotId, days, slots, start: dayStart(start), end: end ? dayStart(end) : null, override, by: CURRENT_USER, at: new Date() };
   userSeries.push(r);
   let placed = 0, skipped = 0;
   weeks.forEach((items, key) => {
@@ -505,18 +525,24 @@ function removeSpotSlots(spotId, scope, monday, day = null, slot = 0) {
   const s = spotById(spotId);
   if (!s) return 0;
   const from = scope === 'from' ? weekDates(monday)[day] : null;
-  const cut = new Set();
   if (from) {
     const before = new Date(from);
     before.setDate(from.getDate() - 1);
+    const cut = new Map();
     for (let i = userSeries.length - 1; i >= 0; i--) {
       const r = userSeries[i];
       if (r.spotId !== spotId) continue;
-      if (r.start >= from) { cut.add(r.id); userSeries.splice(i, 1); }
-      else if (!r.end || r.end > before) { cut.add(r.id); r.end = before; }
+      if (r.start >= from) { cut.set(r.id, r); userSeries.splice(i, 1); }
+      else if (!r.end || r.end > before) { cut.set(r.id, r); r.end = before; }
     }
-    /* was an dem Tag vor dem Slot bleibt, gehört zu keiner Serie mehr */
-    weekItems(monday).forEach(it => { if (it.day === day && cut.has(it.seriesId)) delete it.seriesId; });
+    /* was an dem Tag vor dem Slot bleibt, gehört zu keiner Serie mehr –
+       wer es eingeplant hat, steht dann am Slot selbst */
+    weekItems(monday).forEach(it => {
+      const r = it.day === day && cut.get(it.seriesId);
+      if (!r) return;
+      delete it.seriesId;
+      Object.assign(it, { by: r.by, at: r.at });
+    });
   }
   let removed = 0;
   weeks.forEach((items, key) => {
@@ -575,14 +601,13 @@ function spotEndsSoon(spot) {
 /* frei für einen Spot: offen, keine Quiet Hour, kein fixer und kein anderer Slot */
 function cellFree(monday, dayI, slot, ignoreId = null) {
   if (dayI < 0 || dayI >= CAL_DAYS || slot < 0 || slot >= CAL_SLOTS || cellBlocked(weekDates(monday)[dayI], slot)) return false;
-  if (fixedCells(monday).has(`${dayI}:${slot}`)) return false;
   return !weekItems(monday).some(i => i.id !== ignoreId && i.day === dayI && i.slot === slot);
 }
 
 function placeSpot(monday, spotId, dayI, slot, override = false) {
   if (override) clearCellFor(monday, dayI, slot, spotId);
   if (!cellFree(monday, dayI, slot)) return null;
-  const it = { id: ++itemUid, spotId, day: dayI, slot };
+  const it = { id: ++itemUid, spotId, day: dayI, slot, by: CURRENT_USER, at: new Date() };
   weekItems(monday).push(it);
   emitPlanChange('week');
   return it;
@@ -606,18 +631,20 @@ function removeItem(monday, id) {
   return true;
 }
 
-/* alle Durchsagen eines Tages (Slots + fixe), nach Uhrzeit – für Home */
+/* alle Durchsagen eines Tages, nach Uhrzeit – für Home */
 function announcementsOn(date) {
-  const monday = mondayOf(date);
   const di = dayIdx(date);
-  const list = weekItems(monday)
+  return weekItems(mondayOf(date))
     .filter(i => i.day === di)
-    .map(i => ({ time: slotTime(i.slot), slot: i.slot, spot: spotById(i.spotId), fixed: false }));
-  fixedCells(monday).forEach((entries, key) => {
-    const [d, slot] = key.split(':').map(Number);
-    if (d === di) entries.forEach(f => list.push({ time: f.time, slot, spot: f.spot, fixed: true }));
-  });
-  return list.sort((a, b) => minutesOf(a.time) - minutesOf(b.time));
+    .map(i => ({ time: slotTime(i.slot), slot: i.slot, spot: spotById(i.spotId) }))
+    .sort((a, b) => a.slot - b.slot);
+}
+
+/* wer einen Slot eingeplant hat (an seiner Serie bzw. am Slot selbst) */
+function scheduledBy(item) {
+  const r = item.seriesId && userSeries.find(x => x.id === item.seriesId);
+  const src = r || item;
+  return src.by ? { by: src.by, at: src.at || null } : null;
 }
 
 /* ---------------------------------------------------------------
@@ -635,6 +662,7 @@ function snapshotPlan() {
     weeks: [...weeks].map(([key, items]) => [key, items.map(i => ({ ...i }))]),
     series: userSeries.map(r => ({ ...r, days: [...r.days], slots: [...r.slots] })),
     spots: spots.map(sp => ({ ...sp })),
+    rev: planRev,
   };
 }
 
@@ -643,6 +671,7 @@ function restorePlan(snap) {
   snap.weeks.forEach(([key, items]) => weeks.set(key, items.map(i => ({ ...i }))));
   userSeries.splice(0, userSeries.length, ...snap.series.map(r => ({ ...r, days: [...r.days], slots: [...r.slots] })));
   spots.splice(0, spots.length, ...snap.spots.map(sp => ({ ...sp })));
+  if (snap.rev !== undefined) planRev = snap.rev;
   emitPlanChange('spots');
   emitPlanChange('week');
 }
@@ -652,6 +681,8 @@ function recordUndo() {
   undoStack.push(snapshotPlan());
   if (undoStack.length > UNDO_LIMIT) undoStack.shift();
   redoStack.length = 0;
+  planRev = ++revUid;                 /* neuer Stand – bis „Save“ ungespeichert */
+  emitPlanChange('dirty');
 }
 
 function undoPlan() {
@@ -684,30 +715,113 @@ function clearPlanHistory() {
 }
 
 /* ---------------------------------------------------------------
-   Speichern: der ganze Plan (Wochen, Serien, Spots) liegt im Browser und
-   übersteht ein Neuladen. ?reset in der Adresse startet wieder beim Basisplan.
-   PLAN_VERSION hochzählen, wenn sich der Basisplan im Code ändert.
+   Speichern: Änderungen im Calendar gelten erst mit „Save“. Bis dahin ist
+   der Plan ein Entwurf – er bleibt im Browser und übersteht ein Neuladen,
+   der Menüpunkt Calendar trägt so lange einen Punkt. Jede Änderung im
+   Calendar (recordUndo) bekommt eine neue Nummer (planRev); gespeichert
+   ist, solange sie der zuletzt gespeicherten entspricht – Undo bis dorthin
+   heißt also wieder „nichts zu speichern“. Änderungen aus dem SpotTool
+   (Liste, Löschen, Audio) brauchen kein „Save“.
+   Jeder Store hat seinen eigenen Plan; ?reset in der Adresse startet
+   überall wieder beim Basisplan. PLAN_VERSION hochzählen, wenn sich der
+   Basisplan im Code ändert.
    --------------------------------------------------------------- */
 const PLAN_KEY = 'sounddna-plan';
-const PLAN_VERSION = 2;
+const PLAN_VERSION = 3;
+const UNSAVED_KEY = 'sounddna-unsaved';
+const ACCESS_KEY = 'sounddna-access';
+const STORE_KEY = 'sounddna-store';
+const planKey = id => `${PLAN_KEY}:${id}`;
 
+function readLocal(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function writeLocal(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* privat / voll – dann eben ohne Speichern */ }
+}
+
+let planRev = 0, savedRev = 0, revUid = 0;
+const planDirty = () => planRev !== savedRev;
+
+/* Stores mit ungespeicherten Änderungen – auch die gerade nicht gewählten */
+const unsavedStores = new Set(readLocal(UNSAVED_KEY, []));
+
+/* Entwurf ablegen (nach jeder Änderung, kurz verzögert) */
 function savePlan() {
-  try {
-    localStorage.setItem(PLAN_KEY, JSON.stringify({ v: PLAN_VERSION, ...snapshotPlan(), uids: { spotUid, itemUid, seriesUid } }));
-  } catch { /* privat / voll – dann eben ohne Speichern */ }
+  if (planDirty()) unsavedStores.add(currentStore.id); else unsavedStores.delete(currentStore.id);
+  writeLocal(planKey(currentStore.id), { v: PLAN_VERSION, ...snapshotPlan(), savedRev, uids: { spotUid, itemUid, seriesUid, revUid } });
+  writeLocal(UNSAVED_KEY, [...unsavedStores]);
+}
+
+/* „Save“: der Entwurf gilt */
+function commitPlan() {
+  savedRev = planRev;
+  clearTimeout(saveTimer);
+  savePlan();
+  emitPlanChange('saved');
 }
 
 function loadPlan() {
+  const data = readLocal(planKey(currentStore.id), null);
+  if (!data || data.v !== PLAN_VERSION) return false;
   try {
-    if (new URLSearchParams(location.search).has('reset')) { localStorage.removeItem(PLAN_KEY); return; }
-    const data = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
-    if (!data || data.v !== PLAN_VERSION) return;
-    data.series.forEach(r => { r.start = new Date(r.start); r.end = r.end ? new Date(r.end) : null; });
-    ({ spotUid, itemUid, seriesUid } = data.uids);
+    data.series.forEach(r => { r.start = new Date(r.start); r.end = r.end ? new Date(r.end) : null; r.at = r.at ? new Date(r.at) : null; });
+    data.weeks.forEach(([, items]) => items.forEach(i => { if (i.at) i.at = new Date(i.at); }));
+    ({ spotUid, itemUid, seriesUid, revUid } = data.uids);
+    savedRev = data.savedRev;
     restorePlan(data);
-  } catch { /* kaputt – Basisplan bleibt */ }
+    return true;
+  } catch {
+    seedPlan(currentStore);           /* kaputt – Basisplan */
+    return false;
+  }
 }
 
-loadPlan();
+/* ---- Zugriff: nur der eigene Store oder alle (Account → Access) ---- */
+let storeAccess = readLocal(ACCESS_KEY, 'store');
+const accessibleStores = () => (storeAccess === 'all' ? STORES : [HOME_STORE]);
+const storeUnsaved = id => (id === currentStore.id ? planDirty() : unsavedStores.has(id));
+const anyUnsaved = () => accessibleStores().some(s => storeUnsaved(s.id));
+
+/* Store öffnen: gespeicherter Entwurf bzw. Basisplan */
+function openStore(store) {
+  applyStore(store);
+  writeLocal(STORE_KEY, store.id);
+  planMuted = true;
+  seedPlan(store);
+  loadPlan();
+  planMuted = false;
+}
+
+/* anderer Store: der Entwurf des bisherigen bleibt liegen, wie er ist */
+function switchStore(id) {
+  const store = STORES.find(s => s.id === id);
+  if (!store || store === currentStore) return;
+  clearTimeout(saveTimer);
+  savePlan();
+  clearPlanHistory();
+  openStore(store);
+  emitPlanChange('store');
+  emitPlanChange('spots');
+  emitPlanChange('week');
+}
+
+function setStoreAccess(access) {
+  storeAccess = access;
+  writeLocal(ACCESS_KEY, access);
+  if (!accessibleStores().includes(currentStore)) switchStore(HOME_STORE.id);
+  emitPlanChange('access');
+}
+
+try {
+  if (new URLSearchParams(location.search).has('reset')) {
+    Object.keys(localStorage).filter(k => k.startsWith(`${PLAN_KEY}:`)).forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem(UNSAVED_KEY);
+    unsavedStores.clear();
+  }
+  localStorage.removeItem(PLAN_KEY);  /* Stand von vor den Stores */
+} catch { /* ohne Speicher */ }
+
+openStore(accessibleStores().find(s => s.id === readLocal(STORE_KEY, HOME_STORE.id)) || HOME_STORE);
 let saveTimer = null;
 onPlanChange(() => { clearTimeout(saveTimer); saveTimer = setTimeout(savePlan, 150); });

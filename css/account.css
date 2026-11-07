@@ -126,6 +126,10 @@
   white-space: nowrap;
 }
 
+/* Access-Auswahl in der Zeile: kompakt, rechtsbündig */
+.acc-access .dropdown__toggle { height: 32px; padding: 0 11px 0 12px; gap: 10px; font-size: var(--fs-menu); }
+.acc-access .dropdown__menu { left: auto; right: 0; }
+
 .acc-row__value {
   font-size: var(--fs-menu);
   letter-spacing: var(--ls-menu);

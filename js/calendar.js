@@ -21,10 +21,12 @@
      die Einstellungen: Tage (dieser Tag / wöchentlich mit Laufzeit bis zu
      Monaten oder ohne Ende) und pro Tag einmal oder Repeat (alle N Minuten)
    - ⌘Z / ⇧⌘Z: letzte Änderung im Calendar rückgängig / wiederherstellen
+   - Save (oder ⌘S): erst dann gelten die Änderungen; bis dahin trägt der
+     Menüpunkt Calendar einen Punkt
+   - wer alle Stores sieht: Store-Auswahl oben in der Liste
    - Hover: alle Slots desselben Spots leuchten auf
    - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
    - Kopfzeile, Tageszeile und Liste bleiben beim Scrollen stehen
-   - fixe Slots (Opening/Closing) vergibt sounddna: gesperrt, mit Schloss
    ================================================================ */
 
 const calGrid      = document.getElementById('cal-grid');
@@ -34,6 +36,8 @@ const calTrayList  = document.getElementById('cal-tray-list');
 const calTraySearch = document.getElementById('cal-tray-search');
 const calTrayEmpty = document.getElementById('cal-tray-empty');
 const calTraySettings = document.getElementById('cal-tray-settings');
+const calStore     = document.getElementById('cal-store');
+const calSave      = document.getElementById('cal-save');
 
 let calWeekStart = mondayOf(new Date());
 
@@ -64,7 +68,6 @@ function renderCalendar() {
   calRange.textContent = weekRangeLabel(days);
 
   const items = weekItems(calWeekStart);
-  const fixed = fixedCells(calWeekStart);
   const today = new Date();
 
   let html = timeColumn();
@@ -79,17 +82,10 @@ function renderCalendar() {
       <div class="cal-col__head">${DAY_NAMES[di].slice(0, 3)}<span class="cal-col__date">${date.getDate()}</span></div>
       <div class="cal-col__body">`;
 
-    /* Feiertag / Sonderöffnungszeit: ab Ladenschluss (nach den Schluss-
-       durchsagen) ein gesperrter Block mit dem Namen des Tages */
+    /* Feiertag / Sonderöffnungszeit: ab Ladenschluss ein gesperrter Block
+       mit dem Namen des Tages */
     const sp = specialDay(date);
-    let closedFrom = CAL_SLOTS;
-    if (sp) {
-      closedFrom = sp.hours ? slotIndex(sp.hours[1]) : 0;
-      fixed.forEach((_, key) => {
-        const [d, s] = key.split(':').map(Number);
-        if (d === di && s >= closedFrom) closedFrom = s + 1;
-      });
-    }
+    const closedFrom = sp ? (sp.hours ? slotIndex(sp.hours[1]) : 0) : CAL_SLOTS;
 
     for (let s = 0; s < CAL_SLOTS; s++) {
       const past = s < played;
@@ -102,19 +98,6 @@ function renderCalendar() {
           </div>`;
         break;
       }
-      /* fix von sounddna – mehrere in einem Slot werden zusammengefasst */
-      const f = fixed.get(`${di}:${s}`);
-      if (f) {
-        const label = f.length > 1 ? `${f[0].spot.title} +${f.length - 1}` : f[0].spot.title;
-        const tip = `${f.map(x => `${x.time} ${x.spot.title}`).join(' · ')} – fixed by sounddna`;
-        html += `<div class="cal-slot cal-slot--spot cal-item is-fixed${pastCls}" data-spot="${f[0].spot.id}" title="${escapeHtml(tip)}" style="${catStyle('closing')}">
-            <div class="cal-slot__inner"></div>
-            <span class="cal-item__label">${escapeHtml(label)}</span>
-            ${icon('lock', 'cal-item__lock')}
-          </div>`;
-        continue;
-      }
-
       const it = items.find(i => i.day === di && i.slot === s);
       if (it) {
         const spot = spotById(it.spotId);
@@ -176,10 +159,10 @@ function syncHeadHeight() {
 window.addEventListener('resize', () => { if (!calendarView.hidden) syncHeadHeight(); });
 
 /* ---- Liste „Scheduling Spots“ ----
-   Gruppen je Kategorie (Opening/Closing vergibt sounddna – keine Gruppe),
-   darunter „Ready for Schedule“ für frisch freigegebene Spots ohne Kategorie
-   und ganz unten „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
-const TRAY_CATS = CATEGORIES.filter(c => c.value !== 'closing');
+   Gruppen je Kategorie (Opening/Closing zuletzt), darunter „Ready for
+   Schedule“ für frisch freigegebene Spots ohne Kategorie und ganz unten
+   „Expired“ für zeitlich begrenzte Spots, deren Laufzeit vorbei ist */
+const TRAY_CATS = [...CATEGORIES.filter(c => c.value !== 'closing'), catOf('closing')];
 
 /* zeitlich begrenzt: Enddatum rechts, gelb, wenn es in den nächsten Tagen ausläuft */
 function trayItem(s, expired) {
@@ -814,6 +797,14 @@ function seriesPicker(r) {
 }
 
 /* Audio des Spots zum Anhören – bei getauschtem Audio steht dessen Name dabei */
+/* wer es eingeplant hat: an der Serie bzw. am einzelnen Slot */
+function byLine(r) {
+  const info = r.kind === 'series' ? (r.series && r.series.by ? { by: r.series.by, at: r.series.at } : null) : scheduledBy(r.item);
+  if (!info) return '';
+  const when = info.at ? (sameDay(info.at, new Date()) ? 'Today' : `${info.at.getDate()} ${MONTH_SHORT[info.at.getMonth()]} ${info.at.getFullYear()}`) : '';
+  return `<p class="cal-repeat__by">Scheduled by ${escapeHtml(info.by)}${when ? ` · ${when}` : ''}</p>`;
+}
+
 function audioOf(spot) {
   const swapped = spot.audio ? spotToolAudios().find(a => a.title === spot.audio.title) : null;
   return { title: spot.audio ? spot.audio.title : null, duration: swapped ? swapped.duration : spot.duration };
@@ -846,6 +837,7 @@ function renderRepeat() {
       <p class="cal-repeat__title">${escapeHtml(r.spot.title)}</p>
       <button class="cal-repeat__close" data-act="close" aria-label="Close settings" type="button">${icon('x')}</button>
     </div>
+    ${byLine(r)}
 
     <p class="cal-repeat__label">Audio</p>
     ${audio.title ? `<p class="cal-audio__name">${escapeHtml(audio.title)}</p>` : ''}
@@ -1159,6 +1151,50 @@ onPlanChange(kind => {
   if (kind === 'spots') renderTray();
   if (kind === 'week' && !calDrag) renderCalendar();
 });
+
+/* ---------------------------------------------------------------
+   Save – Button unten in der Liste, ⌘S; Punkt am Menüpunkt Calendar,
+   solange irgendein Store ungespeicherte Änderungen hat
+   --------------------------------------------------------------- */
+function syncSaveState() {
+  calSave.disabled = !planDirty();
+  setDraftDot('calendar', anyUnsaved());
+  calStore.querySelectorAll('.dropdown__option').forEach(o => o.classList.toggle('is-unsaved', storeUnsaved(o.dataset.value)));
+}
+
+function savePlanNow() {
+  if (!planDirty()) return;
+  closeRepeat();
+  commitPlan();
+  showToast('success', storeAccess === 'all' ? `Changes to ${currentStore.name} saved.` : 'Changes saved.');
+}
+
+calSave.addEventListener('click', savePlanNow);
+document.addEventListener('keydown', e => {
+  if (calendarView.hidden || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return;
+  e.preventDefault();
+  savePlanNow();
+});
+
+/* ---- Store-Auswahl (nur wer alle Stores sieht) ---- */
+function renderStorePicker() {
+  calStore.hidden = storeAccess !== 'all';
+  if (calStore.hidden) { calStore.innerHTML = ''; return; }
+  buildDropdown(calStore, {
+    options: accessibleStores().map(st => ({ value: st.id, label: st.name })),
+    value: currentStore.id,
+    tall: true,
+    onChange: id => { closeRepeat(); switchStore(id); },
+  });
+}
+
+onPlanChange(kind => {
+  if (kind === 'store') syncReadyBadges();
+  if (kind === 'access' || kind === 'store') renderStorePicker();
+  syncSaveState();
+});
+renderStorePicker();
+syncSaveState();
 
 /* ---- Wochennavigation ---- */
 const calPrev = document.getElementById('cal-prev');
