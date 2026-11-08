@@ -41,7 +41,14 @@ const calTraySettings = document.getElementById('cal-tray-settings');
 const calStore     = document.getElementById('cal-store');
 const calUnsaved   = document.getElementById('cal-unsaved');
 
-let calWeekStart = mondayOf(new Date());
+/* Woche zu einem Datum – am Sonntag (zu, nicht im Raster) schon die nächste */
+function calWeekOf(date) {
+  const d = new Date(date);
+  if (dayIdx(d) >= CAL_DAYS) d.setDate(d.getDate() + 7 - dayIdx(d));
+  return mondayOf(d);
+}
+
+let calWeekStart = calWeekOf(new Date());
 
 /* Zeitspalte: volle Stunde kräftig, halbe Stunde nur im Expanded-Modus */
 function timeColumn() {
@@ -1276,7 +1283,7 @@ const calPrev = document.getElementById('cal-prev');
 const calNext = document.getElementById('cal-next');
 calPrev.addEventListener('click', () => { calWeekStart.setDate(calWeekStart.getDate() - 7); renderCalendar(); });
 calNext.addEventListener('click', () => { calWeekStart.setDate(calWeekStart.getDate() + 7); renderCalendar(); });
-document.getElementById('cal-today').addEventListener('click', () => { calWeekStart = mondayOf(new Date()); renderCalendar(); });
+document.getElementById('cal-today').addEventListener('click', () => { calWeekStart = calWeekOf(new Date()); renderCalendar(); });
 
 /* Klick auf die Woche: Datum wählen, der Kalender springt in dessen Woche */
 calRange.addEventListener('click', e => {
@@ -1285,7 +1292,7 @@ calRange.addEventListener('click', e => {
   if (wrap.querySelector('.datepicker')) { closeAllMenus(); return; }
   openDatepicker(wrap, {
     value: fmtDate(calWeekStart),
-    onSelect: d => { calWeekStart = mondayOf(parseDate(d)); renderCalendar(); },
+    onSelect: d => { calWeekStart = calWeekOf(parseDate(d)); renderCalendar(); },
   });
 });
 
