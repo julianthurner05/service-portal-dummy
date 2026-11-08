@@ -184,7 +184,7 @@ function trayItem(s, expired) {
   const end = expired ? null : spotEnd(s);
   const until = end ? `<span class="cal-tray__end${spotEndsSoon(s) ? ' is-soon' : ''}">until ${end.getDate()} ${MONTH_SHORT[end.getMonth()]}</span>` : '';
   return `
-  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="${(s.category ? canPlaceSpot(s) : canManage()) ? 'true' : 'false'}" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
+  <div class="cal-tray__item${s.category ? '' : ' is-new'}${expired ? ' is-expired' : ''}${end ? ' has-end' : ''}" draggable="${canPlaceSpot(s) ? 'true' : 'false'}" data-spot="${s.id}" style="${s.category ? catStyle(s.category) : ''}">
     <span class="cal-item__label">${escapeHtml(s.title)}</span>
     ${until}
   </div>`;
@@ -427,7 +427,7 @@ calGrid.addEventListener('drop', e => {
    - Spot aus der Liste in eine andere Kategorie-Gruppe → Kategorie (und
      Farbe überall) ändert sich */
 const targetGroup = e => {
-  if (!canManage()) return null;
+  if (!canEdit()) return null;
   const g = e.target.closest('.cal-tray__group[data-cat]');
   return g && g.dataset.cat !== spotById(calDrag.spotId).category ? g : null;
 };
@@ -801,7 +801,7 @@ function openSeries(spot, series = null) {
     start: series ? series.start : mondayOf(new Date()),
     days: new Set(series ? series.days : []), end: series && series.end ? fmtDate(series.end) : null,
     times: series ? [...series.slots].sort((a, b) => a - b) : [], override: false,
-    readonly: series ? !canEditEntry(series, spot) : !canPlaceSpot(spot), locked: !!(series && series.locked), allStores: false,
+    readonly: series ? !canEditEntry(series) : !canPlaceSpot(spot), locked: !!(series && series.locked), allStores: false,
   };
   enterEditing(spot);
   renderRepeat();
@@ -875,7 +875,7 @@ function renderRepeat() {
       <div class="slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
       <span class="card__time"></span>
     </div>
-    ${canManage() && !r.readonly ? '<button class="cal-chip cal-audio__change" data-act="audio" type="button">Change audio</button>' : ''}
+    ${!r.readonly ? '<button class="cal-chip cal-audio__change" data-act="audio" type="button">Change audio</button>' : ''}
 
     ${series ? seriesPicker(r) : ''}
 
@@ -903,7 +903,7 @@ function renderRepeat() {
           <label class="cal-repeat__field"><span>Until</span><div class="dropdown" data-dd="until"></div></label>
         </div>` : ''}`}
 
-    ${canManage() && !r.readonly && (conflicts || r.override) ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
+    ${!r.readonly && (conflicts || r.override) ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
 
     ${isHeadOffice() ? `
       <div class="cal-repeat__head-office">

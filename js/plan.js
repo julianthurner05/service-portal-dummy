@@ -41,55 +41,47 @@ function catStyle(id) {
    Minuten versetzt; team: [Name, Rolle]. Index 0 = Montag ---- */
 const weekHours = (wd, fr, sa) => [wd, wd, wd, wd, fr, sa, null];
 const STORES = [
-  { id: 'voesendorf',  name: 'IKEA Vösendorf',        hours: weekHours(['09:00', '20:00'], ['09:00', '21:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '16:00', to: '18:00' }], shift: 0,   team: [['Lisa Berger', 'manager'], ['Markus Hofer', 'editor'], ['Julian Thurner', 'editor']] },
-  { id: 'wien-nord',   name: 'IKEA Wien Nord',        hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '15:00', to: '17:00' }], shift: 30,  team: [['Sarah Gruber', 'manager'], ['Tobias Wagner', 'editor']] },
-  { id: 'westbahnhof', name: 'IKEA Wien Westbahnhof', hours: weekHours(['09:00', '21:00'], ['09:00', '21:00'], ['09:00', '20:00']), quiet: [{ day: 3, from: '14:00', to: '16:00' }], shift: 15,  team: [['Elena Novak', 'manager'], ['David Pichler', 'editor']] },
-  { id: 'graz',        name: 'IKEA Graz',             hours: weekHours(['09:30', '19:30'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '17:00', to: '19:00' }], shift: -15, team: [['Katharina Mayer', 'manager'], ['Florian Steiner', 'editor']] },
-  { id: 'haid',        name: 'IKEA Haid',             hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 0, from: '16:00', to: '18:00' }], shift: 45,  team: [['Johanna Leitner', 'manager'], ['Stefan Huber', 'editor']] },
-  { id: 'salzburg',    name: 'IKEA Salzburg',         hours: weekHours(['09:30', '19:00'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 3, from: '16:00', to: '18:00' }], shift: 15,  team: [['Anna Fuchs', 'manager'], ['Lukas Eder', 'editor']] },
-  { id: 'innsbruck',   name: 'IKEA Innsbruck',        hours: weekHours(['10:00', '19:00'], ['10:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '16:00', to: '18:00' }], shift: 30,  team: [['Marie Hofmann', 'manager'], ['Jakob Brunner', 'editor']] },
-  { id: 'klagenfurt',  name: 'IKEA Klagenfurt',       hours: weekHours(['09:00', '19:00'], ['09:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 4, from: '15:00', to: '17:00' }], shift: 0,   team: [['Laura Wieser', 'manager'], ['Simon Moser', 'editor']] },
+  { id: 'voesendorf',  name: 'IKEA Vösendorf',        hours: weekHours(['09:00', '20:00'], ['09:00', '21:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '16:00', to: '18:00' }], shift: 0,   team: [['Lisa Berger', 'editor'], ['Markus Hofer', 'editor'], ['Julian Thurner', 'editor']] },
+  { id: 'wien-nord',   name: 'IKEA Wien Nord',        hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '15:00', to: '17:00' }], shift: 30,  team: [['Sarah Gruber', 'editor'], ['Tobias Wagner', 'editor']] },
+  { id: 'westbahnhof', name: 'IKEA Wien Westbahnhof', hours: weekHours(['09:00', '21:00'], ['09:00', '21:00'], ['09:00', '20:00']), quiet: [{ day: 3, from: '14:00', to: '16:00' }], shift: 15,  team: [['Elena Novak', 'editor'], ['David Pichler', 'editor']] },
+  { id: 'graz',        name: 'IKEA Graz',             hours: weekHours(['09:30', '19:30'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 2, from: '17:00', to: '19:00' }], shift: -15, team: [['Katharina Mayer', 'editor'], ['Florian Steiner', 'editor']] },
+  { id: 'haid',        name: 'IKEA Haid',             hours: weekHours(['10:00', '20:00'], ['10:00', '20:00'], ['09:00', '18:00']), quiet: [{ day: 0, from: '16:00', to: '18:00' }], shift: 45,  team: [['Johanna Leitner', 'editor'], ['Stefan Huber', 'editor']] },
+  { id: 'salzburg',    name: 'IKEA Salzburg',         hours: weekHours(['09:30', '19:00'], ['09:30', '20:00'], ['09:00', '18:00']), quiet: [{ day: 3, from: '16:00', to: '18:00' }], shift: 15,  team: [['Anna Fuchs', 'editor'], ['Lukas Eder', 'editor']] },
+  { id: 'innsbruck',   name: 'IKEA Innsbruck',        hours: weekHours(['10:00', '19:00'], ['10:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 1, from: '16:00', to: '18:00' }], shift: 30,  team: [['Marie Hofmann', 'editor'], ['Jakob Brunner', 'editor']] },
+  { id: 'klagenfurt',  name: 'IKEA Klagenfurt',       hours: weekHours(['09:00', '19:00'], ['09:00', '19:00'], ['09:00', '18:00']), quiet: [{ day: 4, from: '15:00', to: '17:00' }], shift: 0,   team: [['Laura Wieser', 'editor'], ['Simon Moser', 'editor']] },
 ];
 const HOME_STORE = STORES[0];          /* der eigene Store des eingeloggten Users */
 const CURRENT_USER = 'Julian Thurner';
 const HEAD_OFFICE_USER = 'Claudia Brandl';   /* Head Office – plant zentrale Kampagnen */
 
-/* ---- Rollen – wer was im Calendar darf. Grundregel: ändern darf man, was
-   jemand auf der eigenen Stufe oder darunter eingeplant hat; was Head Office
-   für die Stores sperrt (locked), nur Head Office.
+/* ---- Rollen – wer was im Calendar darf
    viewer   nur ansehen und anhören
-   editor   einplanen, Serien und Slots von Editoren ändern und löschen
-   manager  alles im eigenen Store: Kategorien, Audio, Replace taken slots,
-            Opening/Closing, Serien des ganzen Teams
+   editor   alles im eigenen Store – bis auf das, was Head Office für die
+            Stores gesperrt hat (locked)
    head     alle Stores, Kampagnen in alle Stores auf einmal, sperren ---- */
 const ROLES = [
-  { value: 'viewer',  label: 'Viewer' },
-  { value: 'editor',  label: 'Editor' },
-  { value: 'manager', label: 'Store Manager' },
-  { value: 'head',    label: 'Head Office' },
+  { value: 'viewer', label: 'Viewer' },
+  { value: 'editor', label: 'Editor' },
+  { value: 'head',   label: 'Head Office' },
 ];
-const roleRank  = role => ROLES.findIndex(x => x.value === role);
 const roleLabel = role => (ROLES.find(x => x.value === role) || {}).label || '';
-let currentRole = 'manager';          /* aus dem Speicher – siehe unten */
+let currentRole = 'editor';           /* aus dem Speicher – siehe unten */
 
 const canEdit      = () => currentRole !== 'viewer';
-const canManage    = () => roleRank(currentRole) >= roleRank('manager');
 const isHeadOffice = () => currentRole === 'head';
 
-/* einen Spot neu einplanen (Opening/Closing erst ab Store Manager) */
-const canPlaceSpot = spot => canEdit() && !!spot && (spot.category !== 'closing' || canManage());
+/* einen Spot neu einplanen */
+const canPlaceSpot = spot => canEdit() && !!spot;
 
 /* Serie oder einzelnen Slot ändern */
-function canEditEntry(entry, spot) {
+function canEditEntry(entry) {
   if (!canEdit()) return false;
   if (isHeadOffice()) return true;
-  if (!entry || entry.locked) return false;
-  if (spot && spot.category === 'closing' && !canManage()) return false;
-  return roleRank(entry.role || 'editor') <= roleRank(currentRole);
+  return !!entry && !entry.locked;
 }
 
 const seriesOf = item => (item.seriesId && userSeries.find(x => x.id === item.seriesId)) || null;
-const canEditItem = item => canEditEntry(seriesOf(item) || item, spotById(item.spotId));
+const canEditItem = item => canEditEntry(seriesOf(item) || item);
 
 /* Regeln des gerade gewählten Stores */
 const STORE_HOURS = [];
@@ -340,7 +332,7 @@ function closingPlan() {
   });
   const out = [];
   byClose.forEach((days, close) => CLOSINGS.forEach((spot, k) =>
-    out.push({ spot, days, times: [hhmm(minutesOf(close) - (CLOSINGS.length - k) * SLOT_MIN)], by: 'sounddna', role: 'manager' })));
+    out.push({ spot, days, times: [hhmm(minutesOf(close) - (CLOSINGS.length - k) * SLOT_MIN)], by: 'sounddna', role: 'editor' })));
   return out;
 }
 
@@ -585,7 +577,7 @@ function removeSpotSlots(spotId, scope, monday, day = null, slot = 0) {
     const cut = new Map();
     for (let i = userSeries.length - 1; i >= 0; i--) {
       const r = userSeries[i];
-      if (r.spotId !== spotId || !canEditEntry(r, s)) continue;
+      if (r.spotId !== spotId || !canEditEntry(r)) continue;
       if (r.start >= from) { cut.set(r.id, r); userSeries.splice(i, 1); }
       else if (!r.end || r.end > before) { cut.set(r.id, r); r.end = before; }
     }
@@ -780,7 +772,7 @@ function clearPlanHistory() {
    Basisplan im Code ändert.
    --------------------------------------------------------------- */
 const PLAN_KEY = 'sounddna-plan';
-const PLAN_VERSION = 4;
+const PLAN_VERSION = 5;
 const UNSAVED_KEY = 'sounddna-unsaved';
 const ROLE_KEY = 'sounddna-role';
 const STORE_KEY = 'sounddna-store';
@@ -916,7 +908,7 @@ function loadPlan() {
 }
 
 /* ---- Rolle (Account → Role): Head Office sieht alle Stores ---- */
-currentRole = ROLES.some(x => x.value === readLocal(ROLE_KEY, '')) ? readLocal(ROLE_KEY, '') : 'manager';
+currentRole = ROLES.some(x => x.value === readLocal(ROLE_KEY, '')) ? readLocal(ROLE_KEY, '') : 'editor';
 const accessibleStores = () => (isHeadOffice() ? STORES : [HOME_STORE]);
 const storeUnsaved = id => (id === currentStore.id ? planDirty() : unsavedStores.has(id));
 const unsavedList = () => accessibleStores().filter(s => storeUnsaved(s.id));
