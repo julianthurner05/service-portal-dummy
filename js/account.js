@@ -5,7 +5,7 @@
 /* Letzter Login: heute, ein paar Stunden her */
 document.getElementById('acc-last-login').textContent = 'Today, 08:14';
 
-/* ---- Role: was man im Calendar darf (Head Office: alle Stores) ---- */
+/* ---- Role: was man im Calendar darf (Master: alle Stores) ---- */
 buildDropdown(document.getElementById('acc-role'), {
   options: ROLES.map(r => ({ value: r.value, label: r.label })),
   value: currentRole,

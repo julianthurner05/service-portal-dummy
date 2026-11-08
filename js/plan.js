@@ -52,17 +52,17 @@ const STORES = [
 ];
 const HOME_STORE = STORES[0];          /* der eigene Store des eingeloggten Users */
 const CURRENT_USER = 'Julian Thurner';
-const HEAD_OFFICE_USER = 'Claudia Brandl';   /* Head Office – plant zentrale Kampagnen */
+const HEAD_OFFICE_USER = 'Claudia Brandl';   /* Master – plant zentrale Kampagnen */
 
 /* ---- Rollen – wer was im Calendar darf
    viewer   nur ansehen und anhören
-   editor   alles im eigenen Store – bis auf das, was Head Office für die
+   editor   alles im eigenen Store – bis auf das, was Master für die
             Stores gesperrt hat (locked)
    head     alle Stores, Kampagnen in alle Stores auf einmal, sperren ---- */
 const ROLES = [
   { value: 'viewer', label: 'Viewer' },
   { value: 'editor', label: 'Editor' },
-  { value: 'head',   label: 'Head Office' },
+  { value: 'head',   label: 'Master' },
 ];
 let currentRole = 'editor';           /* aus dem Speicher – siehe unten */
 
@@ -294,7 +294,7 @@ const SPOT_LIBRARY = [
   { title: '4. Schlussdurchsage',              category: 'closing' },
 ];
 
-/* head: zentrale Kampagne von Head Office, für die Stores gesperrt.
+/* head: zentrale Kampagne von Master, für die Stores gesperrt.
    19:00 bzw. 17:10 der Vorlage liegen jetzt eine Spur früher – die letzte
    Stunde vor Ladenschluss gehört den Schlussdurchsagen */
 const BASE_PLAN = [
@@ -384,7 +384,7 @@ function buildWeek(monday, seriesList, spotList) {
 let seriesUid = 0;
 const userSeries = [];                /* alle Serien: { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null, override,
                                           by: wer sie eingeplant hat, role: dessen Rolle, at: Date,
-                                          locked: von Head Office für die Stores gesperrt } */
+                                          locked: von Master für die Stores gesperrt } */
 
 const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -432,7 +432,7 @@ function mergeSeries(spotId) {
 /* Plan eines Stores neu aufsetzen: Spot-Bibliothek, dann Schlussdurchsagen,
    Stille Stunde und Basisplan als ganz normale Serien – jeder Slot ist im
    Calendar bearbeitbar. Eingeplant hat sie das Team des Stores (die
-   Schlussdurchsagen sounddna, zentrale Kampagnen Head Office), ein paar
+   Schlussdurchsagen sounddna, zentrale Kampagnen Master), ein paar
    Tage vor dem Start. */
 function seedPlan(store) {
   spots.length = 0;
@@ -906,7 +906,7 @@ function loadPlan() {
   }
 }
 
-/* ---- Rolle (Account → Role): Head Office sieht alle Stores ---- */
+/* ---- Rolle (Account → Role): Master sieht alle Stores ---- */
 currentRole = ROLES.some(x => x.value === readLocal(ROLE_KEY, '')) ? readLocal(ROLE_KEY, '') : 'editor';
 const accessibleStores = () => (isHeadOffice() ? STORES : [HOME_STORE]);
 const storeUnsaved = id => (id === currentStore.id ? planDirty() : unsavedStores.has(id));
@@ -950,7 +950,7 @@ function setRole(role) {
   emitPlanChange('access');
 }
 
-/* ---- Head Office: eine neue Serie in allen anderen Stores anlegen – dort
+/* ---- Master: eine neue Serie in allen anderen Stores anlegen – dort
    ungespeichert wie jede Änderung. Fehlt der Spot in einem Store, kommt er
    mit Kategorie und Audio dazu. Liefert die Zahl der Stores. ---- */
 function addSeriesToAllStores(spot, def) {
@@ -978,7 +978,7 @@ function addSeriesToAllStores(spot, def) {
   return n;
 }
 
-/* ---- Save / Discard über alle Stores, die der User sieht (Head Office);
+/* ---- Save / Discard über alle Stores, die der User sieht (Master);
    die nicht geöffneten direkt im Speicher ---- */
 function commitStoredPlan(id) {
   const data = readLocal(planKey(id), null);

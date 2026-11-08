@@ -24,7 +24,7 @@
    - Save (oder ⌘S): erst dann gelten die Änderungen; bis dahin trägt der
      Menüpunkt Calendar einen Punkt
    - Rollen (plan.js): was man nicht ändern darf, hat ein Schloss und öffnet
-     nur zum Ansehen; Head Office: Store-Auswahl oben in der Liste, sperren,
+     nur zum Ansehen; Master: Store-Auswahl oben in der Liste, sperren,
      neue Serien in alle Stores
    - Hover: alle Slots desselben Spots leuchten auf
    - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
@@ -71,13 +71,6 @@ function weekRangeLabel(days) {
 /* Slots, die schon gespielt haben (playedSlots, plan.js), sind nur noch zum Nachsehen */
 let playedMark = '';                   /* Stand beim letzten Aufbau – ändert er sich, neu zeichnen */
 
-/* „Lisa Berger“ → LB, „sounddna“ → SD */
-function initialsOf(name) {
-  if (name === 'sounddna') return 'SD';
-  const parts = name.trim().split(/\s+/);
-  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
-}
-
 function renderCalendar() {
   litSpot = null;
   calendarView.classList.toggle('is-viewer', !canEdit());
@@ -121,11 +114,9 @@ function renderCalendar() {
         /* nicht änderbar (Rolle, gesperrt): Schloss, kein Ziehen, kein ✕ */
         const editable = !past && canEditItem(it);
         const locked = !past && !editable && canEdit();
-        const who = scheduledBy(it);
-        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}${locked ? ' is-locked' : ''}${who ? ' has-by' : ''}"${editable ? ' draggable="true"' : ''} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
+        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}${locked ? ' is-locked' : ''}"${editable ? ' draggable="true"' : ''} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
-            ${who ? `<span class="cal-item__by" aria-label="${escapeHtml(who.by)}">${initialsOf(who.by)}</span>` : ''}
             ${editable ? `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>` : locked ? icon('lock', 'cal-item__lock') : ''}
           </div>`;
         continue;
@@ -1223,7 +1214,7 @@ function syncSaveState() {
   calStore.querySelectorAll('.dropdown__option').forEach(o => o.classList.toggle('is-unsaved', storeUnsaved(o.dataset.value)));
 }
 
-/* Head Office: Save und Discard gelten für alle Stores mit Änderungen */
+/* Master: Save und Discard gelten für alle Stores mit Änderungen */
 const storesNote = n => (n > 1 ? ` in ${n} stores` : '');
 
 function savePlanNow() {
@@ -1248,7 +1239,7 @@ document.addEventListener('keydown', e => {
   savePlanNow();
 });
 
-/* ---- Store-Auswahl (Head Office) ---- */
+/* ---- Store-Auswahl (Master) ---- */
 function renderStorePicker() {
   calStore.hidden = !isHeadOffice();
   if (calStore.hidden) { calStore.innerHTML = ''; return; }
