@@ -831,14 +831,9 @@ function seriesPicker(r) {
 /* wer es eingeplant hat: an der Serie bzw. am einzelnen Slot */
 function byLine(r) {
   const src = r.kind === 'series' ? r.series : r.item;
-  const info = src && (r.kind === 'series' ? (src.by ? { by: src.by, role: src.role, at: src.at, locked: !!src.locked } : null) : scheduledBy(src));
+  const info = src && (r.kind === 'series' ? (src.by ? { by: src.by, locked: !!src.locked } : null) : scheduledBy(src));
   if (!info) return '';
-  const now = new Date();
-  const when = !info.at ? '' : sameDay(info.at, now) ? 'Today'
-    : `${info.at.getDate()} ${MONTH_SHORT[info.at.getMonth()]}${info.at.getFullYear() === now.getFullYear() ? '' : ` ${info.at.getFullYear()}`}`;
-  const role = info.by !== 'sounddna' && info.role ? `, ${roleLabel(info.role)}` : '';
-  const text = `Scheduled by ${info.by}${role}${when ? ` · ${when}` : ''}`;
-  return `<p class="cal-repeat__by" title="${escapeHtml(text)}">${info.locked ? icon('lock', 'cal-repeat__lock') : ''}<span>${escapeHtml(text)}</span></p>`;
+  return `<p class="cal-repeat__by">${info.locked ? icon('lock', 'cal-repeat__lock') : ''}<span>Scheduled by ${escapeHtml(info.by)}</span></p>`;
 }
 
 function audioOf(spot) {

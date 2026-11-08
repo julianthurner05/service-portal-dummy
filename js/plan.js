@@ -64,7 +64,6 @@ const ROLES = [
   { value: 'editor', label: 'Editor' },
   { value: 'head',   label: 'Head Office' },
 ];
-const roleLabel = role => (ROLES.find(x => x.value === role) || {}).label || '';
 let currentRole = 'editor';           /* aus dem Speicher – siehe unten */
 
 const canEdit      = () => currentRole !== 'viewer';
