@@ -64,8 +64,16 @@ function weekRangeLabel(days) {
 /* Slots, die schon gespielt haben (playedSlots, plan.js), sind nur noch zum Nachsehen */
 let playedMark = '';                   /* Stand beim letzten Aufbau – ändert er sich, neu zeichnen */
 
+/* „Lisa Berger“ → LB, „sounddna“ → SD */
+function initialsOf(name) {
+  if (name === 'sounddna') return 'SD';
+  const parts = name.trim().split(/\s+/);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
+}
+
 function renderCalendar() {
   litSpot = null;
+  calendarView.classList.toggle('is-viewer', !canEdit());
   const days = calWeekDays(calWeekStart);
   calRange.textContent = weekRangeLabel(days);
 
@@ -106,9 +114,11 @@ function renderCalendar() {
         /* nicht änderbar (Rolle, gesperrt): Schloss, kein Ziehen, kein ✕ */
         const editable = !past && canEditItem(it);
         const locked = !past && !editable && canEdit();
-        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}${locked ? ' is-locked' : ''}"${editable ? ' draggable="true"' : ''} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
+        const who = scheduledBy(it);
+        html += `<div class="cal-slot cal-slot--spot cal-item${pastCls}${locked ? ' is-locked' : ''}${who ? ' has-by' : ''}"${editable ? ' draggable="true"' : ''} data-id="${it.id}" data-spot="${spot.id}" style="${catStyle(spot.category)}">
             <div class="cal-slot__inner"></div>
             <span class="cal-item__label">${escapeHtml(spot.title)}</span>
+            ${who ? `<span class="cal-item__by" aria-label="${escapeHtml(who.by)}">${initialsOf(who.by)}</span>` : ''}
             ${editable ? `<button class="cal-item__x" data-x="${it.id}" aria-label="Remove slot" type="button">${icon('x')}</button>` : locked ? icon('lock', 'cal-item__lock') : ''}
           </div>`;
         continue;

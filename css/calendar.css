@@ -411,6 +411,39 @@
 .cal-item__x:hover { background: var(--white-14); color: #ffffff; }
 .cal-item__x .icon { width: 9px; height: 9px; stroke-width: 2; }
 
+/* wer den Slot eingeplant hat: Initialen im Kreis rechts – beim Hover über
+   einem änderbaren Slot macht er dem ✕ Platz; gesperrt: Schloss davor */
+.cal-item__by {
+  position: absolute;
+  top: calc(var(--slot-h) / 2);
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--white-14);
+  color: var(--text-80);
+  font-size: 7.5px;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+.cal-item.has-by .cal-item__label,
+.cal-item.has-by:hover .cal-item__label,
+.cal-item.has-by.is-menu .cal-item__label { right: 24px; }
+.cal-item.has-by.is-locked .cal-item__label { right: 36px; }
+.cal-item.has-by .cal-item__lock { right: 22px; }
+
+.cal-item[draggable="true"]:hover .cal-item__by,
+.cal-item.is-menu .cal-item__by,
+.cal-item.is-dragging .cal-item__by { opacity: 0; }
+.cal-item.is-removed .cal-item__by,
+.cal-item.is-replace .cal-item__by { visibility: hidden; }
+
 /* Drag-Bild (setDragImage in calendar.js): saubere Titel-Pille, außerhalb
    des Bildschirms gerendert */
 .cal-ghost {
@@ -498,6 +531,17 @@
 }
 
 .cal-tray.is-drop { box-shadow: inset 0 0 0 1px var(--white-25); }
+
+/* Viewer: keine Liste – der Kalender nimmt die ganze Breite. Ein Klick auf
+   einen Slot zeigt ihn trotzdem an, dann liegt das Feld über dem Raster */
+.calendar-view.is-viewer .cal-tray:not(.is-editing) { display: none; }
+@media (min-width: 981px) {
+  .calendar-view.is-viewer .cal-tray {
+    z-index: 58;                     /* über der Tageszeile (55), unter dem Kopfstreifen (60) */
+    margin-left: calc(-1 * (var(--tray-w) + var(--layout-gap)));
+    box-shadow: var(--shadow);
+  }
+}
 
 /* nach dem Ablegen: dasselbe Feld (gleiche Größe) füllt sich mit der
    Kategoriefarbe und zeigt statt der Liste die Einstellungen. Farben wie im
