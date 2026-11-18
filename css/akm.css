@@ -12,11 +12,19 @@
 
 .akm-view {
   width: 100%;
-  max-width: 640px;   /* wie der Channel Builder */
+  max-width: 1080px;
   align-self: flex-start;
   display: flex;
   flex-direction: column;
   animation: view-in var(--dur-fast) var(--ease);
+}
+
+/* oben: Eingaben links, AKM-Kosten rechts daneben in voller Höhe */
+.akm-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 40px;
+  align-items: stretch;
 }
 
 .akm-field + .akm-field { margin-top: 30px; }
@@ -64,20 +72,27 @@
 
 /* ---- Ergebnis: gefüllte Fläche statt Rahmen ---- */
 .akm-result {
-  margin-top: 38px;
   padding: 28px 30px 24px;
   border-radius: var(--radius-lg);
   background: var(--card-bg);
 }
 
+/* Kosten-Karte: Betrag oben, Kleingedrucktes unten */
+.akm-top .akm-result { display: flex; flex-direction: column; }
+.akm-top .akm-result .akm-note { margin-top: auto; padding-top: 20px; }
+.akm-top .akm-more { align-self: flex-start; }
+
 .akm-result__value {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 2px 14px;
   font-size: var(--fs-card-title);
   color: var(--text-55);
 }
+
+/* „pro Jahr“ immer in die zweite Zeile – sonst springt es mit der Zahl */
+.akm-result__value > :last-child { flex-basis: 100%; }
 
 .akm-result__amount {
   font-size: 56px;
@@ -97,16 +112,38 @@
   color: var(--text-40);
 }
 
-/* ---- Schritt 2: bisher gegen sounddna, darunter die Differenz ---- */
-.akm-field--step { margin-top: 44px; }
-.akm-field--step + .akm-result { margin-top: 18px; }
+/* ---- Schritt 2, von links nach rechts: Musikdienst → bisher →
+        mit sounddna → Ersparnis ---- */
+.akm-compare { margin-top: 40px; }
 
-.akm-compare__cols {
+.akm-compare__row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr);
+  grid-template-areas: "dienst bisher sdna diff";
+  gap: 24px 32px;
+  align-items: start;
 }
+
+.akm-compare__cell--dienst { grid-area: dienst; }
+.akm-compare__cell--bisher { grid-area: bisher; }
+.akm-compare__cell--sdna   { grid-area: sdna; }
+.akm-compare__cell--diff   { grid-area: diff; }
+
+.akm-compare__input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+/* Eingabe auf der Karte: eine Spur heller als die Karte */
+.akm-compare .akm-input { width: 96px; background: var(--white-6); }
+.akm-compare .akm-input:hover,
+.akm-compare .akm-input:focus { background: var(--white-10); }
+
+.akm-compare__cell--diff .akm-result__amount { font-size: 44px; }
 
 .akm-compare__sum {
   font-size: 30px;
@@ -158,8 +195,17 @@
   background: var(--text-25);
 }
 
+/* schmaler: Kosten unter die Eingaben, Schritt 2 auf zwei Spalten */
 @media (max-width: 980px) {
+  .akm-top { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .akm-top .akm-result .akm-note { margin-top: 0; }
+  .akm-compare { margin-top: 32px; }
+  .akm-compare__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "dienst dienst" "bisher sdna" "diff diff";
+  }
   .akm-result { padding: 22px 20px 20px; }
-  .akm-result__amount { font-size: 42px; }
+  .akm-result__amount,
+  .akm-compare__cell--diff .akm-result__amount { font-size: 42px; }
   .akm-compare__sum { font-size: 24px; }
 }
