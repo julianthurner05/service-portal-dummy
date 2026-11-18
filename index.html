@@ -322,11 +322,6 @@ Lebe Smart!</textarea>
 
         <div class="akm-result is-empty" id="akm-result">
           <p class="akm-field__label">AKM-Kosten</p>
-          <p class="akm-result__value" aria-live="polite">
-            <span>ca.</span>
-            <span class="akm-result__amount" id="akm-amount">– €</span>
-            <span>pro Jahr</span>
-          </p>
           <p class="akm-note">Richtwert auf Basis des Gesamtvertrags AKM/VVAT, Stand <span id="akm-stand"></span>, netto pro Jahr. Die tatsächliche Einstufung legt die AKM fest.</p>
 
           <button class="more-toggle akm-more" id="akm-more" type="button" aria-expanded="false" aria-controls="akm-annahmen">
@@ -344,6 +339,12 @@ Lebe Smart!</textarea>
               </ul>
             </div>
           </div>
+
+          <!-- Betrag unten im Feld, „pro Jahr“ daneben -->
+          <p class="akm-result__value akm-result__value--inline" aria-live="polite">
+            <span class="akm-result__amount" id="akm-amount">– €</span>
+            <span>pro Jahr</span>
+          </p>
         </div>
       </div>
 
@@ -371,7 +372,6 @@ Lebe Smart!</textarea>
           <div class="akm-compare__cell akm-compare__cell--diff">
             <p class="akm-field__label" id="akm-diff-label">Ersparnis</p>
             <p class="akm-result__value" aria-live="polite">
-              <span>ca.</span>
               <span class="akm-result__amount" id="akm-diff">– €</span>
               <span>pro Jahr</span>
             </p>
