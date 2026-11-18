@@ -16,6 +16,10 @@
   align-items: start;
 }
 
+/* ohne Steckbrief: nur die Schritte, in der Breite der anderen Formulare */
+.cb-view:has(.cb-sheet[hidden]) { max-width: 640px; }
+.cb-layout:has(.cb-sheet[hidden]) { grid-template-columns: minmax(0, 1fr); }
+
 /* ---- Schritte: offen, ohne Rahmen ---- */
 .cb-steps .collapse__inner > .cb-step { margin-top: 44px; }
 
