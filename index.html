@@ -325,7 +325,7 @@ Lebe Smart!</textarea>
         </p>
         <p class="akm-note">Richtwert auf Basis des Gesamtvertrags AKM/VVAT, Stand <span id="akm-stand"></span>, netto pro Jahr. Die tatsächliche Einstufung legt die AKM fest.</p>
 
-        <button class="akm-more" id="akm-more" type="button" aria-expanded="false" aria-controls="akm-annahmen">
+        <button class="more-toggle akm-more" id="akm-more" type="button" aria-expanded="false" aria-controls="akm-annahmen">
           <span>Annahmen</span>
           <svg class="icon"><use href="#i-chevron-down"/></svg>
         </button>
@@ -437,14 +437,9 @@ Lebe Smart!</textarea>
                 </div>
               </section>
 
-              <section class="cb-step">
-                <h2 class="cb-step__title"><span class="cb-step__num">4</span>Genres</h2>
-                <div class="cb-genres" id="cb-genres"></div>
-              </section>
-
               <!-- Ergebnis, provisorisch: der fertige Channel mit Dummy-Tracks -->
               <section class="cb-step">
-                <h2 class="cb-step__title"><span class="cb-step__num">5</span>Channel</h2>
+                <h2 class="cb-step__title"><span class="cb-step__num">4</span>Channel</h2>
                 <div class="cb-channel">
                   <div class="cb-channel__head">
                     <div class="cb-channel__cover" id="cb-cover"><svg class="icon"><use href="#i-wave"/></svg></div>
@@ -459,11 +454,19 @@ Lebe Smart!</textarea>
                     </div>
                   </div>
 
-                  <div class="cb-channel__facts">
-                    <div><p class="cb-label">Genres</p><div class="cb-tags" id="cb-channel-genres"></div></div>
-                    <div><p class="cb-label">Charakter</p><div class="cb-tags" id="cb-channel-moods"></div></div>
-                    <div><p class="cb-label">Energie</p><p class="cb-channel__fact" id="cb-channel-energie"></p></div>
-                    <div><p class="cb-label">BPM</p><p class="cb-channel__fact" id="cb-channel-bpm"></p></div>
+                  <button class="more-toggle cb-details-toggle" id="cb-details-toggle" type="button" aria-expanded="false" aria-controls="cb-details">
+                    <span>Details</span>
+                    <svg class="icon"><use href="#i-chevron-down"/></svg>
+                  </button>
+                  <div class="collapse" id="cb-details">
+                    <div class="collapse__inner">
+                      <div class="cb-channel__facts">
+                        <div><p class="cb-label">Genres</p><div class="cb-tags" id="cb-channel-genres"></div></div>
+                        <div><p class="cb-label">Charakter</p><div class="cb-tags" id="cb-channel-moods"></div></div>
+                        <div><p class="cb-label">Energie</p><p class="cb-channel__fact" id="cb-channel-energie"></p></div>
+                        <div><p class="cb-label">BPM</p><p class="cb-channel__fact" id="cb-channel-bpm"></p></div>
+                      </div>
+                    </div>
                   </div>
 
                   <ol class="cb-tracks" id="cb-tracks"></ol>
@@ -477,7 +480,7 @@ Lebe Smart!</textarea>
         <!-- Steckbrief vorerst ausgeblendet – „hidden“ entfernen, dann steht er
              wieder rechts neben den Schritten -->
         <aside class="cb-sheet" hidden>
-          <h2 class="cb-step__title"><span class="cb-step__num">6</span>Steckbrief</h2>
+          <h2 class="cb-step__title"><span class="cb-step__num">5</span>Steckbrief</h2>
           <p class="cb-sheet__name" id="cb-name">–</p>
           <p class="cb-sheet__where" id="cb-where"></p>
 

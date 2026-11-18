@@ -1,6 +1,6 @@
 /* ================================================================
-   CHANNEL BUILDER – Branche, Teilbereich, Klangraum und Genres
-   ergeben live einen Channel (und den Steckbrief, vorerst ausgeblendet)
+   CHANNEL BUILDER – Branche, Teilbereich und Klangraum ergeben
+   live einen Channel (und den Steckbrief, vorerst ausgeblendet)
    ================================================================ */
 
 /* ---- Modell: erste Setzungen aus dem Prototyp, alles noch zu kuratieren.
@@ -74,11 +74,9 @@ const CB_SPALTEN = ['links', 'mitte', 'rechts'];
 const CB_STIMMUNG = { verschiebung: 0.1, valenceMin: 0.3, valenceMax: 0.9 };
 
 /* Charakter als Spektren (links ↔ rechts). vintage / futuristic und warm
-   haben keinen eigenen Regler, sie kommen aus Modernität und Stimmung.
-   „synthetic“ ist als Gegenpol zu „organic“ ergänzt (Annahme) */
+   haben keinen eigenen Regler, sie kommen aus Modernität und Stimmung */
 const CB_SPEKTREN = [
-  ['organic', 'synthetic'],
-  ['raw', 'polished'],
+  ['organic', 'polished'],
   ['natural', 'urban'],
   ['playful', 'elegant'],
 ];
@@ -254,7 +252,6 @@ const cbEnergieLevel = $cb('cb-energie-level');
 const cbStimmung     = $cb('cb-stimmung');
 const cbModern       = $cb('cb-modern');
 const cbCharakterEl  = $cb('cb-charakter');
-const cbGenresEl     = $cb('cb-genres');
 const cbView         = document.querySelector('.cb-view');
 
 function cbButton(cls, html, onClick) {
@@ -312,20 +309,8 @@ function cbWaehleBranche(b) {
     cbFlaechenEl.appendChild(el);
   });
 
-  /* 4 Genres: alle Freigaben der Branche liegen bereit, sichtbar sind nur
-     die gewählten – so blenden sie beim Wechsel sanft ein und aus */
-  cbGenresEl.innerHTML = '';
-  CB_GENRES.filter(g => g.in.includes(b.value)).forEach(g => {
-    const el = document.createElement('span');
-    el.className = 'cb-genre is-off';
-    el.dataset.name = g.name;
-    el.innerHTML = '<span class="cb-genre__name"></span><span class="cb-genre__pct"></span>';
-    el.firstChild.textContent = g.name;
-    cbGenresEl.appendChild(el);
-  });
-
   if (erste) setCollapse(cbMore, true);
-  requestAnimationFrame(cbUpdate);   /* ein Frame später, damit die Genres einblenden */
+  cbUpdate();
 }
 
 /* 3 Klangraum: Energie rastet beim Loslassen auf eine der fünf Stufen ein */
@@ -371,25 +356,31 @@ cbEnergie.addEventListener('keydown', e => {
 cbStimmung.addEventListener('input', () => { cb.stimmung = +cbStimmung.value; cbUpdate(); });
 cbModern.addEventListener('input', () => { cb.modern = +cbModern.value; cbUpdate(); });
 
-/* Charakter-Spektren: Pol – Regler mit Mittelpunkt – Pol */
+/* Charakter-Spektren: volle Breite wie die Regler darüber, Pole darunter */
 CB_SPEKTREN.forEach(([links, rechts], i) => {
   const row = document.createElement('div');
-  row.className = 'cb-spektrum';
+  row.className = 'cb-slider';
   row.innerHTML = `
-    <span class="cb-spektrum__pol" data-tag="${links}">${links}</span>
-    <span class="cb-slider__track">
+    <div class="cb-slider__track">
       <span class="cb-tick cb-tick--mitte"></span>
       <input class="range" type="range" min="0" max="100" step="1" value="50" aria-label="${links} bis ${rechts}">
-    </span>
-    <span class="cb-spektrum__pol cb-spektrum__pol--rechts" data-tag="${rechts}">${rechts}</span>`;
+    </div>
+    <div class="cb-poles"><span data-tag="${links}">${links}</span><span data-tag="${rechts}">${rechts}</span></div>`;
   row.querySelector('input').addEventListener('input', e => { cb.spektren[i] = +e.target.value; cbUpdate(); });
   cbCharakterEl.appendChild(row);
 });
 
-/* 5 Channel: Dummy-Vorhören */
+/* 4 Channel: Dummy-Vorhören, Details aufklappbar */
 const cbPlayer = createPlayer({ playBtn: $cb('cb-play'), slider: $cb('cb-slider'), timeEl: $cb('cb-time'), duration: 30 });
 
-/* 6 Steckbrief (ausgeblendet): Level-Zeilen einmal aufbauen, danach nur Werte setzen */
+const cbDetailsToggle = $cb('cb-details-toggle');
+cbDetailsToggle.addEventListener('click', () => {
+  const open = cbDetailsToggle.getAttribute('aria-expanded') !== 'true';
+  cbDetailsToggle.setAttribute('aria-expanded', String(open));
+  setCollapse($cb('cb-details'), open);
+});
+
+/* 5 Steckbrief (ausgeblendet): Level-Zeilen einmal aufbauen, danach nur Werte setzen */
 const CB_WERTE = [
   { label: 'Danceability', wert: i => cbVonBis(cbDance(i)) },
   { label: 'Valence',      wert: i => cbVonBis(cbValence(i)) },
@@ -422,13 +413,6 @@ function cbUpdate() {
   /* Pole leuchten, wenn sie einen Charakter-Mood liefern */
   cbView.querySelectorAll('[data-tag]').forEach(p => p.classList.toggle('is-on', charakter.includes(p.dataset.tag)));
 
-  /* Genres: nur die gewählten */
-  cbGenresEl.querySelectorAll('.cb-genre').forEach(el => {
-    const m = mix.find(x => x.name === el.dataset.name);
-    el.classList.toggle('is-off', !m);
-    if (m) el.lastChild.textContent = `${m.anteil} %`;
-  });
-
   /* Name und Herkunft (für Channel und Steckbrief) */
   const ort = cb.teil?.label || cb.branche?.label;
   const tag = charakter[0] || cbMoods(stufe)[0];
@@ -437,7 +421,7 @@ function cbUpdate() {
   const genresHtml = mix.length ? mix.map(m => cbTag(`${m.anteil} % ${m.name}`)).join('') : cbLeer;
   const charakterHtml = charakter.length ? charakter.map(cbTag).join('') : cbLeer;
 
-  /* 5 Channel */
+  /* 4 Channel */
   $cb('cb-channel-name').textContent = name;
   $cb('cb-channel-meta').textContent = herkunft;
   $cb('cb-cover').style.setProperty('--cover', s.farbe);
@@ -453,7 +437,7 @@ function cbUpdate() {
       <span class="cb-track__dauer">${cbDauer(t.dauer)}</span>
     </li>`).join('');
 
-  /* 6 Steckbrief */
+  /* 5 Steckbrief */
   $cb('cb-name').textContent = name;
   $cb('cb-where').textContent = herkunft;
   $cb('cb-where').hidden = !cb.branche;

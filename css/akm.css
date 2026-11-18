@@ -127,21 +127,8 @@
 
 .akm-nowrap { white-space: nowrap; }
 
-/* Annahmen: aufklappbar unter dem Ergebnis */
-.akm-more {
-  margin-top: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-55);
-  transition: color var(--transition);
-}
-
-.akm-more:hover { color: var(--text-100); }
-.akm-more .icon { width: 13px; height: 13px; transition: transform var(--dur-fast) var(--ease); }
-.akm-more[aria-expanded="true"] .icon { transform: rotate(180deg); }
+/* Annahmen: aufklappbar unter dem Ergebnis (Button: .more-toggle in base.css) */
+.akm-more { margin-top: 14px; }
 
 .akm-list {
   list-style: none;

@@ -690,6 +690,21 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   transition: opacity var(--dur) var(--ease), visibility 0s linear var(--dur);
 }
 
+/* ---- Ausklappen: Text mit Chevron, dreht sich beim Öffnen ---- */
+.more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+  transition: color var(--transition);
+}
+
+.more-toggle:hover { color: var(--text-100); }
+.more-toggle .icon { width: 13px; height: 13px; transition: transform var(--dur-fast) var(--ease); }
+.more-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+
 /* ---- Primär-Button (weiß) ---- */
 .primary-btn {
   height: 46px;
