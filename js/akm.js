@@ -35,7 +35,11 @@ const AKM_TARIF = {
   garage: {                    // § 61 B, Jahressätze pro Stellplatz
     grenze: 5000,
     satzBis: 1.55,
-    satzDarueber: 1.42,        // offen: gilt hier für alle Stellplätze, sobald es mehr als 5.000 sind
+    satzDarueber: 1.42,
+    /* offen, der Vertrag sagt es nicht: 'alle' = ab 5.001 gilt der niedrigere
+       Satz für alle Stellplätze (wie im Briefing), 'darueber' = nur für die
+       Stellplätze über 5.000 */
+    staffel: 'alle',
   },
 
   buero: {                     // § 61 A, Gänge, Stiegenhäuser, Aufzüge
@@ -43,6 +47,12 @@ const AKM_TARIF = {
     satzMonat: 0.43,
   },
 };
+
+/* ---- Unser Preis: PROVISORISCH, bis die echten Preise feststehen. Netto
+        pro Standort; hängt er später von Branche, Fläche oder Standortzahl
+        ab, kommt die Staffel in sdnaJahr() dazu ---- */
+const SDNA_PREIS = { proStandortMonat: 29 };
+const sdnaJahr = () => SDNA_PREIS.proStandortMonat * 12;
 
 /* erst 23 % LSG, dann 5 % VVAT = 1,2915 */
 const AKM_ZUSCHLAG = (1 + AKM_TARIF.lsg) * (1 + AKM_TARIF.vvat);
@@ -65,7 +75,11 @@ function akmGastroMonat(plaetze) {
 const AKM_ENTGELT = {
   handel: a => akmHandelMonat(a) * 12 * (1 - AKM_TARIF.vorauszahlungsRabatt),
   gastro: p => akmGastroMonat(p) * 12,
-  garage: s => s * (s <= AKM_TARIF.garage.grenze ? AKM_TARIF.garage.satzBis : AKM_TARIF.garage.satzDarueber),
+  garage: s => {
+    const g = AKM_TARIF.garage;
+    if (s <= g.grenze) return s * g.satzBis;
+    return g.staffel === 'alle' ? s * g.satzDarueber : g.grenze * g.satzBis + (s - g.grenze) * g.satzDarueber;
+  },
   buero:  b => Math.ceil(b / AKM_TARIF.buero.proAngefangene) * AKM_TARIF.buero.satzMonat * 12,
 };
 
@@ -75,52 +89,115 @@ function akmJahr(tarif, n) {
   return Math.round(+exakt.toFixed(6));
 }
 
-/* ---- Branchen: genau ein Eingabefeld je Branche ---- */
+/* ---- Branchen: genau ein Eingabefeld je Branche ----
+   regler: Spanne des Reglers (logarithmisch) und Startwert; tippen geht
+   auch darüber hinaus */
 const AKM_BRANCHEN = [
   { value: 'handel', label: 'Handel', tarif: 'handel',
     eingabe: 'Bespielte Fläche in m²',
-    hinweis: 'Gemeint ist die Fläche von Wand zu Wand in allen Räumen, in denen die Musik hörbar ist.' },
+    hinweis: 'Gemeint ist die Fläche von Wand zu Wand in allen Räumen, in denen die Musik hörbar ist.',
+    regler: { von: 20, bis: 20000, start: 300 } },
   { value: 'gastro', label: 'Gastronomie', tarif: 'gastro',
-    eingabe: 'Verabreichungsplätze' },
+    eingabe: 'Verabreichungsplätze',
+    regler: { von: 1, bis: 500, start: 40 } },
   { value: 'hotel', label: 'Hotel (Restaurant, Bar, Frühstücksraum)', tarif: 'gastro',
-    eingabe: 'Verabreichungsplätze' },
+    eingabe: 'Verabreichungsplätze',
+    regler: { von: 1, bis: 500, start: 40 } },
   { value: 'garage', label: 'Garage, Parkhaus', tarif: 'garage',
     eingabe: 'Stellplätze des Betreibers gesamt',
-    hinweis: 'Es zählen alle Stellplätze des Betreibers über alle Standorte.' },
+    hinweis: 'Es zählen alle Stellplätze des Betreibers über alle Standorte.',
+    regler: { von: 10, bis: 10000, start: 400 } },
   { value: 'buero', label: 'Bürogebäude (Gänge, Stiegenhäuser, Aufzüge)', tarif: 'buero',
     eingabe: 'Bürofläche des Hauses in m²',
-    hinweis: 'Es zählt die Bürofläche, nicht die Fläche der Gänge und Lifte.' },
+    hinweis: 'Es zählt die Bürofläche, nicht die Fläche der Gänge und Lifte.',
+    regler: { von: 100, bis: 100000, start: 2000 } },
 ];
 
 /* ---- Ansicht ---- */
 const akmInput    = document.getElementById('akm-input');
+const akmRegler   = document.getElementById('akm-regler');
 const akmLabel    = document.getElementById('akm-input-label');
 const akmHint     = document.getElementById('akm-hint');
 const akmResult   = document.getElementById('akm-result');
 const akmAmount   = document.getElementById('akm-amount');
 const akmMore     = document.getElementById('akm-more');
 const akmAnnahmen = document.getElementById('akm-annahmen');
+const akmDienst   = document.getElementById('akm-dienst');
+const akmCompare  = document.getElementById('akm-compare');
+const akmBisher   = document.getElementById('akm-bisher');
+const akmBisherTeile = document.getElementById('akm-bisher-parts');
+const akmSdna     = document.getElementById('akm-sdna');
+const akmDiffLabel = document.getElementById('akm-diff-label');
+const akmDiff     = document.getElementById('akm-diff');
 const akmZahl     = new Intl.NumberFormat('de-DE');   // 1.592
+const akmEuro     = n => `${n === null ? '–' : akmZahl.format(n)} €`;
 
 const AKM_MAX_STELLEN = 7;
+const AKM_DIENST_STELLEN = 5;
+const AKM_REGLER_MAX = +akmRegler.max;   // Reglerpositionen 0 … 1000
 const akmWerte = {};          // Eingabe je Branche, bleibt beim Wechseln erhalten
 let akmBranche = AKM_BRANCHEN[0];
 
 const akmZahlAus = s => Number(s.replace(/\D/g, ''));
 
+/* Regler ↔ Wert auf logarithmischer Skala */
+function akmWertAus(pos) {
+  const { von, bis } = akmBranche.regler;
+  return von * (bis / von) ** (pos / AKM_REGLER_MAX);
+}
+
+function akmPosAus(n) {
+  const { von, bis } = akmBranche.regler;
+  const k = Math.log(Math.min(Math.max(n, von), bis) / von) / Math.log(bis / von);
+  return k * AKM_REGLER_MAX;
+}
+
+/* runde Werte beim Ziehen: zwei gültige Stellen (347 → 350, 12.345 → 12.000) */
+function akmRund(v) {
+  if (v < 10) return Math.max(1, Math.round(v));
+  const stelle = 10 ** (Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / stelle) * stelle;
+}
+
+function akmSetRegler(pos) {
+  akmRegler.value = pos;
+  akmRegler.style.setProperty('--fill', `${(pos / AKM_REGLER_MAX) * 100}%`);
+}
+
 function akmRender() {
   const n = akmZahlAus(akmInput.value);
-  akmResult.classList.toggle('is-empty', !n);
-  akmAmount.textContent = `${n ? akmZahl.format(akmJahr(akmBranche.tarif, n)) : '–'} €`;
+  const akm = n ? akmJahr(akmBranche.tarif, n) : null;
+  akmResult.classList.toggle('is-empty', akm === null);
+  akmAmount.textContent = akmEuro(akm);
+
+  /* Schritt 2: bisher (AKM + Musikdienst) gegen sounddna */
+  const dienst = akmZahlAus(akmDienst.value) * 12;
+  const bisher = akm === null ? null : akm + dienst;
+  const diff = bisher === null ? null : bisher - sdnaJahr();
+  akmCompare.classList.toggle('is-empty', akm === null);
+  akmBisher.textContent = akmEuro(bisher);
+  akmBisherTeile.textContent = akm === null ? '' :
+    dienst ? `AKM ${akmEuro(akm)} + Musikdienst ${akmEuro(dienst)}` : `AKM ${akmEuro(akm)}`;
+  akmSdna.textContent = akmEuro(sdnaJahr());
+  akmDiffLabel.textContent = diff < 0 ? 'Mehrkosten' : 'Ersparnis';
+  akmDiff.textContent = akmEuro(diff === null ? null : Math.abs(diff));
 }
 
 function akmZeigeBranche() {
   akmLabel.textContent = akmBranche.eingabe;
   akmHint.textContent = akmBranche.hinweis || '';
   akmHint.hidden = !akmBranche.hinweis;
-  akmInput.value = akmWerte[akmBranche.value] || '';
+  akmInput.value = akmWerte[akmBranche.value] ?? akmZahl.format(akmBranche.regler.start);
+  akmSetRegler(akmPosAus(akmZahlAus(akmInput.value) || akmBranche.regler.von));
   akmRender();
 }
+
+akmRegler.addEventListener('input', () => {
+  const n = akmRund(akmWertAus(+akmRegler.value));
+  akmSetRegler(+akmRegler.value);
+  akmInput.value = akmZahl.format(n);
+  akmRender();
+});
 
 buildDropdown(document.getElementById('akm-branche'), {
   options: AKM_BRANCHEN.map(({ value, label }) => ({ value, label })),
@@ -133,18 +210,30 @@ buildDropdown(document.getElementById('akm-branche'), {
   },
 });
 
-/* nur Ziffern, mit Tausenderpunkten; der Cursor bleibt hinter derselben Ziffer */
-akmInput.addEventListener('input', () => {
-  const vorCursor = akmInput.value.slice(0, akmInput.selectionStart).replace(/\D/g, '').length;
-  const ziffern = akmInput.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, AKM_MAX_STELLEN);
+/* nur Ziffern, mit Tausenderpunkten; der Cursor bleibt hinter derselben Ziffer.
+   Liefert die Zahl (0 bei leerem Feld) */
+function akmFormatiere(el, maxStellen) {
+  const vorCursor = el.value.slice(0, el.selectionStart).replace(/\D/g, '').length;
+  const ziffern = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, maxStellen);
   const text = ziffern ? akmZahl.format(+ziffern) : '';
-  akmInput.value = text;
+  el.value = text;
 
   let pos = 0;
   for (let gesehen = 0; pos < text.length && gesehen < vorCursor; pos++) {
     if (/\d/.test(text[pos])) gesehen++;
   }
-  akmInput.setSelectionRange(pos, pos);
+  el.setSelectionRange(pos, pos);
+  return +ziffern;
+}
+
+akmInput.addEventListener('input', () => {
+  const n = akmFormatiere(akmInput, AKM_MAX_STELLEN);
+  if (n) akmSetRegler(akmPosAus(n));
+  akmRender();
+});
+
+akmDienst.addEventListener('input', () => {
+  akmFormatiere(akmDienst, AKM_DIENST_STELLEN);
   akmRender();
 });
 

@@ -9,29 +9,17 @@
 @media (max-width: 1520px) and (min-width: 1241px) {
   .nav-item[data-view="akm"] span { font-size: 14px; letter-spacing: 0; }
 }
+
 .akm-view {
   width: 100%;
-  max-width: 640px;
+  max-width: 600px;
   align-self: flex-start;
   display: flex;
   flex-direction: column;
   animation: view-in var(--dur-fast) var(--ease);
 }
 
-.akm-title {
-  margin: 8px 0 30px;
-  font-size: 28px;
-  letter-spacing: var(--ls-heading);
-  font-weight: 400;
-}
-
-.akm-card {
-  padding: var(--pad-panel);
-  border: var(--hairline);
-  border-radius: var(--radius-lg);
-}
-
-.akm-field + .akm-field { margin-top: 22px; }
+.akm-field + .akm-field { margin-top: 30px; }
 
 .akm-field__label {
   display: block;
@@ -41,62 +29,103 @@
   color: var(--text-40);
 }
 
-.akm-field__hint {
-  margin-top: 9px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  line-height: 1.5;
-  color: var(--text-40);
+/* Label links, tippbare Zahl rechts, darunter der Regler */
+.akm-field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
-/* Eingabefeld wie der Dropdown-Toggle */
+.akm-field__head .akm-field__label { margin-bottom: 0; }
+
 .akm-input {
-  display: block;
-  width: 100%;
-  height: 44px;
-  padding: 0 16px;
-  background: var(--mittelblau);
+  width: 128px;
+  height: 40px;
+  padding: 0 14px;
   border-radius: var(--radius-md);
-  font-variant-numeric: tabular-nums;
+  background: var(--mittelblau);
+  font-size: 17px;
+  text-align: right;
   transition: background var(--transition);
 }
 
 .akm-input:hover,
 .akm-input:focus { background: var(--card-bg); }
 
-/* ---- Ergebnis ---- */
+.akm-field__hint {
+  margin-top: 10px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.5;
+  color: var(--text-40);
+}
+
+/* ---- Ergebnis: gefüllte Fläche statt Rahmen ---- */
 .akm-result {
-  margin: 28px calc(-1 * var(--pad-panel)) 0;
-  padding: 24px var(--pad-panel) 0;
-  border-top: var(--hairline);
+  margin-top: 38px;
+  padding: 28px 30px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
 }
 
 .akm-result__value {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  font-size: var(--fs-base);
+  gap: 4px 14px;
+  font-size: var(--fs-card-title);
   color: var(--text-55);
 }
 
 .akm-result__amount {
-  font-size: 40px;
-  line-height: 1.15;
+  font-size: 56px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--text-100);
-  font-variant-numeric: tabular-nums;
   transition: color var(--transition);
 }
 
 .akm-result.is-empty .akm-result__amount { color: var(--text-25); }
 
 .akm-note {
-  margin-top: 18px;
+  margin-top: 20px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-small);
   line-height: 1.55;
   color: var(--text-40);
 }
+
+/* ---- Schritt 2: bisher gegen sounddna, darunter die Differenz ---- */
+.akm-field--step { margin-top: 44px; }
+.akm-field--step + .akm-result { margin-top: 18px; }
+
+.akm-compare__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.akm-compare__sum {
+  font-size: 30px;
+  line-height: 1.2;
+  color: var(--text-100);
+  transition: color var(--transition);
+}
+
+.akm-compare.is-empty .akm-compare__sum { color: var(--text-25); }
+
+.akm-compare__parts {
+  margin-top: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.5;
+  color: var(--text-40);
+}
+
+.akm-nowrap { white-space: nowrap; }
 
 /* Annahmen: aufklappbar unter dem Ergebnis */
 .akm-more {
@@ -143,6 +172,7 @@
 }
 
 @media (max-width: 980px) {
-  .akm-title { font-size: 24px; margin-bottom: 24px; }
-  .akm-result__amount { font-size: 34px; }
+  .akm-result { padding: 22px 20px 20px; }
+  .akm-result__amount { font-size: 42px; }
+  .akm-compare__sum { font-size: 24px; }
 }

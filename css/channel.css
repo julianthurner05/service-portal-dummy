@@ -1,0 +1,312 @@
+/* ================================================================
+   CHANNEL BUILDER – Music Service
+   ================================================================ */
+.cb-view {
+  width: 100%;
+  max-width: 1080px;
+  align-self: flex-start;
+  animation: view-in var(--dur-fast) var(--ease);
+}
+
+/* Schritte links, Steckbrief rechts mitlaufend */
+.cb-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 44px;
+  align-items: start;
+}
+
+/* ---- Schritte: offen, ohne Rahmen ---- */
+.cb-steps .collapse__inner > .cb-step { margin-top: 44px; }
+
+.cb-step__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: var(--fs-base);
+  letter-spacing: var(--ls-base);
+  font-weight: 400;
+  color: var(--text-80);
+}
+
+.cb-step__num {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--white-10);
+  font-size: var(--fs-badge);
+  color: var(--text-80);
+}
+
+.cb-label {
+  display: block;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-40);
+}
+
+.cb-sub { margin-top: 26px; }
+.cb-sub > .cb-label { margin-bottom: 10px; }
+
+/* ---- 1 Branche: große Kacheln ---- */
+.cb-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cb-tile {
+  height: 116px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--mittelblau);
+  font-size: var(--fs-card-title);
+  color: var(--text-80);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+
+.cb-tile .icon { width: 22px; height: 22px; stroke-width: 1.6; color: var(--text-55); transition: color var(--transition); }
+.cb-tile:hover { background: var(--card-bg); color: var(--text-100); }
+.cb-tile.is-active { background: var(--nav-active); color: var(--text-inverse); }
+.cb-tile.is-active .icon { color: var(--text-inverse); }
+
+/* ---- Chips (Teilbereich, Fläche, Charakter) ---- */
+.cb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.cb-chip {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--mittelblau);
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  color: var(--text-66);
+  transition: background var(--transition), color var(--transition), opacity var(--transition);
+}
+
+.cb-chip:hover { background: var(--card-bg); color: var(--text-100); }
+.cb-chip.is-active { background: var(--nav-active); color: var(--text-inverse); }
+.cb-chip:disabled { opacity: 0.35; cursor: default; }
+.cb-chip:disabled:hover { background: var(--mittelblau); color: var(--text-66); }
+
+/* ---- 3 Klangraum: Regler ---- */
+.cb-slider + .cb-slider { margin-top: 24px; }
+
+.cb-slider__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cb-sub > .cb-slider__head { margin-bottom: 10px; }
+
+.cb-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-80);
+}
+
+.cb-count {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.cb-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+/* Energie: drei Rastpunkte in den Level-Farben unter der Spur */
+.cb-slider__track { position: relative; }
+.cb-slider__track .range { position: relative; }
+
+.cb-tick {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cb-tick--low  { left: 8px; background: var(--level-low); }
+.cb-tick--mid  { left: 50%; background: var(--level-mid); }
+.cb-tick--high { left: calc(100% - 8px); background: var(--level-high); }
+
+.cb-poles {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+/* ---- 4 Genres: blenden mit der Modernität ein und aus ---- */
+.cb-genres {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -8px -8px 0;
+  min-height: 42px;
+}
+
+.cb-genre {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  max-width: 280px;
+  margin: 0 8px 8px 0;
+  padding: 0 14px;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  background: var(--mittelblau);
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  color: var(--text-80);
+  transition:
+    max-width var(--dur) var(--ease),
+    padding var(--dur) var(--ease),
+    margin var(--dur) var(--ease),
+    opacity var(--dur) var(--ease),
+    background var(--transition),
+    color var(--transition);
+}
+
+.cb-genre.is-faint { opacity: 0.35; }
+.cb-genre.is-off { max-width: 0; padding-left: 0; padding-right: 0; margin-right: 0; opacity: 0; }
+.cb-genre.is-mix { background: var(--nav-active); color: var(--text-inverse); }
+
+/* ---- 5 Steckbrief ---- */
+.cb-sheet {
+  position: sticky;
+  top: 0;
+  padding: 24px 24px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.cb-sheet .cb-step__title { margin-bottom: 18px; }
+
+.cb-sheet__name {
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: var(--ls-heading);
+  color: var(--text-100);
+}
+
+.cb-sheet__where {
+  margin-top: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-40);
+}
+
+.cb-row { margin-top: 22px; }
+
+.cb-row__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-40);
+}
+
+.cb-row__value {
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  color: var(--text-80);
+}
+
+.cb-mix__row {
+  display: flex;
+  gap: 12px;
+  font-size: var(--fs-menu);
+  letter-spacing: var(--ls-menu);
+  line-height: 1.75;
+  color: var(--text-80);
+}
+
+.cb-mix__pct { width: 38px; flex: none; color: var(--text-40); }
+
+.cb-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.cb-tag {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--white-6);
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-80);
+}
+
+.cb-empty { font-size: var(--fs-menu); color: var(--text-25); }
+
+/* Levels: aktive Spalte mit hinterlegter Fläche, die beim Wechsel mitgleitet */
+.cb-levels {
+  --label: 86px;
+  position: relative;
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: var(--label) repeat(3, minmax(0, 1fr));
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+}
+
+.cb-levels__hl {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--label) + (100% - var(--label)) / 3 * var(--aktiv, 1));
+  width: calc((100% - var(--label)) / 3);
+  border-radius: var(--radius-md);
+  background: var(--white-6);
+  transition: left var(--dur) var(--ease);
+}
+
+.cb-levels > span:not(.cb-levels__hl) { position: relative; padding: 7px 6px; line-height: 1.4; }
+.cb-levels > .cb-levels__label { padding-left: 0; color: var(--text-40); }
+
+.cb-levels__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px !important;
+  color: var(--text-55);
+  transition: color var(--transition);
+}
+
+.cb-levels__cell { color: var(--text-40); transition: color var(--transition); }
+.cb-levels__cell:not([data-row="3"]) { white-space: nowrap; }   /* Ranges einzeilig, nur Moods brechen */
+.cb-levels .is-active { color: var(--text-100); }
+
+@media (max-width: 980px) {
+  .cb-layout { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .cb-sheet { position: static; }
+}
+
+/* Handy: Kacheln untereinander als Zeilen, Level-Raster mit schmalerer Label-Spalte */
+@media (max-width: 600px) {
+  .cb-tiles { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cb-tile { height: 56px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; padding: 0 18px; font-size: var(--fs-base); }
+  .cb-tile .icon { width: 19px; height: 19px; }
+  .cb-sheet { padding: 22px 18px 20px; }
+  .cb-levels { --label: 76px; }
+  .cb-levels > span:not(.cb-levels__hl) { padding-left: 4px; padding-right: 4px; }
+}

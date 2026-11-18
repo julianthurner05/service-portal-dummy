@@ -8,6 +8,7 @@ const calendarView   = document.querySelector('[data-screen="calendar"]');
 const homeView       = document.querySelector('[data-screen="home"]');
 const accountView    = document.querySelector('[data-screen="account"]');
 const akmView        = document.querySelector('[data-screen="akm"]');
+const channelView    = document.querySelector('[data-screen="channel"]');
 const historyList    = document.getElementById('history-list');
 const historyEmpty   = document.getElementById('history-empty');
 const toastsEl       = document.getElementById('toasts');
@@ -270,6 +271,7 @@ function showView(view) {
   calendarView.hidden = !isCalendar;
   accountView.hidden = view !== 'account';
   akmView.hidden = view !== 'akm';
+  channelView.hidden = view !== 'channel';
   homeView.hidden = !isHome;
   document.body.classList.toggle('view-calendar', isCalendar);   /* vor dem Rendern – der Calendar misst den Innenabstand */
   if (isCalendar) renderCalendar();

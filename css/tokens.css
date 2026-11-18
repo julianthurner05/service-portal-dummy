@@ -53,6 +53,12 @@
   --cat-tint-commercial-strong: 58%;
   --cat-base:        var(--card-bg);   /* Grundfläche, in die gemischt wird */
 
+  /* ---- Energylevels (Channel Builder): Grün, Hellorange, Orange wie im
+          Musikkonzept, entsättigt wie die übrigen Meldungsfarben ---- */
+  --level-low:      var(--gruen-soft);
+  --level-mid:      #e6c48e;
+  --level-high:     #e0975f;
+
   /* ---- Account-Banner: Foto (einzige Quelle – kein <img> im HTML). Beispiel
           per Wikimedia-Link, besser lokal ablegen: url("assets/store.jpg") ---- */
   --banner-image:   url("https://commons.wikimedia.org/wiki/Special:FilePath/IKEA_%288020223012%29.jpg?width=1600");
