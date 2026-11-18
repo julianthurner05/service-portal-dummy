@@ -1160,8 +1160,9 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 
 /* Laptop-Höhen (z. B. 14-Zoll-MacBook): alles eine Spur kompakter,
-   was nicht passt, darf scrollen */
-@media (max-height: 1010px) {
+   was nicht passt, darf scrollen. Nur bei voller Breite – darunter gelten
+   die eigenen, kompakteren Abstände von Tablet und Handy */
+@media (max-height: 1010px) and (min-width: 1241px) {
   .main { --main-x: 40px; --main-bottom: 56px; padding: 26px var(--main-x) var(--main-bottom); }
 }
 

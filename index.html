@@ -311,7 +311,7 @@ Lebe Smart!</textarea>
 
           <!-- Regler auf logarithmischer Skala, die Zahl daneben bleibt tippbar
                (auch über das Regler-Ende hinaus) -->
-          <div class="akm-field">
+          <div class="akm-field akm-field--box">
             <div class="akm-field__head">
               <span class="akm-field__title">
                 <label class="akm-field__label" for="akm-input" id="akm-input-label"></label>
@@ -370,9 +370,11 @@ Lebe Smart!</textarea>
             <p class="akm-compare__parts" id="akm-bisher-parts"></p>
           </div>
           <div class="akm-compare__cell akm-compare__cell--sdna">
-            <p class="akm-field__label">Mit sounddna</p>
+            <p class="akm-field__title">
+              <span class="akm-field__label">Mit sounddna</span>
+              <button class="akm-info" type="button" aria-label="Das von sounddna gelieferte Repertoire ist AKM-frei." data-tip="Das von sounddna gelieferte Repertoire ist AKM-frei." data-tip-wide><svg class="icon"><use href="#i-info"/></svg></button>
+            </p>
             <p class="akm-compare__sum" id="akm-sdna">– €</p>
-            <p class="akm-compare__parts">Das von sounddna gelieferte Repertoire ist <span class="akm-nowrap">AKM-frei.</span></p>
           </div>
           <div class="akm-compare__cell akm-compare__cell--diff">
             <p class="akm-field__label" id="akm-diff-label">Ersparnis</p>

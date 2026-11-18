@@ -177,8 +177,10 @@ function akmRender() {
   const diff = bisher === null ? null : bisher - sdnaJahr();
   akmCompare.classList.toggle('is-empty', akm === null);
   akmBisher.textContent = akmEuro(bisher);
-  akmBisherTeile.textContent = akm === null ? '' :
-    dienst ? `AKM ${akmEuro(akm)} + Musikdienst ${akmEuro(dienst)}` : `AKM ${akmEuro(akm)}`;
+  /* Aufschlüsselung nur mit Musikdienst – sonst wäre es nur der AKM-Betrag noch einmal */
+  akmBisherTeile.textContent = akm !== null && dienst
+    ? `AKM ${akmEuro(akm)} + Musikdienst ${akmEuro(dienst)}` : '';
+  akmBisherTeile.hidden = !akmBisherTeile.textContent;
   akmSdna.textContent = akmEuro(sdnaJahr());
   akmDiffLabel.textContent = diff < 0 ? 'Mehrkosten' : 'Ersparnis';
   akmDiff.textContent = akmEuro(diff === null ? null : Math.abs(diff));
