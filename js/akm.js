@@ -90,24 +90,25 @@ function akmJahr(tarif, n) {
 }
 
 /* ---- Branchen: genau ein Eingabefeld je Branche ----
+   zusatz: steht klein unter dem Namen auf der Kachel
    regler: Spanne des Reglers (logarithmisch) und Startwert; tippen geht
    auch darüber hinaus */
 const AKM_BRANCHEN = [
-  { value: 'handel', label: 'Handel', tarif: 'handel',
+  { value: 'handel', label: 'Handel', icon: 'bag', tarif: 'handel',
     eingabe: 'Bespielte Fläche in m²',
     hinweis: 'Gemeint ist die Fläche von Wand zu Wand in allen Räumen, in denen die Musik hörbar ist.',
     regler: { von: 20, bis: 20000, start: 300 } },
-  { value: 'gastro', label: 'Gastronomie', tarif: 'gastro',
+  { value: 'gastro', label: 'Gastronomie', icon: 'utensils', tarif: 'gastro',
     eingabe: 'Verabreichungsplätze',
     regler: { von: 1, bis: 500, start: 40 } },
-  { value: 'hotel', label: 'Hotel (Restaurant, Bar, Frühstücksraum)', tarif: 'gastro',
+  { value: 'hotel', label: 'Hotel', zusatz: 'Restaurant, Bar, Frühstücksraum', icon: 'bed', tarif: 'gastro',
     eingabe: 'Verabreichungsplätze',
     regler: { von: 1, bis: 500, start: 40 } },
-  { value: 'garage', label: 'Garage, Parkhaus', tarif: 'garage',
+  { value: 'garage', label: 'Garage, Parkhaus', icon: 'parking', tarif: 'garage',
     eingabe: 'Stellplätze des Betreibers gesamt',
     hinweis: 'Es zählen alle Stellplätze des Betreibers über alle Standorte.',
     regler: { von: 10, bis: 10000, start: 400 } },
-  { value: 'buero', label: 'Bürogebäude (Gänge, Stiegenhäuser, Aufzüge)', tarif: 'buero',
+  { value: 'buero', label: 'Bürogebäude', zusatz: 'Gänge, Stiegenhäuser, Aufzüge', icon: 'building', tarif: 'buero',
     eingabe: 'Bürofläche des Hauses in m²',
     hinweis: 'Es zählt die Bürofläche, nicht die Fläche der Gänge und Lifte.',
     regler: { von: 100, bis: 100000, start: 2000 } },
@@ -199,16 +200,35 @@ akmRegler.addEventListener('input', () => {
   akmRender();
 });
 
-buildDropdown(document.getElementById('akm-branche'), {
-  options: AKM_BRANCHEN.map(({ value, label }) => ({ value, label })),
-  value: akmBranche.value,
-  tall: true,
-  onChange: value => {
+/* Branche als Kacheln wie im Channel Builder */
+const akmBranchenEl = document.getElementById('akm-branche');
+
+AKM_BRANCHEN.forEach(b => {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'tile';
+  el.dataset.value = b.value;
+  el.innerHTML = `${icon(b.icon)}<span class="tile__text"><span class="tile__label"></span><span class="tile__sub"></span></span>`;
+  el.querySelector('.tile__label').textContent = b.label;
+  el.querySelector('.tile__sub').textContent = b.zusatz || '';
+  el.querySelector('.tile__sub').hidden = !b.zusatz;
+  el.addEventListener('click', () => {
+    if (b === akmBranche) return;
     akmWerte[akmBranche.value] = akmInput.value;
-    akmBranche = AKM_BRANCHEN.find(b => b.value === value);
+    akmBranche = b;
+    akmMarkiere();
     akmZeigeBranche();
-  },
+  });
+  akmBranchenEl.appendChild(el);
 });
+
+function akmMarkiere() {
+  akmBranchenEl.querySelectorAll('.tile').forEach(t => {
+    const on = t.dataset.value === akmBranche.value;
+    t.classList.toggle('is-active', on);
+    t.setAttribute('aria-pressed', String(on));
+  });
+}
 
 /* nur Ziffern, mit Tausenderpunkten; der Cursor bleibt hinter derselben Ziffer.
    Liefert die Zahl (0 bei leerem Feld) */
@@ -244,4 +264,5 @@ akmMore.addEventListener('click', () => {
 });
 
 document.getElementById('akm-stand').textContent = AKM_TARIF.stand;
+akmMarkiere();
 akmZeigeBranche();

@@ -184,7 +184,7 @@ const cbMarkiere = (wrap, aktiv) => wrap.querySelectorAll('button').forEach(b =>
 
 /* 1 Branche */
 CB_BRANCHEN.forEach(b => {
-  const el = cbButton('cb-tile', `${icon(b.icon)}<span>${b.label}</span>`, () => cbWaehleBranche(b));
+  const el = cbButton('tile', `${icon(b.icon)}<span class="tile__text"><span class="tile__label">${b.label}</span></span>`, () => cbWaehleBranche(b));
   el.dataset.value = b.value;
   el.setAttribute('aria-pressed', 'false');
   cbBranchenEl.appendChild(el);

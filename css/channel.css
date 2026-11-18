@@ -55,33 +55,6 @@
 .cb-sub { margin-top: 26px; }
 .cb-sub > .cb-label { margin-bottom: 10px; }
 
-/* ---- 1 Branche: große Kacheln ---- */
-.cb-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.cb-tile {
-  height: 116px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 18px 20px;
-  border-radius: var(--radius-lg);
-  background: var(--mittelblau);
-  font-size: var(--fs-card-title);
-  color: var(--text-80);
-  text-align: left;
-  transition: background var(--transition), color var(--transition);
-}
-
-.cb-tile .icon { width: 22px; height: 22px; stroke-width: 1.6; color: var(--text-55); transition: color var(--transition); }
-.cb-tile:hover { background: var(--card-bg); color: var(--text-100); }
-.cb-tile.is-active { background: var(--nav-active); color: var(--text-inverse); }
-.cb-tile.is-active .icon { color: var(--text-inverse); }
-
 /* ---- Chips (Teilbereich, Fläche, Charakter) ---- */
 .cb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -305,11 +278,8 @@
   .cb-sheet { position: static; }
 }
 
-/* Handy: Kacheln untereinander als Zeilen, Level-Raster mit schmalerer Label-Spalte */
+/* Handy: Level-Raster mit schmalerer Label-Spalte (Kacheln: base.css) */
 @media (max-width: 600px) {
-  .cb-tiles { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .cb-tile { height: 56px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; padding: 0 18px; font-size: var(--fs-base); }
-  .cb-tile .icon { width: 19px; height: 19px; }
   .cb-sheet { padding: 22px 18px 20px; }
   .cb-levels { --label: 76px; }
   .cb-levels > span:not(.cb-levels__hl) { padding-left: 4px; padding-right: 4px; }

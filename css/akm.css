@@ -12,7 +12,7 @@
 
 .akm-view {
   width: 100%;
-  max-width: 600px;
+  max-width: 640px;   /* wie der Channel Builder */
   align-self: flex-start;
   display: flex;
   flex-direction: column;

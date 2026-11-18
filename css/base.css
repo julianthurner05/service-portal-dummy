@@ -440,6 +440,69 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px var(--white-14); }
 .range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 6px var(--white-14); }
 
+/* ---- Kacheln: große Auswahl mit Icon (Branche im AKM-Rechner und
+        im Channel Builder) ---- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* fünf Kacheln: oben drei, unten zwei breitere */
+.tiles--5 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tiles--5 > :nth-child(-n+3) { grid-column: span 2; }
+.tiles--5 > :nth-child(n+4) { grid-column: span 3; }
+
+.tile {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--mittelblau);
+  color: var(--text-80);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+
+.tile .icon { width: 22px; height: 22px; stroke-width: 1.6; color: var(--text-55); transition: color var(--transition); }
+.tile__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tile__label { font-size: var(--fs-card-title); letter-spacing: var(--ls-card-title); }
+
+.tile__sub {
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.4;
+  color: var(--text-40);
+  transition: color var(--transition);
+}
+
+.tile:hover { background: var(--card-bg); color: var(--text-100); }
+.tile.is-active { background: var(--nav-active); color: var(--text-inverse); }
+.tile.is-active .icon { color: var(--text-inverse); }
+.tile.is-active .tile__sub { color: var(--ink-50); }
+
+/* Handy: Kacheln untereinander als Zeilen, Icon links */
+@media (max-width: 600px) {
+  .tiles,
+  .tiles--5 { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .tiles--5 > :nth-child(n) { grid-column: auto; }
+
+  .tile {
+    min-height: 56px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 18px;
+  }
+
+  .tile .icon { width: 19px; height: 19px; }
+  .tile__label { font-size: var(--fs-base); }
+}
+
 /* ---- Kebab + Kontextmenü ---- */
 .kebab {
   display: flex;
