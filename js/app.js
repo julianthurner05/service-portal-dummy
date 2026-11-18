@@ -259,8 +259,20 @@ function createPlayer({ playBtn, slider, timeEl = null, duration = 9, resetOnSto
 
 /* ---- View-Routing ----
    SpotTool (Spots erstellen) und Calendar (Spots einplanen) – die
-   Creation History rechts gehört nur zum SpotTool */
+   Creation History rechts gehört nur zum SpotTool. Die aktuelle Unterseite
+   steht im Hash (#akm …), so bleibt man beim Neuladen, wo man war */
+const VIEWS = ['home', 'spot-creation', 'calendar', 'akm', 'channel', 'account'];
+
+function viewFromUrl() {
+  const view = location.hash.slice(1);
+  return VIEWS.includes(view) ? view : 'home';
+}
+
 function showView(view) {
+  /* ohne neuen Verlaufseintrag; Home ohne Hash */
+  const hash = view === 'home' ? '' : `#${view}`;
+  if (location.hash !== hash) history.replaceState(null, '', `${location.pathname}${location.search}${hash}`);
+
   navItems.forEach(n => n.classList.toggle('is-active', n.dataset.view === view));
 
   const isCreation = view === 'spot-creation';
@@ -285,6 +297,9 @@ function showView(view) {
 navItems.forEach(item => {
   item.addEventListener('click', () => showView(item.dataset.view));
 });
+
+/* Hash von Hand geändert (Adresszeile, Link) */
+window.addEventListener('hashchange', () => showView(viewFromUrl()));
 
 /* ---- Mobile-Drawer ---- */
 const sidebarEl       = document.getElementById('sidebar');

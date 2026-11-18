@@ -12,15 +12,17 @@ const loginPassword = document.getElementById('login-password');
 const loginSubmit   = document.getElementById('login-submit');
 
 function showLogin() {
+  showView('home');   /* nach dem Log-out startet man wieder auf Home */
   loginPassword.value = '';
   loginEl.classList.remove('is-hidden');
   closeAllMenus();
   setTimeout(() => loginPassword.focus(), 400);
 }
 
+/* weiter zur gemerkten Unterseite (Hash), sonst Home */
 function hideLogin() {
   loginEl.classList.add('is-hidden');
-  showView('home');
+  showView(viewFromUrl());
 }
 
 /* Dummy: weiterklicken reicht, leere Felder werden nur sanft angemahnt */
