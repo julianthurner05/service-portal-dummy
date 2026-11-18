@@ -1,0 +1,148 @@
+/* ================================================================
+   AKM-ERSPARNISRECHNER – Music Service
+   ================================================================ */
+
+/* längster Menüpunkt: bleibt einzeilig, in der schmalen Sidebar (216px)
+   eine Spur kleiner */
+.nav-item[data-view="akm"] span { white-space: nowrap; }
+
+@media (max-width: 1520px) and (min-width: 1241px) {
+  .nav-item[data-view="akm"] span { font-size: 14px; letter-spacing: 0; }
+}
+.akm-view {
+  width: 100%;
+  max-width: 640px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  animation: view-in var(--dur-fast) var(--ease);
+}
+
+.akm-title {
+  margin: 8px 0 30px;
+  font-size: 28px;
+  letter-spacing: var(--ls-heading);
+  font-weight: 400;
+}
+
+.akm-card {
+  padding: var(--pad-panel);
+  border: var(--hairline);
+  border-radius: var(--radius-lg);
+}
+
+.akm-field + .akm-field { margin-top: 22px; }
+
+.akm-field__label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  color: var(--text-40);
+}
+
+.akm-field__hint {
+  margin-top: 9px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.5;
+  color: var(--text-40);
+}
+
+/* Eingabefeld wie der Dropdown-Toggle */
+.akm-input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--mittelblau);
+  border-radius: var(--radius-md);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition);
+}
+
+.akm-input:hover,
+.akm-input:focus { background: var(--card-bg); }
+
+/* ---- Ergebnis ---- */
+.akm-result {
+  margin: 28px calc(-1 * var(--pad-panel)) 0;
+  padding: 24px var(--pad-panel) 0;
+  border-top: var(--hairline);
+}
+
+.akm-result__value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--fs-base);
+  color: var(--text-55);
+}
+
+.akm-result__amount {
+  font-size: 40px;
+  line-height: 1.15;
+  color: var(--text-100);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--transition);
+}
+
+.akm-result.is-empty .akm-result__amount { color: var(--text-25); }
+
+.akm-note {
+  margin-top: 18px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.55;
+  color: var(--text-40);
+}
+
+/* Annahmen: aufklappbar unter dem Ergebnis */
+.akm-more {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  color: var(--text-55);
+  transition: color var(--transition);
+}
+
+.akm-more:hover { color: var(--text-100); }
+.akm-more .icon { width: 13px; height: 13px; transition: transform var(--dur-fast) var(--ease); }
+.akm-more[aria-expanded="true"] .icon { transform: rotate(180deg); }
+
+.akm-list {
+  list-style: none;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.akm-list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.55;
+  color: var(--text-40);
+}
+
+.akm-list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.68em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-25);
+}
+
+@media (max-width: 980px) {
+  .akm-title { font-size: 24px; margin-bottom: 24px; }
+  .akm-result__amount { font-size: 34px; }
+}

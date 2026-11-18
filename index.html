@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/calendar.css">
   <link rel="stylesheet" href="css/account.css">
   <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/akm.css">
   <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
@@ -48,6 +49,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
     <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/></symbol>
+    <symbol id="i-calculator" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
     <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
     <!-- Player (gefüllt) -->
     <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
@@ -87,6 +89,13 @@
         <svg class="icon"><use href="#i-calendar"/></svg>
         <span>Calendar</span>
         <span class="nav-item__dot" title="Unsaved changes"></span>
+      </button>
+
+      <p class="sidebar__section-label">Music Service</p>
+
+      <button class="nav-item" data-view="akm">
+        <svg class="icon"><use href="#i-calculator"/></svg>
+        <span>AKM-Ersparnisrechner</span>
       </button>
     </nav>
 
@@ -272,6 +281,51 @@ Lebe Smart!</textarea>
           <p class="cal-tray__empty" id="cal-tray-empty" hidden></p>
           <div class="cal-tray__settings" id="cal-tray-settings" hidden></div>
         </aside>
+      </div>
+    </section>
+
+    <!-- AKM-Ersparnisrechner: Schritt 1, AKM-Kosten pro Jahr (Texte deutsch,
+         die Hinweise beim Ergebnis sind Pflichttexte und bleiben wörtlich) -->
+    <section class="akm-view" data-screen="akm" lang="de" hidden>
+      <h1 class="akm-title">AKM-Ersparnisrechner</h1>
+
+      <div class="akm-card">
+        <div class="akm-field">
+          <p class="akm-field__label">Branche</p>
+          <div class="dropdown" id="akm-branche"></div>
+        </div>
+
+        <div class="akm-field">
+          <label class="akm-field__label" for="akm-input" id="akm-input-label"></label>
+          <input class="akm-input" id="akm-input" type="text" inputmode="numeric" autocomplete="off">
+          <p class="akm-field__hint" id="akm-hint" hidden></p>
+        </div>
+
+        <div class="akm-result is-empty" id="akm-result">
+          <p class="akm-field__label">AKM-Kosten</p>
+          <p class="akm-result__value" aria-live="polite">
+            <span>ca.</span>
+            <span class="akm-result__amount" id="akm-amount">– €</span>
+            <span>pro Jahr</span>
+          </p>
+          <p class="akm-note">Richtwert auf Basis des Gesamtvertrags AKM/VVAT, Stand <span id="akm-stand"></span>, netto pro Jahr. Die tatsächliche Einstufung legt die AKM fest.</p>
+
+          <button class="akm-more" id="akm-more" type="button" aria-expanded="false" aria-controls="akm-annahmen">
+            <span>Annahmen</span>
+            <svg class="icon"><use href="#i-chevron-down"/></svg>
+          </button>
+          <div class="collapse" id="akm-annahmen">
+            <div class="collapse__inner">
+              <ul class="akm-list">
+                <li>WKO-Mitglied, es gilt also der Gesamtvertrag AKM/VVAT.</li>
+                <li>Jährliche Vorauszahlung. Der Rabatt von 20&nbsp;% wirkt nur im Handel.</li>
+                <li>Musik von Tonträger oder Streaming, also 23&nbsp;% LSG-Zuschlag. Kopierentgelte werden nie eingerechnet.</li>
+                <li>5&nbsp;% VVAT-Beitrag.</li>
+                <li>Gastronomie: Tarifgruppe B, 6 Öffnungstage pro Woche, Belegung 2 Gäste pro Platz und Tag. Das ist ein angenommener Durchschnittsbetrieb, das Ergebnis also ein Durchschnittswert.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -621,6 +675,7 @@ Lebe Smart!</textarea>
   <script src="js/calendar.js"></script>
   <script src="js/account.js"></script>
   <script src="js/home.js"></script>
+  <script src="js/akm.js"></script>
   <script src="js/login.js"></script>
 </body>
 </html>
