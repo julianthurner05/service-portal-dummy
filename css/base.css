@@ -420,7 +420,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   margin-top: -7px;
   border: none;
   border-radius: 50%;
-  background: var(--nav-active);
+  background: var(--text-100);
   transition: box-shadow var(--transition);
 }
 
@@ -429,14 +429,11 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   height: 16px;
   border: none;
   border-radius: 50%;
-  background: var(--nav-active);
+  background: var(--text-100);
   transition: box-shadow var(--transition);
 }
 
-.range:hover::-webkit-slider-thumb,
-.range:active::-webkit-slider-thumb { box-shadow: 0 0 0 6px var(--white-10); }
-.range:hover::-moz-range-thumb,
-.range:active::-moz-range-thumb { box-shadow: 0 0 0 6px var(--white-10); }
+/* Ring nur bei Tastatur-Fokus, nicht beim Hovern */
 .range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px var(--white-14); }
 .range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 6px var(--white-14); }
 
