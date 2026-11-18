@@ -407,8 +407,7 @@ Lebe Smart!</textarea>
                     <label class="cb-label" for="cb-energie">Energie</label>
                     <span class="cb-level" id="cb-energie-level"></span>
                   </div>
-                  <div class="cb-slider__track cb-slider__track--steps">
-                    <span class="cb-tick cb-tick--low"></span><span class="cb-tick cb-tick--mid"></span><span class="cb-tick cb-tick--high"></span>
+                  <div class="cb-slider__track" id="cb-energie-track">
                     <input class="range" id="cb-energie" type="range" min="0" max="100" step="any" value="50">
                   </div>
                   <div class="cb-poles"><span>ruhig</span><span>belebt</span></div>
@@ -419,7 +418,7 @@ Lebe Smart!</textarea>
                   <div class="cb-slider__track">
                     <input class="range" id="cb-stimmung" type="range" min="0" max="100" step="1" value="50">
                   </div>
-                  <div class="cb-poles"><span>dezent und warm</span><span>hell und strahlend</span></div>
+                  <div class="cb-poles"><span data-tag="warm">dezent und warm</span><span>hell und strahlend</span></div>
                 </div>
 
                 <div class="cb-slider">
@@ -427,21 +426,48 @@ Lebe Smart!</textarea>
                   <div class="cb-slider__track">
                     <input class="range" id="cb-modern" type="range" min="0" max="100" step="1" value="50">
                   </div>
-                  <div class="cb-poles"><span>zeitlos und klassisch</span><span>jung und aktuell</span></div>
+                  <div class="cb-poles"><span data-tag="vintage">zeitlos und klassisch</span><span data-tag="futuristic">jung und aktuell</span></div>
                 </div>
 
+                <!-- Charakter als Spektren; warm, vintage und futuristic kommen
+                     aus Stimmung und Modernität (kein eigener Regler) -->
                 <div class="cb-sub">
-                  <div class="cb-slider__head">
-                    <p class="cb-label">Charakter</p>
-                    <span class="cb-count" id="cb-charakter-count"></span>
-                  </div>
-                  <div class="cb-chips" id="cb-charakter"></div>
+                  <p class="cb-label">Charakter</p>
+                  <div class="cb-spektren" id="cb-charakter"></div>
                 </div>
               </section>
 
               <section class="cb-step">
                 <h2 class="cb-step__title"><span class="cb-step__num">4</span>Genres</h2>
                 <div class="cb-genres" id="cb-genres"></div>
+              </section>
+
+              <!-- Ergebnis, provisorisch: der fertige Channel mit Dummy-Tracks -->
+              <section class="cb-step">
+                <h2 class="cb-step__title"><span class="cb-step__num">5</span>Channel</h2>
+                <div class="cb-channel">
+                  <div class="cb-channel__head">
+                    <div class="cb-channel__cover" id="cb-cover"><svg class="icon"><use href="#i-wave"/></svg></div>
+                    <div class="cb-channel__info">
+                      <p class="cb-channel__name" id="cb-channel-name"></p>
+                      <p class="cb-channel__meta" id="cb-channel-meta"></p>
+                      <div class="cb-channel__player">
+                        <button class="play-btn" id="cb-play" type="button" aria-label="Play"><svg class="icon icon--filled"><use href="#i-play"/></svg></button>
+                        <div class="slider" id="cb-slider"><div class="slider__track"></div><div class="slider__progress"></div><div class="slider__thumb"></div></div>
+                        <span class="cb-channel__time" id="cb-time"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cb-channel__facts">
+                    <div><p class="cb-label">Genres</p><div class="cb-tags" id="cb-channel-genres"></div></div>
+                    <div><p class="cb-label">Charakter</p><div class="cb-tags" id="cb-channel-moods"></div></div>
+                    <div><p class="cb-label">Energie</p><p class="cb-channel__fact" id="cb-channel-energie"></p></div>
+                    <div><p class="cb-label">BPM</p><p class="cb-channel__fact" id="cb-channel-bpm"></p></div>
+                  </div>
+
+                  <ol class="cb-tracks" id="cb-tracks"></ol>
+                </div>
               </section>
 
             </div>
@@ -451,7 +477,7 @@ Lebe Smart!</textarea>
         <!-- Steckbrief vorerst ausgeblendet – „hidden“ entfernen, dann steht er
              wieder rechts neben den Schritten -->
         <aside class="cb-sheet" hidden>
-          <h2 class="cb-step__title"><span class="cb-step__num">5</span>Steckbrief</h2>
+          <h2 class="cb-step__title"><span class="cb-step__num">6</span>Steckbrief</h2>
           <p class="cb-sheet__name" id="cb-name">–</p>
           <p class="cb-sheet__where" id="cb-where"></p>
 

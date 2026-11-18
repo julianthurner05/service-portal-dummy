@@ -1,6 +1,6 @@
 /* ================================================================
    CHANNEL BUILDER – Branche, Teilbereich, Klangraum und Genres
-   ergeben live den Channel-Steckbrief
+   ergeben live einen Channel (und den Steckbrief, vorerst ausgeblendet)
    ================================================================ */
 
 /* ---- Modell: erste Setzungen aus dem Prototyp, alles noch zu kuratieren.
@@ -26,11 +26,11 @@ const CB_BRANCHEN = [
     ] },
   { value: 'hotel', label: 'Hotellerie', icon: 'bed',
     teile: [
-      { value: 'lobby',      label: 'Lobby / Empfang' },
+      { value: 'lobby',       label: 'Lobby / Empfang' },
       { value: 'fruehstueck', label: 'Frühstücksbereich' },
-      { value: 'hotelbar',   label: 'Hotelbar' },
-      { value: 'restaurant', label: 'Hotelrestaurant' },
-      { value: 'spa',        label: 'Spa & Wellness', bpm: 'wellness' },
+      { value: 'hotelbar',    label: 'Hotelbar' },
+      { value: 'restaurant',  label: 'Hotelrestaurant' },
+      { value: 'spa',         label: 'Spa & Wellness', bpm: 'wellness' },
     ] },
 ];
 
@@ -42,12 +42,23 @@ const CB_BPM = {
   wellness: [[60, 80], [75, 95], [90, 110]],
 };
 
-/* Default-Ranges je Energylevel */
+/* Default-Ranges der drei Energylevels aus dem Konzept */
 const CB_LEVELS = [
-  { label: 'Low',  farbe: 'var(--level-low)',  dance: [0.3, 0.5], valence: [0.3, 0.6] },
-  { label: 'Mid',  farbe: 'var(--level-mid)',  dance: [0.5, 0.7], valence: [0.5, 0.75] },
-  { label: 'High', farbe: 'var(--level-high)', dance: [0.7, 0.9], valence: [0.65, 0.9] },
+  { dance: [0.3, 0.5], valence: [0.3, 0.6] },    // Low
+  { dance: [0.5, 0.7], valence: [0.5, 0.75] },   // Mid
+  { dance: [0.7, 0.9], valence: [0.65, 0.9] },   // High
 ];
+
+/* Energie in fünf Stufen: Low, Mid und High wie im Konzept, die beiden
+   Zwischenstufen liegen mit allen Werten genau dazwischen */
+const CB_STUFEN = [
+  { label: 'Low',      farbe: 'var(--level-low)' },
+  { label: 'Low–Mid',  farbe: 'color-mix(in srgb, var(--level-low), var(--level-mid))' },
+  { label: 'Mid',      farbe: 'var(--level-mid)' },
+  { label: 'Mid–High', farbe: 'color-mix(in srgb, var(--level-mid), var(--level-high))' },
+  { label: 'High',     farbe: 'var(--level-high)' },
+];
+const CB_STUFE_ABSTAND = 100 / (CB_STUFEN.length - 1);   // Rastpunkte 0, 25, 50, 75, 100
 
 /* Mood-Raster: Zeile = Level (Danceability niedrig / mittel / hoch),
    Spalte = Valence niedrig / mittel / hoch */
@@ -62,8 +73,17 @@ const CB_SPALTEN = ['links', 'mitte', 'rechts'];
    Raster-Spalte (das Briefing nennt keine Formel – Annahme) */
 const CB_STIMMUNG = { verschiebung: 0.1, valenceMin: 0.3, valenceMax: 0.9 };
 
-const CB_CHARAKTER = ['warm', 'organic', 'polished', 'raw', 'vintage', 'futuristic', 'urban', 'natural', 'elegant', 'playful'];
-const CB_CHARAKTER_MAX = 3;
+/* Charakter als Spektren (links ↔ rechts). vintage / futuristic und warm
+   haben keinen eigenen Regler, sie kommen aus Modernität und Stimmung.
+   „synthetic“ ist als Gegenpol zu „organic“ ergänzt (Annahme) */
+const CB_SPEKTREN = [
+  ['organic', 'synthetic'],
+  ['raw', 'polished'],
+  ['natural', 'urban'],
+  ['playful', 'elegant'],
+];
+const CB_CHARAKTER_SCHWELLE = 0.3;   // ab 30 % Ausschlag zur Seite zählt ein Pol
+const CB_CHARAKTER_MAX = 3;          // die stärksten drei werden Charakter-Moods
 
 /* Genres: Position auf der Modernitätsachse (0 klassisch bis 1 jung) und
    Freigabe je Branche */
@@ -87,18 +107,25 @@ const CB_GENRES = [
   { name: 'Reggaeton',                  pos: 0.95, in: ['retail'] },
 ];
 
-/* sichtbar bis 0,22 Abstand zum Reglerwert, blass bis 0,38, darüber aus */
-const CB_FENSTER = { sichtbar: 0.22, blass: 0.38 };
+/* sichtbar bis 0,22 Abstand zum Reglerwert – daraus wird der Mix gebildet */
+const CB_FENSTER = 0.22;
 
 /* Genre-Mix aus den nächstgelegenen sichtbaren Genres; die Gewichte für
    weniger als drei sichtbare Genres sind eine Annahme */
 const CB_MIX = { 3: [40, 30, 30], 2: [60, 40], 1: [100] };
 
+/* Ergebnis-Channel, PROVISORISCH: Dummy-Tracks aus Genre-Mix und BPM-Korridor */
+const CB_TRACKS = 10;
+const CB_TITEL = [
+  ['Velvet', 'Golden', 'Slow', 'Silver', 'Late', 'Soft', 'Bright', 'Paper', 'Coastal', 'Midnight', 'Morning', 'Copper'],
+  ['Hours', 'Avenue', 'Light', 'Motion', 'Garden', 'Window', 'Tide', 'Echoes', 'Summer', 'Lines', 'Bloom', 'Drive'],
+];
+
 /* ---- Zustand ---- */
 const cb = {
   branche: null, teil: null, flaeche: null,
   energie: 50, stimmung: 50, modern: 50,
-  charakter: [],              // in Wahlreihenfolge – der erste gibt dem Channel den Namen
+  spektren: CB_SPEKTREN.map(() => 50),   // 50 = neutral
 };
 
 /* ---- Helfer ---- */
@@ -107,8 +134,32 @@ const cbKomma = v => v.toFixed(2).replace('.', ',');
 const cbVonBis = ([a, b]) => `${cbKomma(a)}–${cbKomma(b)}`;
 const cbGross = s => s.charAt(0).toUpperCase() + s.slice(1);
 
+/* stabiler Hash (FNV-1a mit Durchmischung) – gleiche Eingabe, gleicher Dummy-Track */
+function cbHash(s) {
+  let h = 2166136261;
+  for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  h ^= h >>> 15; h = Math.imul(h, 2246822507);
+  h ^= h >>> 13; h = Math.imul(h, 3266489909);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 /* ---- Ableitungen ---- */
-const cbLevel = () => Math.round(cb.energie / 50);   // 0 Low, 1 Mid, 2 High
+const cbStufe = () => Math.round(cb.energie / CB_STUFE_ABSTAND);   // 0 … 4
+
+/* Lage einer Stufe zwischen den drei Grundlevels: 0, 0,5, 1, 1,5, 2 */
+const cbLage = i => i * (CB_LEVELS.length - 1) / (CB_STUFEN.length - 1);
+
+/* Range einer Stufe aus den drei Grundlevels, Zwischenstufen gemittelt */
+function cbZwischen(ranges, i) {
+  const p = cbLage(i), lo = Math.floor(p), hi = Math.ceil(p), k = p - lo;
+  return ranges[lo].map((v, j) => v + (ranges[hi][j] - v) * k);
+}
+
+/* Raster-Zeilen einer Stufe: eine, bei Zwischenstufen die beiden Nachbarn */
+function cbZeilen(i) {
+  const p = cbLage(i);
+  return Math.floor(p) === Math.ceil(p) ? [p] : [Math.floor(p), Math.ceil(p)];
+}
 
 /* Stimmung 0 … 100 → Spalte links / mitte / rechts, dazwischen „mitte bis rechts“ */
 function cbSpalten() {
@@ -118,54 +169,93 @@ function cbSpalten() {
   return [lo, lo + 1];
 }
 
-/* zwei Affekt-Moods: aus einer Zelle die ersten beiden, über zwei Spalten je der erste */
-function cbMoods(level) {
-  const sp = cbSpalten();
-  return sp.length === 1 ? CB_RASTER[level][sp[0]].slice(0, 2) : sp.map(s => CB_RASTER[level][s][0]);
+/* zwei Affekt-Moods: aus einer Zelle die ersten beiden, über zwei Zellen je
+   der erste, über vier Zellen die Diagonale */
+function cbMoods(i) {
+  const zeilen = cbZeilen(i), spalten = cbSpalten();
+  if (zeilen.length === 1 && spalten.length === 1) return CB_RASTER[zeilen[0]][spalten[0]].slice(0, 2);
+  if (zeilen.length === 1) return spalten.map(s => CB_RASTER[zeilen[0]][s][0]);
+  if (spalten.length === 1) return zeilen.map(z => CB_RASTER[z][spalten[0]][0]);
+  return zeilen.map((z, k) => CB_RASTER[z][spalten[k]][0]);
 }
 
-function cbValence(level) {
+const cbDance = i => cbZwischen(CB_LEVELS.map(l => l.dance), i);
+
+function cbValence(i) {
   const shift = (cb.stimmung / 50 - 1) * CB_STIMMUNG.verschiebung;
-  return CB_LEVELS[level].valence.map(v => cbClamp(v + shift, CB_STIMMUNG.valenceMin, CB_STIMMUNG.valenceMax));
+  return cbZwischen(CB_LEVELS.map(l => l.valence), i)
+    .map(v => cbClamp(v + shift, CB_STIMMUNG.valenceMin, CB_STIMMUNG.valenceMax));
 }
 
-const cbBpm = level => CB_BPM[cb.teil?.bpm || 'standard'][level];
+const cbBpm = i => cbZwischen(CB_BPM[cb.teil?.bpm || 'standard'], i).map(Math.round);
 
-/* Freigabe durch die Branche, Sichtbarkeit durch die Modernität */
-function cbGenreStatus() {
+/* Charakter-Moods: die stärksten Ausschläge aus den Spektren, dazu warm
+   (Stimmung links) und vintage / futuristic (Modernität) */
+function cbCharakter() {
+  const kandidaten = [];
+  const pol = (wert, links, rechts) => {
+    const a = (wert - 50) / 50;
+    if (links && a < 0) kandidaten.push({ tag: links, staerke: -a });
+    if (rechts && a > 0) kandidaten.push({ tag: rechts, staerke: a });
+  };
+  cb.spektren.forEach((w, i) => pol(w, ...CB_SPEKTREN[i]));
+  pol(cb.stimmung, 'warm', null);
+  pol(cb.modern, 'vintage', 'futuristic');
+  return kandidaten
+    .filter(k => k.staerke >= CB_CHARAKTER_SCHWELLE - 1e-9)
+    .sort((a, b) => b.staerke - a.staerke)
+    .slice(0, CB_CHARAKTER_MAX)
+    .map(k => k.tag);
+}
+
+/* Genre-Mix: Freigabe durch die Branche, die drei nächsten im Fenster der Modernität */
+function cbMix() {
   if (!cb.branche) return [];
   const m = cb.modern / 100;
-  return CB_GENRES.filter(g => g.in.includes(cb.branche.value)).map(g => {
-    const d = Math.abs(g.pos - m) - 1e-9;   // 0,64 − 0,42 zählt als genau 0,22
-    return { g, d, status: d <= CB_FENSTER.sichtbar ? 'on' : d <= CB_FENSTER.blass ? 'faint' : 'off' };
+  const nah = CB_GENRES
+    .filter(g => g.in.includes(cb.branche.value))
+    .map(g => ({ name: g.name, d: Math.abs(g.pos - m) - 1e-9 }))   // 0,64 − 0,42 zählt als genau 0,22
+    .filter(g => g.d <= CB_FENSTER)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 3);
+  const gewichte = CB_MIX[nah.length] || [];
+  return nah.map((g, i) => ({ name: g.name, anteil: gewichte[i] }));
+}
+
+/* Dummy-Tracks: Genres nach Gewicht verzahnt, BPM im Korridor der Stufe */
+function cbTracks(mix, bpm) {
+  const anzahl = mix.map(m => Math.round(m.anteil / 100 * CB_TRACKS));
+  const folge = [];
+  for (let runde = 0; folge.length < CB_TRACKS && mix.length; runde++) {
+    mix.forEach((m, i) => { if (runde < anzahl[i] && folge.length < CB_TRACKS) folge.push(m.name); });
+    if (runde > CB_TRACKS) break;
+  }
+  return folge.map((genre, i) => {
+    const h = cbHash(`${genre}${i}`);
+    return {
+      titel: `${CB_TITEL[0][h % CB_TITEL[0].length]} ${CB_TITEL[1][(h >>> 4) % CB_TITEL[1].length]}`,
+      genre,
+      bpm: bpm[0] + (h >>> 8) % (bpm[1] - bpm[0] + 1),
+      dauer: 170 + (h >>> 12) % 80,   // 2:50 bis 4:09
+    };
   });
 }
 
-function cbMix(status) {
-  const nah = status.filter(s => s.status === 'on').sort((a, b) => a.d - b.d).slice(0, 3);
-  const gewichte = CB_MIX[nah.length] || [];
-  return nah.map((s, i) => ({ name: s.g.name, anteil: gewichte[i] }));
-}
-
 /* ---- Ansicht ---- */
-const cbBranchenEl   = document.getElementById('cb-branchen');
-const cbMore         = document.getElementById('cb-more');
-const cbTeileEl      = document.getElementById('cb-teilbereiche');
-const cbFlaecheWrap  = document.getElementById('cb-flaeche');
-const cbFlaechenEl   = document.getElementById('cb-flaechen');
-const cbEnergie      = document.getElementById('cb-energie');
-const cbEnergieLevel = document.getElementById('cb-energie-level');
-const cbStimmung     = document.getElementById('cb-stimmung');
-const cbModern       = document.getElementById('cb-modern');
-const cbCharakterEl  = document.getElementById('cb-charakter');
-const cbCount        = document.getElementById('cb-charakter-count');
-const cbGenresEl     = document.getElementById('cb-genres');
-const cbName         = document.getElementById('cb-name');
-const cbWhere        = document.getElementById('cb-where');
-const cbMixEl        = document.getElementById('cb-mix');
-const cbMoodsEl      = document.getElementById('cb-moods');
-const cbSpalteEl     = document.getElementById('cb-spalte');
-const cbLevelsEl     = document.getElementById('cb-levels');
+const $cb = id => document.getElementById(id);
+const cbBranchenEl   = $cb('cb-branchen');
+const cbMore         = $cb('cb-more');
+const cbTeileEl      = $cb('cb-teilbereiche');
+const cbFlaecheWrap  = $cb('cb-flaeche');
+const cbFlaechenEl   = $cb('cb-flaechen');
+const cbEnergie      = $cb('cb-energie');
+const cbEnergieTrack = $cb('cb-energie-track');
+const cbEnergieLevel = $cb('cb-energie-level');
+const cbStimmung     = $cb('cb-stimmung');
+const cbModern       = $cb('cb-modern');
+const cbCharakterEl  = $cb('cb-charakter');
+const cbGenresEl     = $cb('cb-genres');
+const cbView         = document.querySelector('.cb-view');
 
 function cbButton(cls, html, onClick) {
   const el = document.createElement('button');
@@ -222,13 +312,15 @@ function cbWaehleBranche(b) {
     cbFlaechenEl.appendChild(el);
   });
 
-  /* 4 Genres: alle Freigaben der Branche, die Modernität blendet sie ein und aus */
+  /* 4 Genres: alle Freigaben der Branche liegen bereit, sichtbar sind nur
+     die gewählten – so blenden sie beim Wechsel sanft ein und aus */
   cbGenresEl.innerHTML = '';
   CB_GENRES.filter(g => g.in.includes(b.value)).forEach(g => {
     const el = document.createElement('span');
     el.className = 'cb-genre is-off';
     el.dataset.name = g.name;
-    el.textContent = g.name;
+    el.innerHTML = '<span class="cb-genre__name"></span><span class="cb-genre__pct"></span>';
+    el.firstChild.textContent = g.name;
     cbGenresEl.appendChild(el);
   });
 
@@ -236,7 +328,15 @@ function cbWaehleBranche(b) {
   requestAnimationFrame(cbUpdate);   /* ein Frame später, damit die Genres einblenden */
 }
 
-/* 3 Klangraum: Energie rastet beim Loslassen auf Low / Mid / High ein */
+/* 3 Klangraum: Energie rastet beim Loslassen auf eine der fünf Stufen ein */
+CB_STUFEN.forEach((s, i) => {
+  const t = document.createElement('span');
+  t.className = 'cb-tick';
+  t.style.left = `calc(8px + (100% - 16px) * ${i / (CB_STUFEN.length - 1)})`;
+  t.style.background = s.farbe;
+  cbEnergieTrack.insertBefore(t, cbEnergie);
+});
+
 let cbEnergieAnim = null;
 
 function cbFahreEnergie(ziel) {
@@ -257,93 +357,116 @@ cbEnergie.addEventListener('input', () => {
   cb.energie = +cbEnergie.value;
   cbUpdate();
 });
-cbEnergie.addEventListener('change', () => cbFahreEnergie(cbLevel() * 50));
+cbEnergie.addEventListener('change', () => cbFahreEnergie(cbStufe() * CB_STUFE_ABSTAND));
 
 /* Tastatur springt direkt von Stufe zu Stufe */
 cbEnergie.addEventListener('keydown', e => {
-  const schritt = { ArrowLeft: -1, ArrowDown: -1, PageDown: -1, ArrowRight: 1, ArrowUp: 1, PageUp: 1, Home: -2, End: 2 }[e.key];
+  const letzte = CB_STUFEN.length - 1;
+  const schritt = { ArrowLeft: -1, ArrowDown: -1, PageDown: -1, ArrowRight: 1, ArrowUp: 1, PageUp: 1, Home: -letzte, End: letzte }[e.key];
   if (schritt === undefined) return;
   e.preventDefault();
-  cbFahreEnergie(cbClamp(cbLevel() + schritt, 0, 2) * 50);
+  cbFahreEnergie(cbClamp(cbStufe() + schritt, 0, letzte) * CB_STUFE_ABSTAND);
 });
 
 cbStimmung.addEventListener('input', () => { cb.stimmung = +cbStimmung.value; cbUpdate(); });
 cbModern.addEventListener('input', () => { cb.modern = +cbModern.value; cbUpdate(); });
 
-/* Charakter: 2 bis 3 Chips */
-CB_CHARAKTER.forEach(c => {
-  const el = cbButton('cb-chip', c, () => {
-    const i = cb.charakter.indexOf(c);
-    if (i >= 0) cb.charakter.splice(i, 1);
-    else if (cb.charakter.length < CB_CHARAKTER_MAX) cb.charakter.push(c);
-    cbUpdate();
-  });
-  el.dataset.value = c;
-  cbCharakterEl.appendChild(el);
+/* Charakter-Spektren: Pol – Regler mit Mittelpunkt – Pol */
+CB_SPEKTREN.forEach(([links, rechts], i) => {
+  const row = document.createElement('div');
+  row.className = 'cb-spektrum';
+  row.innerHTML = `
+    <span class="cb-spektrum__pol" data-tag="${links}">${links}</span>
+    <span class="cb-slider__track">
+      <span class="cb-tick cb-tick--mitte"></span>
+      <input class="range" type="range" min="0" max="100" step="1" value="50" aria-label="${links} bis ${rechts}">
+    </span>
+    <span class="cb-spektrum__pol cb-spektrum__pol--rechts" data-tag="${rechts}">${rechts}</span>`;
+  row.querySelector('input').addEventListener('input', e => { cb.spektren[i] = +e.target.value; cbUpdate(); });
+  cbCharakterEl.appendChild(row);
 });
 
-/* 5 Steckbrief: Level-Raster einmal aufbauen, danach nur Werte setzen */
-const CB_ZEILEN = [
-  { label: 'Danceability', wert: i => cbVonBis(CB_LEVELS[i].dance) },
+/* 5 Channel: Dummy-Vorhören */
+const cbPlayer = createPlayer({ playBtn: $cb('cb-play'), slider: $cb('cb-slider'), timeEl: $cb('cb-time'), duration: 30 });
+
+/* 6 Steckbrief (ausgeblendet): Level-Zeilen einmal aufbauen, danach nur Werte setzen */
+const CB_WERTE = [
+  { label: 'Danceability', wert: i => cbVonBis(cbDance(i)) },
   { label: 'Valence',      wert: i => cbVonBis(cbValence(i)) },
   { label: 'BPM',          wert: i => cbBpm(i).join('–') },
-  { label: 'Affekt-Moods', wert: i => cbMoods(i).join('<br>') },
 ];
 
-cbLevelsEl.innerHTML = '<span class="cb-levels__hl"></span><span></span>' +
-  CB_LEVELS.map((l, i) =>
-    `<span class="cb-levels__head" data-level="${i}"><span class="cb-dot" style="background:${l.farbe}"></span>${l.label}</span>`).join('') +
-  CB_ZEILEN.map((z, r) =>
-    `<span class="cb-levels__label">${z.label}</span>` +
-    CB_LEVELS.map((_, i) => `<span class="cb-levels__cell" data-level="${i}" data-row="${r}"></span>`).join('')).join('');
+$cb('cb-levels').innerHTML =
+  `<div class="cb-lvl cb-lvl--head"><span></span>${CB_WERTE.map(w => `<span>${w.label}</span>`).join('')}</div>` +
+  CB_STUFEN.map((s, i) => `
+    <div class="cb-lvl" data-level="${i}">
+      <span class="cb-lvl__name"><span class="cb-dot" style="background:${s.farbe}"></span>${s.label}</span>
+      ${CB_WERTE.map((_, k) => `<span data-wert="${k}"></span>`).join('')}
+      <span class="cb-lvl__moods"></span>
+    </div>`).join('');
+
+const cbTag = t => `<span class="cb-tag">${escapeHtml(t)}</span>`;
+const cbLeer = '<span class="cb-empty">–</span>';
+const cbDauer = s => `${Math.floor(s / 60)}:${pad2(s % 60)}`;
 
 function cbUpdate() {
-  const lvl = cbLevel();
-  const status = cbGenreStatus();
-  const mix = cbMix(status);
-  const level = CB_LEVELS[lvl];
+  const stufe = cbStufe();
+  const s = CB_STUFEN[stufe];
+  const mix = cbMix();
+  const charakter = cbCharakter();
+  const bpm = cbBpm(stufe);
 
-  cbEnergieLevel.innerHTML = `<span class="cb-dot" style="background:${level.farbe}"></span>${level.label}`;
-  cbEnergie.setAttribute('aria-valuetext', level.label);
+  cbEnergieLevel.innerHTML = `<span class="cb-dot" style="background:${s.farbe}"></span>${s.label}`;
+  cbEnergie.setAttribute('aria-valuetext', s.label);
 
-  /* Charakter */
-  cbCharakterEl.querySelectorAll('button').forEach(b => {
-    const on = cb.charakter.includes(b.dataset.value);
-    b.classList.toggle('is-active', on);
-    b.setAttribute('aria-pressed', String(on));
-    b.disabled = !on && cb.charakter.length >= CB_CHARAKTER_MAX;
-  });
-  cbCount.textContent = `${cb.charakter.length} / ${CB_CHARAKTER_MAX}`;
+  /* Pole leuchten, wenn sie einen Charakter-Mood liefern */
+  cbView.querySelectorAll('[data-tag]').forEach(p => p.classList.toggle('is-on', charakter.includes(p.dataset.tag)));
 
-  /* Genres */
-  const imMix = mix.map(m => m.name);
+  /* Genres: nur die gewählten */
   cbGenresEl.querySelectorAll('.cb-genre').forEach(el => {
-    const s = status.find(x => x.g.name === el.dataset.name);
-    el.classList.toggle('is-faint', s?.status === 'faint');
-    el.classList.toggle('is-off', !s || s.status === 'off');
-    el.classList.toggle('is-mix', imMix.includes(el.dataset.name));
+    const m = mix.find(x => x.name === el.dataset.name);
+    el.classList.toggle('is-off', !m);
+    if (m) el.lastChild.textContent = `${m.anteil} %`;
   });
 
-  /* Steckbrief */
+  /* Name und Herkunft (für Channel und Steckbrief) */
   const ort = cb.teil?.label || cb.branche?.label;
-  const tag = cb.charakter[0] || cbMoods(lvl)[0];
-  cbName.textContent = ort ? `${ort} · ${cbGross(tag)}` : '–';
-  cbWhere.textContent = [cb.branche?.label, cb.teil?.label, cb.flaeche].filter(Boolean).join(' · ');
-  cbWhere.hidden = !cb.branche;
+  const tag = charakter[0] || cbMoods(stufe)[0];
+  const name = ort ? `${ort} · ${cbGross(tag)}` : '–';
+  const herkunft = [cb.branche?.label, cb.teil?.label, cb.flaeche].filter(Boolean).join(' · ');
+  const genresHtml = mix.length ? mix.map(m => cbTag(`${m.anteil} % ${m.name}`)).join('') : cbLeer;
+  const charakterHtml = charakter.length ? charakter.map(cbTag).join('') : cbLeer;
 
-  cbMixEl.innerHTML = mix.length
+  /* 5 Channel */
+  $cb('cb-channel-name').textContent = name;
+  $cb('cb-channel-meta').textContent = herkunft;
+  $cb('cb-cover').style.setProperty('--cover', s.farbe);
+  $cb('cb-channel-genres').innerHTML = genresHtml;
+  $cb('cb-channel-moods').innerHTML = charakterHtml;
+  $cb('cb-channel-energie').innerHTML = `<span class="cb-dot" style="background:${s.farbe}"></span>${s.label}`;
+  $cb('cb-channel-bpm').textContent = bpm.join('–');
+  $cb('cb-tracks').innerHTML = cbTracks(mix, bpm).map((t, i) => `
+    <li class="cb-track">
+      <span class="cb-track__nr">${pad2(i + 1)}</span>
+      <span class="cb-track__title">${escapeHtml(t.titel)}<span class="cb-track__genre">${escapeHtml(t.genre)}</span></span>
+      <span class="cb-track__bpm">${t.bpm} BPM</span>
+      <span class="cb-track__dauer">${cbDauer(t.dauer)}</span>
+    </li>`).join('');
+
+  /* 6 Steckbrief */
+  $cb('cb-name').textContent = name;
+  $cb('cb-where').textContent = herkunft;
+  $cb('cb-where').hidden = !cb.branche;
+  $cb('cb-mix').innerHTML = mix.length
     ? mix.map(m => `<div class="cb-mix__row"><span class="cb-mix__pct">${m.anteil} %</span><span>${escapeHtml(m.name)}</span></div>`).join('')
-    : '<span class="cb-empty">–</span>';
-  cbMoodsEl.innerHTML = cb.charakter.length
-    ? cb.charakter.map(c => `<span class="cb-tag">${c}</span>`).join('')
-    : '<span class="cb-empty">–</span>';
-  cbSpalteEl.textContent = cbSpalten().map(s => CB_SPALTEN[s]).join(' bis ');
-
-  cbLevelsEl.style.setProperty('--aktiv', lvl);
-  cbLevelsEl.querySelectorAll('[data-level]').forEach(el => {
-    const i = +el.dataset.level;
-    el.classList.toggle('is-active', i === lvl);
-    if (el.dataset.row !== undefined) el.innerHTML = CB_ZEILEN[+el.dataset.row].wert(i);
+    : cbLeer;
+  $cb('cb-moods').innerHTML = charakterHtml;
+  $cb('cb-spalte').textContent = cbSpalten().map(sp => CB_SPALTEN[sp]).join(' bis ');
+  $cb('cb-levels').querySelectorAll('.cb-lvl[data-level]').forEach(row => {
+    const i = +row.dataset.level;
+    row.classList.toggle('is-active', i === stufe);
+    row.querySelectorAll('[data-wert]').forEach(c => { c.textContent = CB_WERTE[+c.dataset.wert].wert(i); });
+    row.querySelector('.cb-lvl__moods').textContent = cbMoods(i).join(', ');
   });
 }
 
