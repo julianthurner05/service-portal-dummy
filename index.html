@@ -50,6 +50,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
     <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
     <symbol id="i-calculator" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
     <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
@@ -312,11 +313,22 @@ Lebe Smart!</textarea>
                (auch über das Regler-Ende hinaus) -->
           <div class="akm-field">
             <div class="akm-field__head">
-              <label class="akm-field__label" for="akm-input" id="akm-input-label"></label>
+              <span class="akm-field__title">
+                <label class="akm-field__label" for="akm-input" id="akm-input-label"></label>
+                <!-- Hinweis der Branche: erscheint beim Hovern -->
+                <button class="akm-info" id="akm-info" type="button" data-tip-wide hidden><svg class="icon"><use href="#i-info"/></svg></button>
+              </span>
               <input class="akm-input" id="akm-input" type="text" inputmode="numeric" autocomplete="off">
             </div>
             <input class="range" id="akm-regler" type="range" min="0" max="1000" step="1" aria-labelledby="akm-input-label">
-            <p class="akm-field__hint" id="akm-hint" hidden></p>
+          </div>
+
+          <!-- für Schritt 2 (bisher gegen sounddna) -->
+          <div class="akm-field">
+            <div class="akm-field__head">
+              <label class="akm-field__label" for="akm-dienst">Bisheriger Musikdienst in € pro Monat</label>
+              <input class="akm-input" id="akm-dienst" type="text" inputmode="numeric" autocomplete="off" placeholder="0">
+            </div>
           </div>
         </div>
 
@@ -341,24 +353,17 @@ Lebe Smart!</textarea>
           </div>
 
           <!-- Betrag unten im Feld, „pro Jahr“ daneben -->
-          <p class="akm-result__value akm-result__value--inline" aria-live="polite">
+          <p class="akm-result__value" aria-live="polite">
             <span class="akm-result__amount" id="akm-amount">– €</span>
             <span>pro Jahr</span>
           </p>
         </div>
       </div>
 
-      <!-- Schritt 2, von links nach rechts: Musikdienst → bisher → mit sounddna
-           → Ersparnis. Unser Preis ist noch provisorisch (SDNA_PREIS in js/akm.js) -->
+      <!-- Schritt 2, von links nach rechts: bisher → mit sounddna → Ersparnis.
+           Unser Preis ist noch provisorisch (SDNA_PREIS in js/akm.js) -->
       <div class="akm-compare is-empty" id="akm-compare">
         <div class="akm-compare__row">
-          <div class="akm-compare__cell akm-compare__cell--dienst">
-            <label class="akm-field__label" for="akm-dienst">Bisheriger Musikdienst</label>
-            <div class="akm-compare__input">
-              <input class="akm-input" id="akm-dienst" type="text" inputmode="numeric" autocomplete="off" placeholder="0">
-              <span>€ pro Monat</span>
-            </div>
-          </div>
           <div class="akm-compare__cell akm-compare__cell--bisher">
             <p class="akm-field__label">Bisher</p>
             <p class="akm-compare__sum" id="akm-bisher">– €</p>
@@ -377,8 +382,10 @@ Lebe Smart!</textarea>
             </p>
           </div>
         </div>
-        <p class="akm-note">Die Ersparnis gilt nur, wenn am Standort keine andere lizenzpflichtige Musikquelle läuft, zum Beispiel Radio, TV mit Ton oder Live-Musik.</p>
       </div>
+
+      <!-- Disclaimer: bleibt unten mittig stehen -->
+      <p class="akm-disclaimer">Die Ersparnis gilt nur, wenn am Standort keine andere lizenzpflichtige Musikquelle läuft, zum Beispiel Radio, TV mit Ton oder Live-Musik.</p>
     </section>
 
     <!-- Channel Builder: Branche → Teilbereich → Klangraum → Genres, daneben

@@ -118,7 +118,7 @@ const AKM_BRANCHEN = [
 const akmInput    = document.getElementById('akm-input');
 const akmRegler   = document.getElementById('akm-regler');
 const akmLabel    = document.getElementById('akm-input-label');
-const akmHint     = document.getElementById('akm-hint');
+const akmInfo     = document.getElementById('akm-info');
 const akmResult   = document.getElementById('akm-result');
 const akmAmount   = document.getElementById('akm-amount');
 const akmMore     = document.getElementById('akm-more');
@@ -186,8 +186,12 @@ function akmRender() {
 
 function akmZeigeBranche() {
   akmLabel.textContent = akmBranche.eingabe;
-  akmHint.textContent = akmBranche.hinweis || '';
-  akmHint.hidden = !akmBranche.hinweis;
+  /* Hinweis als Tooltip am Info-Icon, ohne Hinweis kein Icon */
+  akmInfo.hidden = !akmBranche.hinweis;
+  if (akmBranche.hinweis) {
+    akmInfo.dataset.tip = akmBranche.hinweis;
+    akmInfo.setAttribute('aria-label', akmBranche.hinweis);
+  }
   akmInput.value = akmWerte[akmBranche.value] ?? akmZahl.format(akmBranche.regler.start);
   akmSetRegler(akmPosAus(akmZahlAus(akmInput.value) || akmBranche.regler.von));
   akmRender();

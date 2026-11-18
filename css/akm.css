@@ -13,6 +13,7 @@
 .akm-view {
   width: 100%;
   max-width: 1080px;
+  min-height: 100%;   /* damit der Disclaimer ganz unten stehen kann */
   align-self: flex-start;
   display: flex;
   flex-direction: column;
@@ -22,8 +23,8 @@
 /* oben: ein gefülltes Feld – Eingaben links, AKM-Kosten rechts daneben */
 .akm-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 40px;
   align-items: stretch;
   padding: 30px;
   border-radius: var(--radius-lg);
@@ -38,7 +39,14 @@
 .akm-top .akm-input:hover,
 .akm-top .akm-input:focus { background: var(--white-10); }
 
+/* dünne Linie zwischen Eingaben und Kosten */
+.akm-top .akm-result {
+  padding-left: 40px;
+  border-left: 1px solid var(--white-10);
+}
+
 .akm-field + .akm-field { margin-top: 30px; }
+.akm-field__label + .tiles { margin-top: 8px; }   /* mehr Luft unter „Branche“ */
 
 .akm-field__label {
   display: block;
@@ -59,6 +67,24 @@
 
 .akm-field__head .akm-field__label { margin-bottom: 0; }
 
+/* Label mit Info-Icon daneben */
+.akm-field__title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+
+.akm-info {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--text-40);
+  cursor: help;
+  transition: color var(--transition);
+}
+
+.akm-info[hidden] { display: none; }
+.akm-info:hover { color: var(--text-100); }
+.akm-info .icon { width: 15px; height: 15px; }
+
 .akm-input {
   width: 128px;
   height: 40px;
@@ -72,14 +98,6 @@
 
 .akm-input:hover,
 .akm-input:focus { background: var(--card-bg); }
-
-.akm-field__hint {
-  margin-top: 10px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  line-height: 1.5;
-  color: var(--text-40);
-}
 
 /* ---- AKM-Kosten: Label, Hinweis und Annahmen oben, Betrag unten ---- */
 .akm-result { display: flex; flex-direction: column; }
@@ -96,11 +114,8 @@
   color: var(--text-55);
 }
 
-/* „pro Jahr“ in der Ersparnis immer in der zweiten Zeile – sonst springt es
-   mit der Zahl; bei den AKM-Kosten steht es daneben */
-.akm-result__value > :last-child { flex-basis: 100%; }
-.akm-result__value--inline { flex-wrap: nowrap; }
-.akm-result__value--inline > :last-child { flex-basis: auto; white-space: nowrap; }
+/* „pro Jahr“ neben der Zahl; nur wenn sie zu lang wird, rutscht es darunter */
+.akm-result__value > :last-child { white-space: nowrap; }
 
 .akm-result__amount {
   font-size: 56px;
@@ -132,8 +147,8 @@
   color: var(--text-40);
 }
 
-/* ---- Schritt 2, ohne Feld, von links nach rechts: Musikdienst →
-        bisher → mit sounddna → Ersparnis ---- */
+/* ---- Schritt 2, ohne Feld, von links nach rechts: bisher →
+        mit sounddna → Ersparnis ---- */
 .akm-compare {
   margin-top: 40px;
   padding-top: 36px;
@@ -142,27 +157,15 @@
 
 .akm-compare__row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr);
-  grid-template-areas: "dienst bisher sdna diff";
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.3fr);
+  grid-template-areas: "bisher sdna diff";
   gap: 24px 32px;
   align-items: start;
 }
 
-.akm-compare__cell--dienst { grid-area: dienst; }
 .akm-compare__cell--bisher { grid-area: bisher; }
 .akm-compare__cell--sdna   { grid-area: sdna; }
 .akm-compare__cell--diff   { grid-area: diff; }
-
-.akm-compare__input {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-small);
-  letter-spacing: var(--ls-small);
-  color: var(--text-40);
-}
-
-.akm-compare .akm-input { width: 96px; }
 
 .akm-compare__cell--diff .akm-result__amount { font-size: 44px; }
 
@@ -184,6 +187,24 @@
 }
 
 .akm-nowrap { white-space: nowrap; }
+
+/* Disclaimer als Sticky Footer: unten mittig bündig mit dem Fensterrand,
+   reicht dafür in den unteren Innenabstand der Seite (Sticky rechnet ihn
+   sonst ab); der Inhalt läuft mit einem Verlauf darunter durch */
+.akm-disclaimer {
+  position: sticky;
+  bottom: calc(-1 * var(--main-bottom, 0px));
+  z-index: 1;
+  margin: auto 0 calc(-1 * var(--main-bottom, 0px));
+  padding: 40px 0 22px;
+  text-align: center;
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.55;
+  color: var(--text-40);
+  background: linear-gradient(to bottom, transparent, var(--dunkelblau) 55%);
+  pointer-events: none;
+}
 
 /* Annahmen: aufklappbar unter dem Ergebnis (Button: .more-toggle in base.css) */
 .akm-more { margin-top: 14px; }
@@ -218,13 +239,20 @@
 
 /* schmaler: Kosten unter die Eingaben, Schritt 2 auf zwei Spalten */
 @media (max-width: 980px) {
-  .akm-top { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 22px 20px 20px; }
+  .akm-top { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 22px 20px 20px; }
+  .akm-top .akm-result { padding: 28px 0 0; border-left: none; border-top: 1px solid var(--white-10); }
+  .akm-disclaimer { bottom: 0; }   /* hier scrollt das ganze Fenster */
   .akm-compare { margin-top: 32px; padding-top: 28px; }
   .akm-compare__row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "dienst dienst" "bisher sdna" "diff diff";
+    grid-template-areas: "bisher sdna" "diff diff";
   }
   .akm-result__amount,
   .akm-compare__cell--diff .akm-result__amount { font-size: 42px; }
   .akm-compare__sum { font-size: 24px; }
+}
+
+/* Handy: schmalere Eingabe, damit die Labels daneben Platz haben */
+@media (max-width: 600px) {
+  .akm-input { width: 100px; }
 }
