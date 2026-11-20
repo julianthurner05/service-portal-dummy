@@ -766,10 +766,9 @@ function suggestFreeSlot(o) {
    Ersetzen – statt Special Notes ein Button. Regeln wie im calendar-iframe
    (automation/src/replace.js): ersetzt wird nur, wenn ALLES zutrifft –
    1. der Store will es (Button an)
-   2. kein betroffener Spot ist fest (von sounddna)
-   3. der neue Spot übernimmt ALLE kommenden Zeiten jedes betroffenen
+   2. der neue Spot übernimmt ALLE kommenden Zeiten jedes betroffenen
       Spots – danach läuft keiner davon mehr irgendwo
-   4. sonst keine Fehler (Öffnungszeiten, Quiet Hour)
+   3. sonst keine Fehler (Öffnungszeiten, Quiet Hour)
    Sonst wird nichts ersetzt und der Streifen nennt den Grund. Der alte Spot
    fällt weg; lief er schon, endet er gestern und bleibt in der History.
    --------------------------------------------------------------- */
@@ -819,8 +818,6 @@ function planReplace(o, conflicts) {
   const other = conflicts.find(c => c.reason !== 'taken');
   if (other) return { ok: false, reason: other.reason === 'quiet' ? 'In a quiet hour nothing is replaced' : 'Outside opening hours nothing is replaced' };
   const targets = [...new Set(conflicts.map(c => c.card))];
-  const fixed = targets.find(c => c._opts.locked);
-  if (fixed) return { ok: false, reason: `“${fixed._opts.title}” is fixed by sounddna` };
   for (const card of targets) {
     const miss = firstUncovered(card._opts, o);
     if (miss) return { ok: false, reason: `“${card._opts.title}” also runs ${shortDate(miss.date)} ${miss.time}` };
