@@ -1238,7 +1238,7 @@ const MO_TH = ['Mo', 'Tu', 'We', 'Th'];
 const MO_SA = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const NO_WE = ['Mo', 'Tu', 'Th', 'Fr'];              /* Mittwoch hat die Stille Stunde 16–18 → eigene Variante */
 const PLAN = { type: 'weekly', start: '31.08.2026', end: null, once: false, every: 30, duration: 9 };
-const FIXED = { ...PLAN, category: 'closing', locked: true };
+const CLOSING = { ...PLAN, category: 'closing' };   /* Schlussdurchsagen – ganz normale Einträge, nichts ist fest */
 
 /* Ein Spot pro Slot, nichts in der Stillen Stunde, nichts außerhalb
    der Öffnungszeit (Schlussdurchsagen dürfen bis zur Schließzeit) – die Daten
@@ -1260,13 +1260,13 @@ const demoSchedules = [
   { ...PLAN, title: 'SMÅLAND Kipa Durchsage',             category: 'special',    days: ['Fr'], times: ['13:30'] },
   { ...PLAN, title: 'SMÅLAND Kipa Durchsage (Samstag)',   category: 'special',    days: ['Sa'], times: ['10:30'] },
   { ...PLAN, title: 'Stille Stunde Durchsage',            category: 'special',    days: ['We'], times: ['15:45'] },
-  { ...FIXED, title: 'Café Bar Schlussdurchsage',          days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
-  { ...FIXED, title: '1. Schlussdurchsage',                days: MO_TH, times: ['19:30'] },
-  { ...FIXED, title: '2. Schlussdurchsage',                days: MO_TH, times: ['19:45'] },
-  { ...FIXED, title: '3. Schlussdurchsage',                days: MO_TH, times: ['19:55'] },
-  { ...FIXED, title: '4. Schlussdurchsage',                days: MO_TH, times: ['20:00'] },
-  { ...FIXED, title: 'Schlussdurchsagen 1–4 (Freitag)',    days: ['Fr'], times: ['20:30', '20:45', '20:55', '21:00'] },
-  { ...FIXED, title: 'Schlussdurchsagen 1–4 (Samstag)',    days: ['Sa'], times: ['17:30', '17:45', '17:55', '18:00'] },
+  { ...CLOSING, title: 'Café Bar Schlussdurchsage',          days: ['Mo', 'Tu', 'Th', 'Fr', 'Sa'], times: ['17:10'] },
+  { ...CLOSING, title: '1. Schlussdurchsage',                days: MO_TH, times: ['19:30'] },
+  { ...CLOSING, title: '2. Schlussdurchsage',                days: MO_TH, times: ['19:45'] },
+  { ...CLOSING, title: '3. Schlussdurchsage',                days: MO_TH, times: ['19:55'] },
+  { ...CLOSING, title: '4. Schlussdurchsage',                days: MO_TH, times: ['20:00'] },
+  { ...CLOSING, title: 'Schlussdurchsagen 1–4 (Freitag)',    days: ['Fr'], times: ['20:30', '20:45', '20:55', '21:00'] },
+  { ...CLOSING, title: 'Schlussdurchsagen 1–4 (Samstag)',    days: ['Sa'], times: ['17:30', '17:45', '17:55', '18:00'] },
   { ...PLAN, title: 'IKEA Family Punkte Aktion Juli',     category: 'commercial', start: '01.07.2026', end: '31.07.2026', days: MO_SA, times: ['10:00', '15:00'] },
   { ...PLAN, title: 'Weihnachtsöffnungszeiten Hinweis',   category: 'special',    start: '01.12.2026', end: '23.12.2026', days: MO_SA, times: ['11:00', '17:00'] },
 ];
