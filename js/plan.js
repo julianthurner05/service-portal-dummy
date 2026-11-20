@@ -52,22 +52,26 @@ const STORES = [
 ];
 const HOME_STORE = STORES[0];          /* der eigene Store des eingeloggten Users */
 const CURRENT_USER = 'Julian Thurner';
-const HEAD_OFFICE_USER = 'Claudia Brandl';   /* Master – plant zentrale Kampagnen */
+const MASTER_USER = 'Claudia Brandl';  /* Master Editor – plant zentrale Kampagnen */
 
 /* ---- Rollen – wer was im Calendar darf
-   viewer   nur ansehen und anhören
-   editor   alles im eigenen Store – bis auf das, was Master für die
-            Stores gesperrt hat (locked)
-   head     alle Stores, Kampagnen in alle Stores auf einmal, sperren ---- */
+   viewer         eigener Store, nur ansehen und anhören
+   editor         eigener Store, alles – bis auf das, was der Master Editor
+                  für die Stores gesperrt hat (locked)
+   master-viewer  alle Stores, nur ansehen und anhören
+   master         alle Stores, alles: Kampagnen in alle Stores auf einmal,
+                  sperren ---- */
 const ROLES = [
-  { value: 'viewer', label: 'Viewer' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'head',   label: 'Master' },
+  { value: 'viewer',        label: 'Viewer' },
+  { value: 'editor',        label: 'Editor' },
+  { value: 'master-viewer', label: 'Master Viewer' },
+  { value: 'master',        label: 'Master Editor' },
 ];
 let currentRole = 'editor';           /* aus dem Speicher – siehe unten */
 
-const canEdit      = () => currentRole !== 'viewer';
-const isHeadOffice = () => currentRole === 'head';
+const canEdit        = () => currentRole === 'editor' || currentRole === 'master';
+const isMaster       = () => currentRole === 'master';
+const seesAllStores  = () => currentRole === 'master' || currentRole === 'master-viewer';
 
 /* einen Spot neu einplanen */
 const canPlaceSpot = spot => canEdit() && !!spot;
@@ -75,7 +79,7 @@ const canPlaceSpot = spot => canEdit() && !!spot;
 /* Serie oder einzelnen Slot ändern */
 function canEditEntry(entry) {
   if (!canEdit()) return false;
-  if (isHeadOffice()) return true;
+  if (isMaster()) return true;
   return !!entry && !entry.locked;
 }
 
@@ -294,12 +298,12 @@ const SPOT_LIBRARY = [
   { title: '4. Schlussdurchsage',              category: 'closing' },
 ];
 
-/* head: zentrale Kampagne von Master, für die Stores gesperrt.
+/* master: zentrale Kampagne vom Master Editor, für die Stores gesperrt.
    19:00 bzw. 17:10 der Vorlage liegen jetzt eine Spur früher – die letzte
    Stunde vor Ladenschluss gehört den Schlussdurchsagen */
 const BASE_PLAN = [
-  { spot: 'Weihnachtsöffnungszeiten Hinweis', days: MO_SA, times: ['11:00', '17:00'], start: '01.12.2026', end: '23.12.2026', head: true },
-  { spot: 'IKEA Family Punkte Aktion Juli',   days: MO_SA, times: ['10:00', '15:00'], start: '01.07.2026', end: '31.07.2026', head: true },
+  { spot: 'Weihnachtsöffnungszeiten Hinweis', days: MO_SA, times: ['11:00', '17:00'], start: '01.12.2026', end: '23.12.2026', master: true },
+  { spot: 'IKEA Family Punkte Aktion Juli',   days: MO_SA, times: ['10:00', '15:00'], start: '01.07.2026', end: '31.07.2026', master: true },
   { spot: 'IKEA FOOD Frühstücksangebot',      days: MO_SA, times: ['09:00', '09:45'] },
   { spot: 'IKEA FAMILY Durchsage',            days: NO_WE, times: ['10:00', '13:00', '16:00', '18:45'] },
   { spot: 'IKEA FAMILY Durchsage',            days: ['We'], times: ['10:00', '13:00', '18:45'] },
@@ -384,7 +388,7 @@ function buildWeek(monday, seriesList, spotList) {
 let seriesUid = 0;
 const userSeries = [];                /* alle Serien: { id, spotId, days: ['Mo', …], slots: [slot, …], start: Date, end: Date | null, override,
                                           by: wer sie eingeplant hat, role: dessen Rolle, at: Date,
-                                          locked: von Master für die Stores gesperrt } */
+                                          locked: vom Master Editor für die Stores gesperrt } */
 
 const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -432,7 +436,7 @@ function mergeSeries(spotId) {
 /* Plan eines Stores neu aufsetzen: Spot-Bibliothek, dann Schlussdurchsagen,
    Stille Stunde und Basisplan als ganz normale Serien – jeder Slot ist im
    Calendar bearbeitbar. Eingeplant hat sie das Team des Stores (die
-   Schlussdurchsagen sounddna, zentrale Kampagnen Master), ein paar
+   Schlussdurchsagen sounddna, zentrale Kampagnen der Master Editor), ein paar
    Tage vor dem Start. */
 function seedPlan(store) {
   spots.length = 0;
@@ -448,11 +452,11 @@ function seedPlan(store) {
     const start = parseDate(e.start || PLAN_START);
     const at = new Date(Math.min(start, parseDate(PLAN_START)));
     at.setDate(at.getDate() - 2 - n % 5);
-    const [name, role] = e.head ? [HEAD_OFFICE_USER, 'head'] : e.by ? [e.by, e.role] : store.team[n % store.team.length];
+    const [name, role] = e.master ? [MASTER_USER, 'master'] : e.by ? [e.by, e.role] : store.team[n % store.team.length];
     userSeries.push({
       id: ++seriesUid, spotId: findSpot(e.spot).id, days: [...e.days], slots,
       start, end: e.end ? parseDate(e.end) : null, override: false,
-      by: name, role, at, locked: !!e.head,
+      by: name, role, at, locked: !!e.master,
     });
   });
   spots.forEach(sp => mergeSeries(sp.id));
@@ -771,7 +775,7 @@ function clearPlanHistory() {
    Basisplan im Code ändert.
    --------------------------------------------------------------- */
 const PLAN_KEY = 'sounddna-plan';
-const PLAN_VERSION = 5;
+const PLAN_VERSION = 6;
 const UNSAVED_KEY = 'sounddna-unsaved';
 const ROLE_KEY = 'sounddna-role';
 const STORE_KEY = 'sounddna-store';
@@ -906,9 +910,12 @@ function loadPlan() {
   }
 }
 
-/* ---- Rolle (Account → Role): Master sieht alle Stores ---- */
-currentRole = ROLES.some(x => x.value === readLocal(ROLE_KEY, '')) ? readLocal(ROLE_KEY, '') : 'editor';
-const accessibleStores = () => (isHeadOffice() ? STORES : [HOME_STORE]);
+/* ---- Rolle (Account → Role): Master Viewer und Master Editor sehen alle Stores ---- */
+{
+  const saved = readLocal(ROLE_KEY, '') === 'head' ? 'master' : readLocal(ROLE_KEY, '');   /* früher „Master“ */
+  currentRole = ROLES.some(x => x.value === saved) ? saved : 'editor';
+}
+const accessibleStores = () => (seesAllStores() ? STORES : [HOME_STORE]);
 const storeUnsaved = id => (id === currentStore.id ? planDirty() : unsavedStores.has(id));
 const unsavedList = () => accessibleStores().filter(s => storeUnsaved(s.id));
 const anyUnsaved = () => unsavedList().length > 0;

@@ -83,6 +83,39 @@
 
 .cal-weekbar__divider { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--white-25); }
 
+/* Store-Auswahl (Master Viewer, Master Editor) vorne in der Leiste – feste
+   Breite, damit die Leiste beim Wechseln nicht springt; das Menü geht nach
+   oben auf, Stores mit ungespeicherten Änderungen tragen einen Punkt */
+.cal-store[hidden] + .cal-store__divider { display: none; }
+.cal-store .dropdown__toggle {
+  width: 184px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: none;
+  font-size: var(--fs-menu);
+  color: var(--text-100);
+}
+.cal-store .dropdown__toggle:hover,
+.cal-store.is-open .dropdown__toggle { background: var(--white-14); }
+.cal-store .dropdown__value { min-width: 0; }
+.cal-store .dropdown__value span { overflow: hidden; text-overflow: ellipsis; }
+.cal-store .dropdown__menu {
+  top: auto;
+  bottom: calc(100% + 14px);
+  left: -6px;
+  min-width: 220px;
+}
+.cal-store .dropdown__menu--tall { max-height: 320px; }
+.cal-store .dropdown__option.is-unsaved::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--text-66);
+}
+
 /* ungespeicherte Änderungen: eigene Leiste über der Woche, geht nach oben
    auf (0fr → 1fr). Save weiß, Discard mit Rahmen – wie Done / Cancel im
    Bearbeitungsfeld. */
@@ -549,21 +582,6 @@
 
 .cal-tray.is-editing .dropdown__menu { background: var(--edit-pop); }
 .cal-tray.is-editing .ghost-btn--invert { color: var(--edit-on-ink); }
-
-/* Store-Auswahl (wer alle Stores sieht) – ungespeicherte Stores mit Punkt */
-.cal-store { margin-bottom: 18px; }
-.cal-store .dropdown__toggle { height: 38px; padding: 0 13px 0 14px; background: var(--white-6); font-size: var(--fs-menu); }
-.cal-store .dropdown__toggle:hover,
-.cal-store.is-open .dropdown__toggle { background: var(--white-10); }
-.cal-store .dropdown__menu--tall { max-height: 320px; }
-.cal-store .dropdown__option.is-unsaved::after {
-  content: '';
-  width: 6px;
-  height: 6px;
-  margin-left: auto;
-  border-radius: 50%;
-  background: var(--text-66);
-}
 
 .cal-tray__title {
   margin-bottom: 16px;

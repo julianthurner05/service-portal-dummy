@@ -24,7 +24,7 @@
    - Save (oder ⌘S): erst dann gelten die Änderungen; bis dahin trägt der
      Menüpunkt Calendar einen Punkt
    - Rollen (plan.js): was man nicht ändern darf, hat ein Schloss und öffnet
-     nur zum Ansehen; Master: Store-Auswahl oben in der Liste, sperren,
+     nur zum Ansehen; Master: Store-Auswahl in der Leiste unten, sperren,
      neue Serien in alle Stores
    - Hover: alle Slots desselben Spots leuchten auf
    - Option (Alt) beim Ziehen eines Slots: kopieren statt verschieben
@@ -898,7 +898,7 @@ function renderRepeat() {
 
     ${!r.readonly && (conflicts || r.override) ? `<div class="cal-repeat__replace">${check('override', r.override, 'Replace taken slots')}</div>` : ''}
 
-    ${isHeadOffice() ? `
+    ${isMaster() ? `
       <div class="cal-repeat__head-office">
         ${check('lock', r.locked, 'Lock for stores')}
         ${isNewSeries(r) ? check('allstores', r.allStores, 'All stores') : ''}
@@ -1131,15 +1131,15 @@ function applyRepeat() {
   const slots = repeatSlots(r);
   const end = endOf(r);
   const days = DAYS.filter(d => r.days.has(d));
-  const locked = isHeadOffice() ? r.locked : false;
+  const locked = isMaster() ? r.locked : false;
   if (r.kind === 'series') {
     recordUndo();
     const def = { days, slots: [...slots], start: r.start, end, override: r.override, locked };
     const { skipped } = r.series
-      ? updateSeries(r.series.id, { ...def, locked: isHeadOffice() ? r.locked : null })
+      ? updateSeries(r.series.id, { ...def, locked: isMaster() ? r.locked : null })
       : addSeries({ ...def, spotId: r.spot.id });
     if (!r.series) spotPlaced(r.spot);
-    const stores = !r.series && isHeadOffice() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
+    const stores = !r.series && isMaster() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
     showToast('success', `“${r.spot.title}” ${r.series ? 'now runs' : 'runs'} every ${daysLabel(days)} ${timesLabel(slots)}${end ? ` until ${longDate(end)}` : ''}${stores ? ` in all ${stores + 1} stores` : ''}.${skippedNote(skipped)}`);
     closeRepeat();
     renderCalendar();
@@ -1166,7 +1166,7 @@ function applyRepeat() {
     removeItem(r.week, r.item.id);
     const def = { days, slots, start: repeatStart(r), end, override: r.override, locked };
     const { skipped } = addSeries({ ...def, spotId: r.spot.id });
-    const stores = isHeadOffice() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
+    const stores = isMaster() && r.allStores ? addSeriesToAllStores(r.spot, def) : 0;
     showToast('success', `“${r.spot.title}” runs every ${daysLabel(days)} ${perDay}${end ? ` until ${longDate(end)}` : ''}${stores ? ` in all ${stores + 1} stores` : ''}.${skippedNote(skipped)}`);
   }
   closeRepeat();
@@ -1214,7 +1214,7 @@ function syncSaveState() {
   calStore.querySelectorAll('.dropdown__option').forEach(o => o.classList.toggle('is-unsaved', storeUnsaved(o.dataset.value)));
 }
 
-/* Master: Save und Discard gelten für alle Stores mit Änderungen */
+/* Master Editor: Save und Discard gelten für alle Stores mit Änderungen */
 const storesNote = n => (n > 1 ? ` in ${n} stores` : '');
 
 function savePlanNow() {
@@ -1239,9 +1239,9 @@ document.addEventListener('keydown', e => {
   savePlanNow();
 });
 
-/* ---- Store-Auswahl (Master) ---- */
+/* ---- Store-Auswahl (Master Viewer, Master Editor) – in der Leiste unten ---- */
 function renderStorePicker() {
-  calStore.hidden = !isHeadOffice();
+  calStore.hidden = !seesAllStores();
   if (calStore.hidden) { calStore.innerHTML = ''; return; }
   buildDropdown(calStore, {
     options: accessibleStores().map(st => ({ value: st.id, label: st.name })),
