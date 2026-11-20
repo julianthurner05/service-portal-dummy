@@ -9,6 +9,7 @@ const homeView       = document.querySelector('[data-screen="home"]');
 const accountView    = document.querySelector('[data-screen="account"]');
 const akmView        = document.querySelector('[data-screen="akm"]');
 const channelView    = document.querySelector('[data-screen="channel"]');
+const altView        = document.querySelector('[data-screen="scheduler-alt"]');
 const historyList    = document.getElementById('history-list');
 const historyEmpty   = document.getElementById('history-empty');
 const toastsEl       = document.getElementById('toasts');
@@ -261,7 +262,7 @@ function createPlayer({ playBtn, slider, timeEl = null, duration = 9, resetOnSto
    SpotTool (Spots erstellen) und Calendar (Spots einplanen) – die
    Creation History rechts gehört nur zum SpotTool. Die aktuelle Unterseite
    steht im Hash (#akm …), so bleibt man beim Neuladen, wo man war */
-const VIEWS = ['home', 'spot-creation', 'calendar', 'akm', 'channel', 'account'];
+const VIEWS = ['home', 'spot-creation', 'calendar', 'scheduler-alt', 'akm', 'channel', 'account'];
 
 function viewFromUrl() {
   const view = location.hash.slice(1);
@@ -284,7 +285,12 @@ function showView(view) {
   accountView.hidden = view !== 'account';
   akmView.hidden = view !== 'akm';
   channelView.hidden = view !== 'channel';
+  altView.hidden = view !== 'scheduler-alt';
   homeView.hidden = !isHome;
+  document.body.classList.toggle('view-alt', view === 'scheduler-alt');
+  /* Scheduler (alt): erst beim ersten Öffnen laden, danach bleibt er, wie er ist */
+  const altFrame = altView.querySelector('iframe');
+  if (view === 'scheduler-alt' && !altFrame.src) altFrame.src = altFrame.dataset.src;
   document.body.classList.toggle('view-calendar', isCalendar);   /* vor dem Rendern – der Calendar misst den Innenabstand */
   if (isCalendar) renderCalendar();
   if (isHome) renderHome();

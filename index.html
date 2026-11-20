@@ -99,6 +99,11 @@
         <span class="nav-item__dot" title="Unsaved changes"></span>
       </button>
 
+      <button class="nav-item" data-view="scheduler-alt">
+        <svg class="icon"><use href="#i-gantt"/></svg>
+        <span>Scheduler (alt)</span>
+      </button>
+
       <p class="sidebar__section-label">Music Service</p>
 
       <button class="nav-item" data-view="akm">
@@ -296,6 +301,12 @@ Lebe Smart!</textarea>
           <div class="cal-tray__settings" id="cal-tray-settings" hidden></div>
         </aside>
       </div>
+    </section>
+
+    <!-- Scheduler (alt): das alte Scheduler-Formular aus /alt, eingebettet
+         (?embed blendet dort die Sidebar aus); lädt beim ersten Öffnen -->
+    <section class="alt-view" data-screen="scheduler-alt" hidden>
+      <iframe class="alt-view__frame" title="Scheduler (alt)" data-src="alt/?embed"></iframe>
     </section>
 
     <!-- AKM-Ersparnisrechner: Schritt 1 AKM-Kosten pro Jahr, Schritt 2 Vergleich

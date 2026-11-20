@@ -26,6 +26,7 @@ const previewEmpty  = document.getElementById('preview-empty');
 const previewPlayer = document.getElementById('preview-player');
 const schedSummary  = document.getElementById('sched-summary');
 const conflictWrap = document.getElementById('conflict-wrap');
+const replaceBtn   = document.getElementById('replace-btn');
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -445,6 +446,7 @@ function readForm() {
     category: categoryDropdown.value,
     spot: linkedSpot ? linkedSpot.title : null,
     duration: linkedSpot ? linkedSpot.duration : 9,
+    replace: replaceOn,
   };
   if (fixedTimes && o.once && from === fixedTimes[0]) o.times = fixedTimes;
   return o;
@@ -477,6 +479,7 @@ function writeForm(o) {
   dayChips.querySelectorAll('.day-chip').forEach(chip =>
     chip.classList.toggle('is-active', (o.days || []).includes(chip.dataset.day)));
   categoryDropdown.value = o.category || null;
+  setReplace(!!o.replace);
   setLinkedSpot(o.spot ? { title: o.spot, duration: o.duration || 9 } : null);
   if (instant) {
     /* zwei Frames halten: auch Wochentage und Konflikt-Feld schalten hart um.
@@ -760,6 +763,87 @@ function suggestFreeSlot(o) {
 }
 
 /* ---------------------------------------------------------------
+   Ersetzen – statt Special Notes ein Button. Regeln wie im calendar-iframe
+   (automation/src/replace.js): ersetzt wird nur, wenn ALLES zutrifft –
+   1. der Store will es (Button an)
+   2. kein betroffener Spot ist fest (von sounddna)
+   3. der neue Spot übernimmt ALLE kommenden Zeiten jedes betroffenen
+      Spots – danach läuft keiner davon mehr irgendwo
+   4. sonst keine Fehler (Öffnungszeiten, Quiet Hour)
+   Sonst wird nichts ersetzt und der Streifen nennt den Grund. Der alte Spot
+   fällt weg; lief er schon, endet er gestern und bleibt in der History.
+   --------------------------------------------------------------- */
+let replaceOn = false;
+
+function setReplace(on) {
+  replaceOn = on;
+  replaceBtn.classList.toggle('is-on', on);
+  replaceBtn.setAttribute('aria-pressed', String(on));
+}
+
+replaceBtn.addEventListener('click', () => {
+  setReplace(!replaceOn);
+  scheduleChanged(true);
+});
+
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const slotsOn = (o, date) => occurrences(o, date, { all: true }).filter(x => !isQuiet(dayIdx(date), x.time));
+
+/* erster kommender Termin von X, den N nicht im selben Slot übernimmt – oder null */
+function firstUncovered(X, N) {
+  const today = startOfToday();
+  const from = new Date(Math.max(parseDate(X.start), today));
+  const open = X.type !== 'single' && !X.end;
+  const until = X.type === 'single' ? parseDate(X.start) : open ? new Date(from.getFullYear() + 1, from.getMonth(), from.getDate() + 7) : parseDate(X.end);
+  for (let d = new Date(from); d <= until; d.setDate(d.getDate() + 1)) {
+    const taken = new Set(slotsOn(N, d).map(x => x.slot));
+    const miss = slotsOn(X, d).find(x => !taken.has(x.slot));
+    if (miss) return { date: new Date(d), time: miss.time };
+  }
+  /* X läuft unbefristet, N endet irgendwann */
+  if (open && N.type !== 'single' && N.end) {
+    const d = parseDate(N.end);
+    for (let i = 0; i < 14; i++) {
+      d.setDate(d.getDate() + 1);
+      const t = slotsOn(X, d)[0];
+      if (t) return { date: new Date(d), time: t.time };
+    }
+  }
+  return null;
+}
+
+const shortDate = d => `${DAYS[dayIdx(d)]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+
+/* { ok: true, targets: [Karte, …] } oder { ok: false, reason } */
+function planReplace(o, conflicts) {
+  const other = conflicts.find(c => c.reason !== 'taken');
+  if (other) return { ok: false, reason: other.reason === 'quiet' ? 'In a quiet hour nothing is replaced' : 'Outside opening hours nothing is replaced' };
+  const targets = [...new Set(conflicts.map(c => c.card))];
+  const fixed = targets.find(c => c._opts.locked);
+  if (fixed) return { ok: false, reason: `“${fixed._opts.title}” is fixed by sounddna` };
+  for (const card of targets) {
+    const miss = firstUncovered(card._opts, o);
+    if (miss) return { ok: false, reason: `“${card._opts.title}” also runs ${shortDate(miss.date)} ${miss.time}` };
+  }
+  return { ok: true, targets };
+}
+
+/* ersetzter Spot: fällt weg – lief er schon, endet er gestern und bleibt stehen */
+function retireReplaced(card) {
+  const o = card._opts;
+  const today = startOfToday();
+  if (o.type !== 'single' && parseDate(o.start) < today) {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    card.replaceWith(createSchedCard({ ...o, end: fmtDate(yesterday) }));
+  } else {
+    card.remove();
+  }
+}
+
+const titlesOf = cards => cards.map(c => `“${c._opts.title}”`).join(', ');
+
+/* ---------------------------------------------------------------
    Konflikt-Hinweis – Streifen unter der Zeitzeile (#conflict-strip in
    #conflict-wrap, einem .reveal). Feste Höhe: Erscheinen/Verschwinden
    läuft über reveal(), Inhaltswechsel bei offenem Streifen als kurzer
@@ -775,13 +859,27 @@ function conflictLabel(c) {
        : c.card._opts.title;
 }
 
+let conflictRep = null;                  /* Ersetzen-Ergebnis zum offenen Streifen */
+
 function conflictParts(list, blocking) {
+  const rep = conflictRep;
   const chips = list.slice(0, CONFLICT_MAX_CHIPS).map(c => `
     <span class="conflict-strip__chip" title="${escapeHtml(conflictLabel(c))}">
       <span class="conflict-strip__dot" style="background:${c.card ? catColor(c.card._opts.category) : 'var(--white-25)'}"></span>${c.day} ${c.time}
     </span>`);
   const more = list.length > CONFLICT_MAX_CHIPS ? `<span class="conflict-strip__more">+${list.length - CONFLICT_MAX_CHIPS}</span>` : '';
   const current = readForm();
+  if (rep) {
+    return {
+      suggestion: null,
+      title: rep.ok
+        ? `<span class="conflict-strip__title" title="${escapeHtml(`Replaces ${titlesOf(rep.targets)}`)}">Replaces ${escapeHtml(titlesOf(rep.targets))}</span>`
+        : `<span class="conflict-strip__title">${list.length === 1 ? '1 slot taken' : `${list.length} slots taken`}</span>`,
+      times: `<span class="conflict-strip__times">${chips.join('')}${more}</span>`,
+      foot: rep.ok ? '<span class="conflict-strip__note"></span>'
+        : `<span class="conflict-strip__note is-reason" title="${escapeHtml(rep.reason)}">${escapeHtml(rep.reason)}</span>`,
+    };
+  }
   const suggestion = suggestFreeSlot(current);
   return {
     suggestion,
@@ -797,6 +895,7 @@ function conflictParts(list, blocking) {
    austauschen, die neuen rollen dezent nach. */
 function renderConflictStrip(list, blocking, swap = false) {
   conflictWrap.classList.toggle('is-blocking', blocking);
+  conflictWrap.classList.toggle('is-replace', !!(conflictRep && conflictRep.ok));
   conflictWrap.classList.remove('is-ok');
   const parts = conflictParts(list, blocking);
   const slots = ['title', 'times', 'foot'];
@@ -869,8 +968,9 @@ function setConflictOpen(open) {
   if (wait) conflictWrap._after = setTimeout(go, wait); else go();
 }
 
-function showConflicts(list, { blocking = false } = {}) {
-  const key = JSON.stringify([blocking, list.map(c => [c.day, c.time, c.reason, c.card ? c.card._uid : 0])]);
+function showConflicts(list, { blocking = false, replace = null } = {}) {
+  conflictRep = replace;
+  const key = JSON.stringify([blocking, replace && (replace.ok || replace.reason), list.map(c => [c.day, c.time, c.reason, c.card ? c.card._uid : 0])]);
   if (key === conflictKey && !conflictHold) return;
   const wasOpen = conflictKey !== null;
   conflictKey = key;
@@ -893,7 +993,7 @@ function hideConflicts({ instant = false } = {}) {
   if (instant) {
     conflictWrap.style.transition = 'none';
     conflictStrip.classList.remove('is-in');
-    conflictWrap.classList.remove('is-open', 'is-ok', 'is-blocking');
+    conflictWrap.classList.remove('is-open', 'is-ok', 'is-blocking', 'is-replace');
     void conflictWrap.offsetHeight;
     conflictWrap.style.transition = '';
     return;
@@ -913,7 +1013,7 @@ function scheduleChanged(immediate = false) {
     if (!ready) { hideConflicts(); timeFrom.mark(() => null); timeTo.mark(() => null); return; }
 
     const list = findConflicts(o, editingCard);
-    if (list.length) showConflicts(list); else hideConflicts();
+    if (list.length) showConflicts(list, { replace: replaceOn ? planReplace(o, list) : null }); else hideConflicts();
 
     /* Startzeit-Dropdown: welche Zeiten wären an den gewählten Tagen frei? */
     timeFrom.mark(value => {
@@ -933,16 +1033,29 @@ scheduleBtn.addEventListener('click', () => {
   if (!validateForm(o)) return;
 
   const conflicts = findConflicts(o, editingCard);
+  let replaced = [];
   if (conflicts.length) {
-    showConflicts(conflicts, { blocking: true });
-    showToast('error', 'Some slots are not available – see the list in the form.');
-    return;
+    const rep = replaceOn ? planReplace(o, conflicts) : null;
+    if (!rep || !rep.ok) {
+      showConflicts(conflicts, { blocking: true, replace: rep });
+      showToast('error', rep ? `Nothing replaced: ${rep.reason}.` : 'Some slots are not available – see the list in the form.');
+      return;
+    }
+    replaced = rep.targets;
   }
   hideConflicts();
 
+  /* ersetzte Spots fallen gleich weg (lief einer schon: endet gestern) */
+  if (replaced.length) {
+    replaced.forEach(retireReplaced);
+    applySearch();
+    showToast('success', `${titlesOf(replaced)} replaced.`);
+  }
+
   const target = editingCard;
+  const { replace, ...opts } = o;
   const commit = () => {
-    const card = createSchedCard({ ...o, isNew: true });
+    const card = createSchedCard({ ...opts, isNew: true });
     if (target && target.isConnected) target.replaceWith(card); else scheduleList.prepend(card);
     applySearch();
   };

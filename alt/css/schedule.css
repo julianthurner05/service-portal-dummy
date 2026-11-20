@@ -885,3 +885,96 @@
   transition: none !important;
   animation: none !important;
 }
+
+/* ================================================================
+   ERSETZEN – statt Special Notes: Button mit kleiner Info zu den Regeln
+   (wie im calendar-iframe). Mit Ersetzen wird der Konflikt-Streifen
+   neutral und nennt, was ersetzt wird – oder warum nicht.
+   ================================================================ */
+.replace-row { display: flex; align-items: center; gap: 8px; }
+
+.replace-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 16px 0 13px;
+  border-radius: var(--radius-md);
+  background: var(--mittelblau);
+  color: var(--text-60);
+  font-size: var(--fs-base);
+  transition: background var(--transition), color var(--transition);
+}
+
+.replace-btn:hover { color: var(--text-80); }
+
+.replace-btn__box {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid var(--white-25);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.replace-btn__box .icon { width: 10px; height: 10px; stroke-width: 2.5; opacity: 0; color: var(--nav-active); }
+
+.replace-btn.is-on,
+.replace-btn.is-on:hover { background: var(--nav-active); color: var(--text-inverse); }
+.replace-btn.is-on .replace-btn__box { background: var(--text-inverse); border-color: var(--text-inverse); }
+.replace-btn.is-on .replace-btn__box .icon { opacity: 1; }
+
+.replace-info {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--text-40);
+  cursor: help;
+  outline: none;
+  transition: color var(--transition);
+}
+
+.replace-info:hover,
+.replace-info:focus-visible { color: var(--text-80); }
+.replace-info > .icon { width: 16px; height: 16px; }
+
+.replace-info__pop {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: 290px;
+  padding: 13px 15px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--menu-blau);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-small);
+  letter-spacing: var(--ls-small);
+  line-height: 1.45;
+  color: var(--text-66);
+  text-align: left;
+  cursor: default;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.replace-info:hover .replace-info__pop,
+.replace-info:focus .replace-info__pop { opacity: 1; transform: translate(-50%, 0); }
+
+.replace-info__title { margin-bottom: 2px; color: var(--text-100); }
+.replace-info__rule { position: relative; padding-left: 12px; }
+.replace-info__rule::before { content: '·'; position: absolute; left: 2px; color: var(--text-40); }
+
+/* Konflikt-Streifen mit Ersetzen: neutral, nennt den ersetzten Spot */
+.conflict-wrap.is-replace { background: color-mix(in srgb, #ffffff 9%, var(--mittelblau)); }
+.conflict-wrap.is-replace .conflict-strip__title { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.conflict-strip__note.is-reason { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-66); }
